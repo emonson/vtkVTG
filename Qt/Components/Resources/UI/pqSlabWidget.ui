@@ -1,0 +1,199 @@
+<ui version="4.0" >
+ <class>pqSlabWidget</class>
+ <widget class="QWidget" name="pqSlabWidget" >
+  <property name="geometry" >
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>313</width>
+    <height>238</height>
+   </rect>
+  </property>
+  <property name="windowTitle" >
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout" >
+   <item>
+    <widget class="QCheckBox" name="show3DWidget" >
+     <property name="text" >
+      <string>Show Slab</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" >
+     <property name="spacing" >
+      <number>2</number>
+     </property>
+     <item row="0" column="0" >
+      <widget class="QLabel" name="label" >
+       <property name="text" >
+        <string>Translate</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1" >
+      <widget class="pqLineEdit" name="positionX" />
+     </item>
+     <item row="0" column="2" >
+      <widget class="pqLineEdit" name="positionY" />
+     </item>
+     <item row="0" column="3" >
+      <widget class="pqLineEdit" name="positionZ" />
+     </item>
+     <item row="1" column="0" >
+      <widget class="QLabel" name="label_2" >
+       <property name="text" >
+        <string>Rotate</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1" >
+      <widget class="pqLineEdit" name="rotationX" />
+     </item>
+     <item row="1" column="2" >
+      <widget class="pqLineEdit" name="rotationY" />
+     </item>
+     <item row="1" column="3" >
+      <widget class="pqLineEdit" name="rotationZ" />
+     </item>
+     <item row="2" column="0" >
+      <widget class="QLabel" name="label_3" >
+       <property name="text" >
+        <string>Scale</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1" >
+      <widget class="pqLineEdit" name="scaleX" />
+     </item>
+     <item row="2" column="2" >
+      <widget class="pqLineEdit" name="scaleY" />
+     </item>
+     <item row="2" column="3" >
+      <widget class="pqLineEdit" name="scaleZ" />
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout" >
+     <item>
+      <widget class="QLabel" name="label_5" >
+       <property name="text" >
+        <string>Translate</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="slider" >
+       <property name="sizePolicy" >
+        <sizepolicy vsizetype="Fixed" hsizetype="MinimumExpanding" >
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize" >
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="orientation" >
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4" >
+     <item>
+      <widget class="QLabel" name="label_4" >
+       <property name="sizePolicy" >
+        <sizepolicy vsizetype="Preferred" hsizetype="Maximum" >
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text" >
+        <string>Align</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="xAxis" >
+       <property name="sizePolicy" >
+        <sizepolicy vsizetype="Fixed" hsizetype="Expanding" >
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text" >
+        <string>X axis</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="yAxis" >
+       <property name="sizePolicy" >
+        <sizepolicy vsizetype="Fixed" hsizetype="Expanding" >
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text" >
+        <string>Y axis</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="zAxis" >
+       <property name="sizePolicy" >
+        <sizepolicy vsizetype="Fixed" hsizetype="Expanding" >
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text" >
+        <string>Z axis</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_3" >
+     <item>
+      <spacer name="spacer" >
+       <property name="orientation" >
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0" >
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="resetBounds" >
+       <property name="text" >
+        <string>Reset Bounds</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>pqLineEdit</class>
+   <extends>QLineEdit</extends>
+   <header>pqLineEdit.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,11 @@
+# Ignore all build directories
+build/*
+noqt/*
+norpath/*
+
+# and all mac screwy files
+.DS_Store
+
+# and all output from python tests
+Examples/Python/X_Output/*
+

@@ -1,0 +1,447 @@
+? serial
+? slabDiff
+? Qt/Components/pqSlabWidget.cxx
+? Qt/Components/pqSlabWidget.h
+? Qt/Components/Resources/UI/pqSlabWidget.ui
+? Servers/ServerManager/vtkSMSlabProxy.cxx
+? Servers/ServerManager/vtkSMSlabProxy.h
+? Servers/ServerManager/vtkSMSlabRepresentationProxy.cxx
+? Servers/ServerManager/vtkSMSlabRepresentationProxy.h
+? VTK/Common/vtkSlab.cxx
+? VTK/Common/vtkSlab.h
+? VTK/Common/vtkvtgCommonWin32Header.h
+? VTK/Widgets/vtkSlabRepresentation.cxx
+? VTK/Widgets/vtkSlabRepresentation.h
+? VTK/Widgets/vtkSlabWidget2.cxx
+? VTK/Widgets/vtkSlabWidget2.h
+Index: Qt/Components/CMakeLists.txt
+===================================================================
+RCS file: /cvsroot/ParaView3/ParaView3/Qt/Components/CMakeLists.txt,v
+retrieving revision 1.166
+diff -u -r1.166 CMakeLists.txt
+--- Qt/Components/CMakeLists.txt	22 May 2009 15:31:20 -0000	1.166
++++ Qt/Components/CMakeLists.txt	30 Jun 2009 15:13:20 -0000
+@@ -195,6 +195,7 @@
+   pqProxySILModel.h
+   pqSelectionInputWidget.h
+   pqSimpleServerStartup.h
++  pqSlabWidget.h
+   pqSourceComboBox.h
+   #pqSourceHistoryModel.h
+   #pqSourceInfoFilterModel.h
+@@ -292,6 +293,7 @@
+   Resources/UI/pqServerBrowser.ui
+   Resources/UI/pqServerStartupDialog.ui
+   Resources/UI/pqSignalAdaptorKeyFrameValue.ui
++  Resources/UI/pqSlabWidget.ui
+   Resources/UI/pqSphereWidget.ui
+   Resources/UI/pqSplineWidget.ui
+   Resources/UI/pqSpreadSheetDisplayEditor.ui
+@@ -654,6 +656,8 @@
+   pqSignalAdaptorSelectionTreeWidget.h
+   pqSignalAdaptorTreeWidget.cxx
+   pqSignalAdaptorTreeWidget.h
++  pqSlabWidget.cxx
++  pqSlabWidget.h
+   pqSILModel.cxx
+   pqSILModel.h
+   pqProxySILModel.cxx
+Index: Qt/Components/pq3DWidget.cxx
+===================================================================
+RCS file: /cvsroot/ParaView3/ParaView3/Qt/Components/pq3DWidget.cxx,v
+retrieving revision 1.37
+diff -u -r1.37 pq3DWidget.cxx
+--- Qt/Components/pq3DWidget.cxx	28 May 2009 15:09:50 -0000	1.37
++++ Qt/Components/pq3DWidget.cxx	30 Jun 2009 15:13:20 -0000
+@@ -54,6 +54,7 @@
+ // ParaView GUI includes.
+ #include "pqApplicationCore.h"
+ #include "pqBoxWidget.h"
++#include "pqSlabWidget.h"
+ #include "pqDistanceWidget.h"
+ #include "pqImplicitPlaneWidget.h"
+ #include "pqLineSourceWidget.h"
+@@ -149,6 +150,10 @@
+         {
+         widget = new pqBoxWidget(refProxy, pxy, 0);
+         }
++      else if (widgetType == "Slab")
++        {
++        widget = new pqSlabWidget(refProxy, pxy, 0);
++        }
+       else if (widgetType == "Handle")
+         {
+         widget = new pqHandleWidget(refProxy, pxy, 0);
+Index: Servers/ServerManager/CMakeLists.txt
+===================================================================
+RCS file: /cvsroot/ParaView3/ParaView3/Servers/ServerManager/CMakeLists.txt,v
+retrieving revision 1.244
+diff -u -r1.244 CMakeLists.txt
+--- Servers/ServerManager/CMakeLists.txt	22 Jun 2009 18:32:17 -0000	1.244
++++ Servers/ServerManager/CMakeLists.txt	30 Jun 2009 15:13:21 -0000
+@@ -168,6 +168,8 @@
+   vtkSMSimpleStrategy.cxx
+   vtkSMSimpleStringInformationHelper.cxx
+   vtkSMSinusoidKeyFrameProxy.cxx
++  vtkSMSlabProxy.cxx
++  vtkSMSlabRepresentationProxy.cxx
+   vtkSMSourceProxy.cxx
+   vtkSMSpreadSheetRepresentationProxy.cxx
+   vtkSMStateLoader.cxx
+Index: Servers/ServerManager/Resources/filters.xml
+===================================================================
+RCS file: /cvsroot/ParaView3/ParaView3/Servers/ServerManager/Resources/filters.xml,v
+retrieving revision 1.354
+diff -u -r1.354 filters.xml
+--- Servers/ServerManager/Resources/filters.xml	23 Jun 2009 18:09:35 -0000	1.354
++++ Servers/ServerManager/Resources/filters.xml	30 Jun 2009 15:13:21 -0000
+@@ -1378,6 +1378,7 @@
+               <Proxy group="implicit_functions" name="Plane" />
+               <Proxy group="implicit_functions" name="Box" />
+               <Proxy group="implicit_functions" name="Sphere" />
++              <Proxy group="implicit_functions" name="Slab" />
+            </ProxyListDomain>
+            <Documentation>
+              This property specifies whether to clip the dataset, and if so, it also specifies the parameters of the plane with which to clip.
+@@ -4037,6 +4038,7 @@
+               <Proxy group="implicit_functions" name="Plane" />
+               <Proxy group="implicit_functions" name="Box" />
+               <Proxy group="implicit_functions" name="Sphere" />
++              <Proxy group="implicit_functions" name="Slab" />
+            </ProxyListDomain>
+            <Documentation>
+              This property sets the parameters of the slice function.
+@@ -4109,6 +4111,7 @@
+               <Proxy group="implicit_functions" name="Plane" />
+               <Proxy group="implicit_functions" name="Box" />
+               <Proxy group="implicit_functions" name="Sphere" />
++              <Proxy group="implicit_functions" name="Slab" />
+            </ProxyListDomain>
+            <Documentation>
+              This property sets the region used to extract cells.
+@@ -4199,6 +4202,7 @@
+               <Proxy group="implicit_functions" name="Box" />
+               <Proxy group="implicit_functions" name="Sphere" />
+               <Proxy group="implicit_functions" name="Scalar" />
++              <Proxy group="implicit_functions" name="Slab" />
+            </ProxyListDomain>
+            <Documentation>
+              This property specifies the parameters of the clip function (an implicit plane) used to clip the dataset.
+@@ -5763,9 +5767,6 @@
+         ID. This is intended to handle the output of a filter such as the
+         TemporalStreamTracer.
+       </Documentation>
+-
+-      <OutputPort name="Pathlines" index="0" />
+-      <OutputPort name="Particles" index="1" />
+       
+       <InputProperty
+          name="Input"
+@@ -6205,6 +6206,7 @@
+               <Proxy group="implicit_functions" name="Plane" />
+               <Proxy group="implicit_functions" name="Box" />
+               <Proxy group="implicit_functions" name="Sphere" />
++              <Proxy group="implicit_functions" name="Slab" />
+            </ProxyListDomain>
+            <Documentation>
+              Set the parameters of the clip function.
+@@ -6369,6 +6371,7 @@
+               <Proxy group="implicit_functions" name="Plane" />
+               <Proxy group="implicit_functions" name="Box" />
+               <Proxy group="implicit_functions" name="Sphere" />
++              <Proxy group="implicit_functions" name="Slab" />
+            </ProxyListDomain>
+            <Documentation>
+              Set the parameters to the implicit function used for cutting.
+Index: Servers/ServerManager/Resources/rendering.xml
+===================================================================
+RCS file: /cvsroot/ParaView3/ParaView3/Servers/ServerManager/Resources/rendering.xml,v
+retrieving revision 1.352
+diff -u -r1.352 rendering.xml
+--- Servers/ServerManager/Resources/rendering.xml	9 Jun 2009 17:38:12 -0000	1.352
++++ Servers/ServerManager/Resources/rendering.xml	30 Jun 2009 15:13:21 -0000
+@@ -1721,6 +1721,62 @@
+       <!-- End of BoxRepresentation -->
+     </BoxRepresentationProxy>
+ 
++    <SlabRepresentationProxy name="SlabRepresentation" class="vtkSlabRepresentation">
++      <Documentation>
++        Proxy for vtkSlabRepresentation. Don't confuse this with the
++        vtkSMRepresentation proxy for the box widget (which is the
++        SlabWidgetRepresentation).
++      </Documentation>
++
++      <IntVectorProperty
++        name="Visibility"
++        command="SetVisibility"
++        number_of_elements="1"
++        default_values="1"
++        animateable="1">
++        <BooleanDomain name="bool" />
++      </IntVectorProperty>
++
++      <DoubleVectorProperty 
++        name="PlaceWidget"
++        command="PlaceWidget"
++        number_of_elements="6"
++        argument_is_array="1"
++        default_values="0 1 0 1 0 1">
++        <DoubleRangeDomain name="range"/>
++      </DoubleVectorProperty>
++
++      <DoubleVectorProperty 
++        name="PlaceFactor"
++        command="SetPlaceFactor"
++        number_of_elements="1"
++        default_values="1.0">
++        <DoubleRangeDomain name="range" min="0.01" />
++      </DoubleVectorProperty>
++
++      <ProxyProperty name="Renderer" command="SetRenderer">
++        <ProxyGroupDomain name="groups">
++          <Group name="renderers"/>
++        </ProxyGroupDomain>
++      </ProxyProperty>
++
++      <SubProxy>
++        <Proxy name="Transform"
++          proxygroup="transforms" proxyname="Transform2s">
++        </Proxy>
++        <ExposedProperties>
++          <Property name="Position" /> 
++          <Property name="PositionInfo" /> 
++          <Property name="Rotation" /> 
++          <Property name="RotationInfo" /> 
++          <Property name="Scale" /> 
++          <Property name="ScaleInfo" /> 
++        </ExposedProperties>
++      </SubProxy>
++
++      <!-- End of SlabRepresentation -->
++    </SlabRepresentationProxy>
++
+     <Proxy name="SphereRepresentation" class="vtkSphereRepresentation">
+       <Documentation>
+         Proxy for vtkSphereRepresentation. Don't confuse this with the
+@@ -7957,6 +8013,41 @@
+       <!-- End of BoxWidgetRepresentation -->
+     </NewWidgetRepresentationProxy>
+ 
++    <NewWidgetRepresentationProxy name="SlabWidgetRepresentation">
++      <Documentation>
++        Representation proxy for the the slab widget. This includes the
++        widget/representation proxies for the slab 3D widget.
++      </Documentation>
++
++      <SubProxy>
++        <Proxy name="Prop"
++          proxygroup="props" proxyname="SlabRepresentation">
++        </Proxy>
++        <ExposedProperties>
++          <Property name="PlaceFactor" />
++          <Property name="PlaceWidget" />
++          <Property name="Visibility" />
++          <Property name="Position" />
++          <Property name="PositionInfo" />
++          <Property name="Rotation" />
++          <Property name="RotationInfo" />
++          <Property name="Scale" />
++          <Property name="ScaleInfo" />
++        </ExposedProperties>
++      </SubProxy>
++
++      <SubProxy>
++        <Proxy name="Widget"
++          proxygroup="3d_widgets" proxyname="SlabWidget2">
++        </Proxy>
++        <ExposedProperties>
++          <Property name="Enabled" />
++        </ExposedProperties>
++      </SubProxy>
++
++      <!-- End of SlabWidgetRepresentation -->
++    </NewWidgetRepresentationProxy>
++
+     <NewWidgetRepresentationProxy name="SphereWidgetRepresentation">
+       <Documentation>
+         Representation proxy for the the sphere widget. This includes the
+Index: Servers/ServerManager/Resources/utilities.xml
+===================================================================
+RCS file: /cvsroot/ParaView3/ParaView3/Servers/ServerManager/Resources/utilities.xml,v
+retrieving revision 1.178
+diff -u -r1.178 utilities.xml
+--- Servers/ServerManager/Resources/utilities.xml	3 Jun 2009 21:00:17 -0000	1.178
++++ Servers/ServerManager/Resources/utilities.xml	30 Jun 2009 15:13:21 -0000
+@@ -355,6 +355,59 @@
+       <!-- End of Box -->
+     </BoxProxy>
+     
++    <SlabProxy name="Slab" class="vtkSlab">
++      <!-- Just a copy of Box for now... -->
++      <DoubleVectorProperty
++        name="Bounds"
++        command="SetBounds"
++        number_of_elements="6"
++        default_values="none" >
++      </DoubleVectorProperty>
++      <DoubleVectorProperty
++        name="Position"
++        command="SetPosition"
++        number_of_elements="3"
++        update_self="1"
++        animateable="1"
++        default_values="0.0 0.0 0.0" >
++        <DoubleRangeDomain name="range" />
++      </DoubleVectorProperty>
++      <DoubleVectorProperty
++        name="Rotation"
++        command="SetRotation"
++        number_of_elements="3"
++        update_self="1"
++        animateable="1"
++        default_values="0.0 0.0 0.0" >
++        <DoubleRangeDomain name="range" />
++      </DoubleVectorProperty>
++      <DoubleVectorProperty
++        name="Scale"
++        command="SetScale"
++        number_of_elements="3"
++        animateable="1"
++        update_self="1"
++        default_values="1.0 1.0 1.0" >
++        <DoubleRangeDomain name="range" />
++      </DoubleVectorProperty>
++      <Hints>
++        <!-- Hints are metadata associated with the proxy.
++             As far as the ServerManager is concerned, Hints have no 
++             significance. GUI is free to interpret the hints as
++             it chooses. Hints provide a mechanism to add some GUI
++             pertinant information to the server manager XML.
++        -->
++        <PropertyGroup type="Slab">
++          <Property name="Position" function="Position" />
++          <Property name="Rotation" function="Rotation" />
++          <Property name="Scale" function="Scale" />
++          <Property name="Bounds" function="PlaceWidget" />
++        </PropertyGroup>
++
++      </Hints>
++      <!-- End of Slab -->
++    </SlabProxy>
++    
+     <Proxy name="Sphere" class="vtkSphere">
+       <DoubleVectorProperty
+         name="Center"
+@@ -463,6 +516,67 @@
+       </DoubleVectorProperty>
+     </TransformProxy>
+ 
++    <TransformProxy name="Transform2s" class="vtkTransform"
++      label="Transform">
++      <!--Transform proxy with unconventional interface, used by SlabWidget -->
++      <DoubleVectorProperty
++        name="Position"
++        command="SetPosition"
++        number_of_elements="3"
++        update_self="1"
++        label="Translate"
++        information_property="PositionInfo"
++        default_values="0.0 0.0 0.0" >
++        <DoubleRangeDomain name="range" />
++      </DoubleVectorProperty>
++
++      <DoubleVectorProperty name="PositionInfo"
++        command="GetPosition"
++        information_only="1"
++        number_of_elements="3"
++        default_values="0.0 0.0 0.0">
++        <SimpleDoubleInformationHelper />
++      </DoubleVectorProperty>
++
++      <DoubleVectorProperty
++        name="Rotation"
++        command="SetRotation"
++        number_of_elements="3"
++        update_self="1"
++        information_property="RotationInfo"
++        label="Rotate"
++        default_values="0.0 0.0 0.0" >
++        <DoubleRangeDomain name="range" />
++      </DoubleVectorProperty>
++
++      <DoubleVectorProperty name="RotationInfo"
++        command="GetOrientation"
++        information_only="1"
++        number_of_elements="3"
++        default_values="0.0 0.0 0.0">
++        <SimpleDoubleInformationHelper />
++      </DoubleVectorProperty>
++
++      <DoubleVectorProperty
++        name="Scale"
++        command="SetScale"
++        number_of_elements="3"
++        update_self="1"
++        label="Scale"
++        information_property="ScaleInfo"
++        default_values="1.0 1.0 1.0" >
++        <DoubleRangeDomain name="range" />
++      </DoubleVectorProperty>
++
++      <DoubleVectorProperty name="ScaleInfo"
++        command="GetScale"
++        information_only="1"
++        number_of_elements="3"
++        default_values="1.0 1.0 1.0">
++        <SimpleDoubleInformationHelper />
++      </DoubleVectorProperty>
++    </TransformProxy>
++
+   </ProxyGroup>
+ 
+   <ProxyGroup name="matrices">
+@@ -629,6 +743,13 @@
+       </Documentation>
+     </Proxy>
+ 
++    <Proxy name="SlabWidget2" class="vtkSlabWidget2"
++      base_proxygroup="3d_widgets" base_proxyname="WidgetBase">
++      <Documentation>
++        Proxy for vtkSlabWidget2.
++      </Documentation>
++    </Proxy>
++
+     <Proxy name="SphereWidget2" class="vtkSphereWidget2"
+       base_proxygroup="3d_widgets" base_proxyname="WidgetBase">
+       <Documentation>
+Index: VTK/Common/CMakeLists.txt
+===================================================================
+RCS file: /cvsroot/ParaView3/ParaView3/VTK/Common/CMakeLists.txt,v
+retrieving revision 1.222
+diff -u -r1.222 CMakeLists.txt
+--- VTK/Common/CMakeLists.txt	15 Apr 2009 15:13:13 -0000	1.222
++++ VTK/Common/CMakeLists.txt	30 Jun 2009 15:13:21 -0000
+@@ -157,6 +157,7 @@
+ vtkServerSocket.cxx
+ vtkShortArray.cxx
+ vtkSignedCharArray.cxx
++vtkSlab.cxx
+ vtkSmartPointerBase.cxx
+ vtkSocket.cxx
+ vtkSocketCollection.cxx
+Index: VTK/Widgets/CMakeLists.txt
+===================================================================
+RCS file: /cvsroot/ParaView3/ParaView3/VTK/Widgets/CMakeLists.txt,v
+retrieving revision 1.36
+diff -u -r1.36 CMakeLists.txt
+--- VTK/Widgets/CMakeLists.txt	18 Jun 2009 18:02:58 -0000	1.36
++++ VTK/Widgets/CMakeLists.txt	30 Jun 2009 15:13:24 -0000
+@@ -89,6 +89,8 @@
+ vtkScalarBarWidget.cxx
+ vtkSeedRepresentation.cxx
+ vtkSeedWidget.cxx
++vtkSlabRepresentation.cxx
++vtkSlabWidget2.cxx
+ vtkSliderRepresentation.cxx
+ vtkSliderRepresentation2D.cxx
+ vtkSliderRepresentation3D.cxx
