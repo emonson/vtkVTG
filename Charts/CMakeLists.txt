@@ -7,6 +7,9 @@
 SET (Charts_SRCS
   vtkMyPlotParallelCoordinates.cxx
   vtkMyChartParallelCoordinates.cxx
+  vtkMyPlotPoints.cxx
+  vtkMyChartXY.cxx
+  vtkTooltipImageItem.cxx
 )
 
 # --------------------------------------------------------------------------
