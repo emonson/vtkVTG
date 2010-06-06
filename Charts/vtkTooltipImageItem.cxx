@@ -60,10 +60,6 @@ vtkTooltipImageItem::~vtkTooltipImageItem()
   this->Pen->Delete();
   this->Brush->Delete();
   this->TextProperties->Delete();
-  if (this->TipImage)
-    {
-    this->TipImage->Delete();
-    }
 }
 
 //-----------------------------------------------------------------------------

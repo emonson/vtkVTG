@@ -1047,7 +1047,7 @@ bool vtkMyChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse)
       {
       if (this->ChartPrivate->PlotCorners[i].size())
         {
-        vtkVector2f plotPos, position;
+        vtkVector2f position;
         vtkTransform2D* transform = this->ChartPrivate->PlotTransforms[i];
         transform->InverseTransformPoints(mouse.Pos.GetData(),
                                           position.GetData(), 1);
@@ -1061,27 +1061,46 @@ bool vtkMyChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse)
           vtkPlot* plot = this->ChartPrivate->PlotCorners[i][j];
           if (plot->GetVisible())
             {
-            bool found = plot->GetNearestPoint(position, tolerance, &plotPos);
-            if (found)
+            if (plot->IsA("vtkMyPlotPoints"))
               {
-              // We found a point, set up the tooltip and return
-              vtksys_ios::ostringstream ostr;
-              ostr << plot->GetLabel() << ": " << plotPos.X() << ", " << plotPos.Y();
-              this->Tooltip->SetText(ostr.str().c_str());
-              this->Tooltip->SetPosition(mouse.ScreenPos[0]+2, mouse.ScreenPos[1]+2);
-              
-              // Testing random image from stack
-              if (plot->IsA("vtkMyPlotPoints") && this->TooltipShowImage)
-                {
-                vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(plot);
-                if (myPlot->GetNumberOfImages() > 0)
-                  {
-                  srand( time(NULL) );
-                  int random_index = rand() % (myPlot->GetNumberOfImages());
-                  this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(random_index));
-                  }
-                }
-              return true;
+							vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(plot);
+              vtkVector3f plotPosAndInd;
+							bool found = myPlot->GetNearestPoint(position, tolerance, &plotPosAndInd);
+							if (found)
+								{
+								// We found a point, set up the tooltip and return
+								vtksys_ios::ostringstream ostr;
+								ostr << myPlot->GetLabel() << ": " << plotPosAndInd.X() << ", " << plotPosAndInd.Y();
+								this->Tooltip->SetText(ostr.str().c_str());
+								this->Tooltip->SetPosition(mouse.ScreenPos[0]+2, mouse.ScreenPos[1]+2);
+								
+								// Testing random image from stack
+								if (this->TooltipShowImage)
+									{
+									int num_images = myPlot->GetNumberOfImages();
+									if (num_images > 0)
+										{
+										// int random_index = rand() % num_images;
+										// this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(random_index));
+										this->Tooltip->SetTipImage(myPlot->GetImageAtIndex((int)plotPosAndInd.Z()));
+										}
+									}
+								return true;
+								}
+							}
+					  else
+					    {
+              vtkVector2f plotPos;
+							bool found = plot->GetNearestPoint(position, tolerance, &plotPos);
+							if (found)
+								{
+								// We found a point, set up the tooltip and return
+								vtksys_ios::ostringstream ostr;
+								ostr << plot->GetLabel() << ": " << plotPos.X() << ", " << plotPos.Y();
+								this->Tooltip->SetText(ostr.str().c_str());
+								this->Tooltip->SetPosition(mouse.ScreenPos[0]+2, mouse.ScreenPos[1]+2);
+								return true;
+								}
               }
             }
           }

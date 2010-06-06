@@ -31,16 +31,18 @@
 #include "vtkImageReslice.h"
 #include "vtkLookupTable.h"
 #include "vtkImageMapToColors.h"
+#include "vtkPointData.h"
+#include "vtkVector.h"
 
 #include "vtkstd/vector"
 #include "vtkstd/algorithm"
 
 // PIMPL for STL vector...
-class vtkMyPlotPoints::VectorPIMPL : public vtkstd::vector<vtkVector2f>
+class vtkMyPlotPoints::VectorPIMPL3 : public vtkstd::vector<vtkVector3f>
 {
 public:
-  VectorPIMPL(vtkVector2f* startPos, vtkVector2f* finishPos)
-    : vtkstd::vector<vtkVector2f>::vector(startPos, finishPos)
+  VectorPIMPL3()
+    : vtkstd::vector<vtkVector3f>::vector()
   {
   }
 };
@@ -60,6 +62,7 @@ vtkMyPlotPoints::vtkMyPlotPoints()
   this->Marker = NULL;
   this->HighlightMarker = NULL;
   this->ImageStack = NULL;
+  this->NumImages = 0;
 
   // ImageSlicing for TooltipImageItem
   // Always slicing in the Z direction
@@ -82,7 +85,7 @@ vtkMyPlotPoints::vtkMyPlotPoints()
 
   // Create a greyscale lookup table
   this->lut = vtkSmartPointer<vtkLookupTable>::New();
-  this->lut->SetRange(0, 2000); 			// image intensity range
+  this->lut->SetRange(0, 1); 			// image intensity range
   this->lut->SetValueRange(0.0, 1.0); 		// from black to white
   this->lut->SetSaturationRange(0.0, 0.0); 	// no color saturation
   this->lut->SetRampToLinear();
@@ -116,10 +119,6 @@ vtkMyPlotPoints::~vtkMyPlotPoints()
   if (this->HighlightMarker)
     {
     this->HighlightMarker->Delete();
-    }
-  if (this->ImageStack)
-    {
-    this->ImageStack->Delete();
     }
 }
 
@@ -345,7 +344,7 @@ void vtkMyPlotPoints::GeneraterMarker(int width, bool highlight)
           {
           double dy2 = (j - c)*(j - c);
           unsigned char color = 0;
-          if (sqrt(dx2 + dy2) < c)
+          if ((c-sqrt(dx2 + dy2)) < 1.0)
             {
             color = 255;
             }
@@ -458,12 +457,40 @@ bool inRange(const vtkVector2f& point, const vtkVector2f& tol,
     }
 }
 
+// Compare the two vectors, in X component only
+bool compVector3fX(const vtkVector3f& v1, const vtkVector3f& v2)
+{
+  if (v1.X() < v2.X())
+    {
+    return true;
+    }
+  else
+    {
+    return false;
+    }
+}
+
+// See if the point is within tolerance on x and between base and extent on Y.
+bool inRange3(const vtkVector2f& point, const vtkVector2f& tol,
+             const vtkVector3f& current)
+{
+  if (current.X() > point.X() - tol.X() && current.X() < point.X() + tol.X() &&
+      point.Y() > current.Y() && point.Y() < current.Z())
+    {
+    return true;
+    }
+  else
+    {
+    return false;
+    }
+}
+
 }
 
 //-----------------------------------------------------------------------------
 bool vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
                                     const vtkVector2f& tol,
-                                    vtkVector2f* location)
+                                    vtkVector3f* location)
 {
   // Right now doing a simple bisector search of the array. This should be
   // revisited. Assumes the x axis is sorted, which should always be true for
@@ -478,29 +505,38 @@ bool vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
     return false;
     }
 
-  // Sort the data if it has not been done already...
+  // Sort the data if it has not been done already.  We need to sort it
+  // and collect the base and extent into the same vector since both will
+  // get involved in range checking.
   if (!this->Sorted)
     {
     vtkVector2f* data =
         static_cast<vtkVector2f*>(this->Points->GetVoidPointer(0));
-    this->Sorted = new VectorPIMPL(data, data+n);
-    vtkstd::sort(this->Sorted->begin(), this->Sorted->end(), compVector2fX);
+    this->Sorted = new VectorPIMPL3();
+    for (int i = 0; i < n; i++)
+      {
+      vtkVector3f combined(data[i].X(), data[i].Y(), (float)i);
+      this->Sorted->push_back(combined);
+      }
+    vtkstd::sort(this->Sorted->begin(), this->Sorted->end(), compVector3fX);
     }
 
   // Set up our search array, use the STL lower_bound algorithm
-  VectorPIMPL::iterator low;
-  VectorPIMPL &v = *this->Sorted;
+  VectorPIMPL3::iterator low;
+  VectorPIMPL3 &v = *this->Sorted;
 
   // Get the lowest point we might hit within the supplied tolerance
-  vtkVector2f lowPoint(point.X()-tol.X(), 0.0f);
-  low = vtkstd::lower_bound(v.begin(), v.end(), lowPoint, compVector2fX);
+  vtkVector3f lowPoint(point.X()-tol.X(), 0.0f, 0.0f);
+  low = vtkstd::lower_bound(v.begin(), v.end(), lowPoint, compVector3fX);
 
   // Now consider the y axis
   float highX = point.X() + tol.X();
   while (low != v.end())
     {
-    if (inRange(point, tol, *low))
+    if (inRange3(point, tol, *low))
       {
+      // If we're in range, the value that's interesting is the absolute value of 
+      // the "wedge" at the closest point, not the base or extent by themselves
       *location = *low;
       return true;
       }
@@ -797,6 +833,12 @@ void vtkMyPlotPoints::SetImageStack(vtkImageData* stack)
   this->ImageStack->UpdateInformation();
   this->reslice->SetInput(this->ImageStack);
   this->reslice->Modified();
+  this->lut->SetRange(this->ImageStack->GetPointData()->GetScalars()->GetRange());
+  this->lut->Modified();
+  int extent[6];
+  this->ImageStack->UpdateInformation();
+  this->ImageStack->GetWholeExtent(extent);
+  this->NumImages = (extent[5]-extent[4]+1);
 }
 
 //-----------------------------------------------------------------------------
@@ -841,9 +883,7 @@ int vtkMyPlotPoints::GetNumberOfImages()
 {
   if (this->ImageStack)
     {
-    int extent[6];
-    this->ImageStack->GetWholeExtent(extent);
-    return (extent[6]-extent[5]);
+    return this->NumImages;
     }
   else
     {

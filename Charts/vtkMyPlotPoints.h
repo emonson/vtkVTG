@@ -24,6 +24,7 @@
 
 #include "vtkPlot.h"
 #include "vtkSmartPointer.h"
+// #include "vtkVector.h"
 
 class vtkContext2D;
 class vtkTable;
@@ -34,6 +35,7 @@ class vtkMatrix4x4;
 class vtkImageReslice;
 class vtkLookupTable;
 class vtkImageMapToColors;
+class vtkVector3f;
 
 class VTK_CHARTS_EXPORT vtkMyPlotPoints : public vtkPlot
 {
@@ -77,9 +79,10 @@ public:
 //BTX
   // Description:
   // Function to query a plot for the nearest point to the specified coordinate.
+  // This version returns the index of the point as a float in the .Z() vector3f coord.
   virtual bool GetNearestPoint(const vtkVector2f& point,
                                const vtkVector2f& tolerance,
-                               vtkVector2f* location);
+                               vtkVector3f* location);
 
   // Description:
   // Select all points in the specified rectangle.
@@ -137,8 +140,8 @@ protected:
 
   // Description:
   // Sorted points, used when searching for the nearest point.
-  class VectorPIMPL;
-  VectorPIMPL* Sorted;
+  class VectorPIMPL3;
+  VectorPIMPL3* Sorted;
 
   // Description:
   // An array containing the indices of all the "bad points", meaning any x, y
@@ -153,6 +156,7 @@ protected:
   // ImageData associated with plot, which the tooltip in the chartXY will get
   // a slice of to display when hovering over points
   vtkImageData* ImageStack;
+  int NumImages;
 
   // Description:
   // The marker style that should be used
