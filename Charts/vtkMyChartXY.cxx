@@ -211,6 +211,7 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     {
     // Take up the entire window right now, this could be made configurable
     this->SetGeometry(geometry);
+    // Borders (Left, Right, Top, Bottom)
     this->SetBorders(60, 20, 20, 50);
     // This is where we set the axes up too
     // Y axis (left)
@@ -1070,9 +1071,9 @@ bool vtkMyChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse)
 								{
 								// We found a point, set up the tooltip and return
 								vtksys_ios::ostringstream ostr;
-								ostr << myPlot->GetLabel() << ": " << plotPosAndInd.X() << ", " << plotPosAndInd.Y();
+								ostr << myPlot->GetLabel() << ": " << (int)plotPosAndInd.Z();
 								this->Tooltip->SetText(ostr.str().c_str());
-								this->Tooltip->SetPosition(mouse.ScreenPos[0]+2, mouse.ScreenPos[1]+2);
+								this->Tooltip->SetPosition(mouse.ScreenPos[0]+8, mouse.ScreenPos[1]+6);
 								
 								// Testing random image from stack
 								if (this->TooltipShowImage)

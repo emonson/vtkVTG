@@ -429,22 +429,9 @@ void vtkMyPlotPoints::GetBounds(double bounds[4])
 namespace
 {
 
-// Compare the two vectors, in X component only
-bool compVector2fX(const vtkVector2f& v1, const vtkVector2f& v2)
-{
-  if (v1.X() < v2.X())
-    {
-    return true;
-    }
-  else
-    {
-    return false;
-    }
-}
-
 // See if the point is within tolerance.
-bool inRange(const vtkVector2f& point, const vtkVector2f& tol,
-             const vtkVector2f& current)
+bool inRange23(const vtkVector2f& point, const vtkVector2f& tol,
+             const vtkVector3f& current)
 {
   if (current.X() > point.X() - tol.X() && current.X() < point.X() + tol.X() &&
       current.Y() > point.Y() - tol.Y() && current.Y() < point.Y() + tol.Y())
@@ -461,21 +448,6 @@ bool inRange(const vtkVector2f& point, const vtkVector2f& tol,
 bool compVector3fX(const vtkVector3f& v1, const vtkVector3f& v2)
 {
   if (v1.X() < v2.X())
-    {
-    return true;
-    }
-  else
-    {
-    return false;
-    }
-}
-
-// See if the point is within tolerance on x and between base and extent on Y.
-bool inRange3(const vtkVector2f& point, const vtkVector2f& tol,
-             const vtkVector3f& current)
-{
-  if (current.X() > point.X() - tol.X() && current.X() < point.X() + tol.X() &&
-      point.Y() > current.Y() && point.Y() < current.Z())
     {
     return true;
     }
@@ -533,7 +505,7 @@ bool vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
   float highX = point.X() + tol.X();
   while (low != v.end())
     {
-    if (inRange3(point, tol, *low))
+    if (inRange23(point, tol, *low))
       {
       // If we're in range, the value that's interesting is the absolute value of 
       // the "wedge" at the closest point, not the base or extent by themselves

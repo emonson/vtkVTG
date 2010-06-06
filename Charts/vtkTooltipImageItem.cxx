@@ -105,7 +105,8 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
     }
   else
     {
-    painter->DrawImage(bounds[0].X()+5, bounds[0].Y()+3, this->TipImage);
+    painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
+    painter->DrawImage(bounds[0].X(), bounds[0].Y()+20, this->TipImage);
     }
 
   return true;
