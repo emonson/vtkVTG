@@ -812,6 +812,7 @@ void vtkMyChartXY::ClearPlots()
 {
   for (unsigned int i = 0; i < this->ChartPrivate->plots.size(); ++i)
     {
+    this->RemovePlotFromConers(this->ChartPrivate->plots[i]);
     this->ChartPrivate->plots[i]->Delete();
     }
   this->ChartPrivate->plots.clear();
