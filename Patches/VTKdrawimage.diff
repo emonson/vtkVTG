@@ -1,0 +1,94 @@
+diff --git a/Charts/vtkContext2D.cxx b/Charts/vtkContext2D.cxx
+index b97f84d..ae36d2f 100644
+--- a/Charts/vtkContext2D.cxx
++++ b/Charts/vtkContext2D.cxx
+@@ -493,10 +493,10 @@ void vtkContext2D::ComputeStringBounds(const char *string, float bounds[4])
+ }
+ 
+ //-----------------------------------------------------------------------------
+-void vtkContext2D::DrawImage(float x, float y, vtkImageData *image)
++void vtkContext2D::DrawImage(float x, float y, float s, vtkImageData *image)
+ {
+   float p[] = { x, y };
+-  this->Device->DrawImage(&p[0], 1, image);
++  this->Device->DrawImage(&p[0], s, image);
+ }
+ 
+ //-----------------------------------------------------------------------------
+diff --git a/Charts/vtkContext2D.h b/Charts/vtkContext2D.h
+index b818520..ecf3314 100644
+--- a/Charts/vtkContext2D.h
++++ b/Charts/vtkContext2D.h
+@@ -200,7 +200,7 @@ public:
+ 
+   // Description:
+   // Draw the supplied image at the given x, y location (bottom corner).
+-  void DrawImage(float x, float y, vtkImageData *image);
++  void DrawImage(float x, float y, float s, vtkImageData *image);
+ 
+ //BTX
+   // Description:
+diff --git a/Charts/vtkContextDevice2D.h b/Charts/vtkContextDevice2D.h
+index 803ea36..c245590 100644
+--- a/Charts/vtkContextDevice2D.h
++++ b/Charts/vtkContextDevice2D.h
+@@ -101,7 +101,7 @@ public:
+ 
+   // Description:
+   // Draw the supplied image at the given x, y (p[0], p[1]) location(s) (bottom corner).
+-  virtual void DrawImage(float *, int , vtkImageData *) {;}
++  virtual void DrawImage(float *, float, vtkImageData *) {;}
+ 
+   // Description:
+   // Set the color for the device using unsigned char of length 4, RGBA.
+diff --git a/Charts/vtkImageItem.cxx b/Charts/vtkImageItem.cxx
+index 166ec91..58b07fd 100644
+--- a/Charts/vtkImageItem.cxx
++++ b/Charts/vtkImageItem.cxx
+@@ -74,7 +74,7 @@ bool vtkImageItem::Paint(vtkContext2D *painter)
+   if (this->Image)
+     {
+     // Draw our image in the bottom left corner of the item
+-    painter->DrawImage(this->Dimensions[0]+10, this->Dimensions[1]+10, this->Image);
++    painter->DrawImage(this->Dimensions[0]+10, this->Dimensions[1]+10, 1.0, this->Image);
+     }
+ 
+   if (this->MouseOver && this->Label)
+diff --git a/Charts/vtkOpenGLContextDevice2D.cxx b/Charts/vtkOpenGLContextDevice2D.cxx
+index 6bed52d..77a9d56 100644
+--- a/Charts/vtkOpenGLContextDevice2D.cxx
++++ b/Charts/vtkOpenGLContextDevice2D.cxx
+@@ -672,16 +672,16 @@ void vtkOpenGLContextDevice2D::ComputeStringBounds(const vtkStdString &string,
+ }
+ 
+ //-----------------------------------------------------------------------------
+-void vtkOpenGLContextDevice2D::DrawImage(float *p, int, vtkImageData *image)
++void vtkOpenGLContextDevice2D::DrawImage(float *p, float s, vtkImageData *image)
+ {
+   vtkTexture *tex =vtkTexture::New();
+   tex->SetInput(image);
+   tex->Render(this->Renderer);
+   int *extent = image->GetExtent();
+   float points[] = { p[0]          , p[1],
+-                     p[0]+extent[1], p[1],
+-                     p[0]+extent[1], p[1]+extent[3],
+-                     p[0]          , p[1]+extent[3] };
++                     p[0]+s*extent[1], p[1],
++                     p[0]+s*extent[1], p[1]+s*extent[3],
++                     p[0]          , p[1]+s*extent[3] };
+ 
+   float texCoord[] = { 0.0, 0.0,
+                        1.0, 0.0,
+diff --git a/Charts/vtkOpenGLContextDevice2D.h b/Charts/vtkOpenGLContextDevice2D.h
+index 531d1db..3cae172 100644
+--- a/Charts/vtkOpenGLContextDevice2D.h
++++ b/Charts/vtkOpenGLContextDevice2D.h
+@@ -104,7 +104,7 @@ public:
+ 
+   // Description:
+   // Draw the supplied image at the given x, y (p[0], p[1]) location(s) (bottom corner).
+-  virtual void DrawImage(float *p, int n, vtkImageData *image);
++  virtual void DrawImage(float *p, float s, vtkImageData *image);
+ 
+   // Description:
+   // Set the color for the device using unsigned char of length 4, RGBA.
