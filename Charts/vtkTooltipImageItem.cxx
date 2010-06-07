@@ -96,17 +96,18 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
     {
     bounds[0].SetX(this->Scene->GetViewWidth()-bounds[1].X());
     }
-  // Draw a rectangle as background, and then center our text in there
-  painter->DrawRect(bounds[0].X(), bounds[0].Y(), bounds[1].X(), bounds[1].Y());
   
   if (!this->ShowImage)
     {
+		// Draw a rectangle as background, and then center our text in there
+		painter->DrawRect(bounds[0].X(), bounds[0].Y(), bounds[1].X(), bounds[1].Y());
     painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
     }
   else
     {
-    painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
-    painter->DrawImage(bounds[0].X(), bounds[0].Y()+20, this->TipImage);
+    // painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
+    // painter->DrawImage(bounds[0].X(), bounds[0].Y()+20, this->TipImage);
+    painter->DrawImage(bounds[0].X()+2, bounds[0].Y()+1, this->TipImage);
     }
 
   return true;
