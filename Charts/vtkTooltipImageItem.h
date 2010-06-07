@@ -76,6 +76,7 @@ public:
   // Image to be shown if ShowImage is true
   virtual void SetTipImage(vtkImageData*);
   vtkSetMacro(ShowImage, bool);
+  vtkSetMacro(ScalingFactor, float);
   
 //BTX
 protected:
@@ -93,6 +94,7 @@ protected:
   // Image to be shown if ShowImage is true
   vtkImageData* TipImage;
   bool ShowImage;
+  float ScalingFactor;
 
 private:
   vtkTooltipImageItem(const vtkTooltipImageItem &); // Not implemented.

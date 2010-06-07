@@ -1352,10 +1352,16 @@ bool vtkMyChartXY::RemovePlotFromConers(vtkPlot *plot)
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyChartXY::SetTooltipShowImage(bool showImage)
+void vtkMyChartXY::SetTooltipShowImage(bool ShowImage)
 {
-  this->TooltipShowImage = showImage;
+  this->TooltipShowImage = ShowImage;
   this->Tooltip->SetShowImage(this->TooltipShowImage);
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartXY::SetTooltipImageScalingFactor(float ScalingFactor)
+{
+  this->Tooltip->SetScalingFactor(ScalingFactor);
 }
 
 //-----------------------------------------------------------------------------

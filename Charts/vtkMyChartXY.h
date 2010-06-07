@@ -113,7 +113,11 @@ public:
   
   // Description
   // Set whether tooltip will show image or text
-  virtual void SetTooltipShowImage(bool showImage);
+  virtual void SetTooltipShowImage(bool ShowImage);
+
+  // Description
+  // Set a size scaling factor for tooltip image
+  virtual void SetTooltipImageScalingFactor(float ScalingFactor);
 
 //BTX
   // Description:

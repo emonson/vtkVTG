@@ -50,6 +50,8 @@ vtkTooltipImageItem::vtkTooltipImageItem()
   this->Brush = vtkBrush::New();
   this->Brush->SetColor(242, 242, 242);
   this->TipImage = NULL;
+  this->ScalingFactor = 1.0;
+  this->ShowImage = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -107,7 +109,7 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
     {
     // painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
     // painter->DrawImage(bounds[0].X(), bounds[0].Y()+20, this->TipImage);
-    painter->DrawImage(bounds[0].X()+2, bounds[0].Y()+1, this->TipImage);
+    painter->DrawImage(bounds[0].X()+2, bounds[0].Y()+1, this->ScalingFactor, this->TipImage);
     }
 
   return true;
