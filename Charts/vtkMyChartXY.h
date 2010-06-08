@@ -21,7 +21,7 @@
 #ifndef __vtkMyChartXY_h
 #define __vtkMyChartXY_h
 
-#include "vtkChartXY.h"
+#include "vtkChart.h"
 
 class vtkPlot;
 class vtkAxis;
@@ -33,10 +33,10 @@ class vtkContextMouseEvent;
 class vtkDataArray;
 class vtkMyChartXYPrivate; // Private class to keep my STL vector in...
 
-class VTK_CHARTS_EXPORT vtkMyChartXY : public vtkChartXY
+class VTK_CHARTS_EXPORT vtkMyChartXY : public vtkChart
 {
 public:
-  vtkTypeMacro(vtkMyChartXY, vtkChartXY);
+  vtkTypeMacro(vtkMyChartXY, vtkChart);
   virtual void PrintSelf(ostream &os, vtkIndent indent);
 
   // Description:
@@ -55,7 +55,7 @@ public:
 
   // Description:
   // Add a plot to the chart, defaults to using the name of the y column
-  virtual vtkPlot * AddPlot(int type);
+  virtual vtkPlot * AddPlot();
 
   // Description:
   // Remove the plot at the specified index, returns true if successful,
@@ -102,15 +102,6 @@ public:
   vtkSetMacro(DrawAxesAtOrigin, bool);
   vtkGetMacro(DrawAxesAtOrigin, bool);
 
-  // Description:
-  // Set the width fraction for any bar charts drawn in this chart. It is
-  // assumed that all bar plots will use the same array for the X axis, and that
-  // this array is regularly spaced. The delta between the first two x values is
-  // used to calculated the width of the bars, and subdivided between each bar.
-  // The default value is 0.8, 1.0 would lead to bars that touch.
-  vtkSetMacro(BarWidthFraction, float);
-  vtkGetMacro(BarWidthFraction, float);
-  
   // Description
   // Set whether tooltip will show image or text
   virtual void SetTooltipShowImage(bool ShowImage);
@@ -153,17 +144,6 @@ public:
   // Set the vtkContextScene for the item, always set for an item in a scene.
   virtual void SetScene(vtkContextScene *scene);
 
-  // Description:
-  // Return the Stacked plot accumulator so that each vtkPlotStacked can 
-  // use it to determine its base and contribute to the position of the next
-  // stacked plot.
-  vtkDataArray *GetStackedPlotAccumulator(int dataType, int n);
-
-  // Description:
-  // Timestamp identifying the last time the participants in a stacked plot
-  // have changed (either by being added or having their visibility change)
-  vtkTimeStamp GetStackParticipantsChanged();
-  void SetStackPartipantsChanged();
 
 //BTX
 protected:
@@ -227,11 +207,6 @@ protected:
   // way of drawing scientific/mathematical charts.
   bool DrawAxesAtOrigin;
 
-  // Description:
-  // The fraction of the interval taken up along the x axis by any bars that are
-  // drawn on the chart.
-  float BarWidthFraction;
-
 private:
   vtkMyChartXY(const vtkMyChartXY &); // Not implemented.
   void operator=(const vtkMyChartXY &);   // Not implemented.
@@ -241,10 +216,6 @@ private:
   // Description:
   // Private functions to render different parts of the chart
   void RenderPlots(vtkContext2D *painter);
-
-  // Description:
-  // Figure out the spacing between the bar chart plots, and their offsets.
-  void CalculateBarPlots();
 
   // Description:
   // Try to locate a point within the plots to display in a tooltip

@@ -26,9 +26,6 @@
 #include "vtkVector.h"
 
 #include "vtkPlot.h"
-#include "vtkPlotBar.h"
-#include "vtkPlotStacked.h"
-#include "vtkPlotLine.h"
 #include "vtkMyPlotPoints.h"
 #include "vtkContextMapper2D.h"
 
@@ -74,8 +71,6 @@ public:
     this->PlotCorners.resize(4);
     this->PlotTransforms.resize(4);
     this->PlotTransforms[0] = vtkSmartPointer<vtkTransform2D>::New();
-    this->StackedPlotAccumulator = vtkSmartPointer<vtkDataArray>();
-    this->StackParticipantsChanged.Modified();
     }
 
   vtkstd::vector<vtkPlot *> plots; // Charts can contain multiple plots of data
@@ -83,8 +78,6 @@ public:
   vtkstd::vector< vtkSmartPointer<vtkTransform2D> > PlotTransforms; // Transforms
   vtkstd::vector<vtkAxis *> axes; // Charts can contain multiple axes
   vtkSmartPointer<vtkColorSeries> Colors; // Colors in the chart
-  vtkSmartPointer<vtkDataArray> StackedPlotAccumulator;
-  vtkTimeStamp StackParticipantsChanged;   // Plot added or plot visibility changed
 };
 
 //-----------------------------------------------------------------------------
@@ -122,7 +115,6 @@ vtkMyChartXY::vtkMyChartXY()
   this->DrawBox = false;
   this->DrawNearestPoint = false;
   this->DrawAxesAtOrigin = false;
-  this->BarWidthFraction = 0.8f;
   
   this->TooltipShowImage = false;
   this->Tooltip = vtkTooltipImageItem::New();
@@ -156,10 +148,6 @@ vtkMyChartXY::~vtkMyChartXY()
 //-----------------------------------------------------------------------------
 void vtkMyChartXY::Update()
 {
-  // The Stack accumulator should be re-initialized at the start of every 
-  // update cycle.
-  this->ChartPrivate->StackedPlotAccumulator = NULL;
-
   // Perform any necessary updates that are not graphical
   // Update the plots if necessary
   for (size_t i = 0; i < this->ChartPrivate->plots.size(); ++i)
@@ -204,7 +192,6 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
   this->Update();
 
   bool recalculateTransform = false;
-  this->CalculateBarPlots();
 
   if (geometry[0] != this->Geometry[0] || geometry[1] != this->Geometry[1] ||
       this->MTime > this->ChartPrivate->axes[0]->GetMTime())
@@ -233,8 +220,7 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     recalculateTransform = true;
     }
 
-  if (this->ChartPrivate->plots[0]->GetData()->GetInput()->GetMTime() > this->MTime || 
-      this->ChartPrivate->StackParticipantsChanged > this->MTime)
+  if (this->ChartPrivate->plots[0]->GetData()->GetInput()->GetMTime() > this->MTime)
     {
     this->RecalculateBounds();
     }
@@ -360,61 +346,6 @@ void vtkMyChartXY::RenderPlots(vtkContext2D *painter)
 
   // Stop clipping of the plot area and reset back to screen coordinates
   painter->GetDevice()->DisableClipping();
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyChartXY::CalculateBarPlots()
-{
-  // Calculate the width, spacing and offsets for the bar plot - they are grouped
-  size_t n = this->ChartPrivate->plots.size();
-  vtkstd::vector<vtkPlotBar *> bars;
-  for (size_t i = 0; i < n; ++i)
-    {
-    vtkPlotBar* bar = vtkPlotBar::SafeDownCast(this->ChartPrivate->plots[i]);
-    if (bar && bar->GetVisible())
-      {
-      bars.push_back(bar);
-      }
-    }
-  if (bars.size())
-    {
-    // We have some bar plots - work out offsets etc.
-    float barWidth = 0.0;
-    vtkPlotBar* bar = bars[0];
-    if (!bar->GetUseIndexForXSeries())
-      {
-      vtkTable *table = bar->GetData()->GetInput();
-      vtkDataArray* x = bar->GetData()->GetInputArrayToProcess(0, table);
-      if (x->GetSize() > 1)
-        {
-        double x0 = x->GetTuple1(0);
-        double x1 = x->GetTuple1(1);
-        float width = static_cast<float>((x1 - x0) * this->BarWidthFraction);
-        barWidth = width / bars.size();
-        }
-      }
-    else
-      {
-      barWidth = 1.0f / bars.size() * this->BarWidthFraction;
-      }
-
-    // Now set the offsets and widths on each bar
-    // The offsetIndex deals with the fact that half the bars
-    // must shift to the left of the point and half to the right
-    int offsetIndex = static_cast<int>(bars.size() - 1);
-    for (size_t i = 0; i < bars.size(); ++i)
-      {
-      bars[i]->SetWidth(barWidth);
-      bars[i]->SetOffset(offsetIndex * (barWidth / 2));
-      // Increment by two since we need to shift by half widths
-      // but make room for entire bars. Increment backwards because
-      // offsets are always subtracted and Positive offsets move
-      // the bar leftwards.  Negative offsets will shift the bar
-      // to the right.
-      offsetIndex -= 2;
-      //bars[i]->SetOffset(float(bars.size()-i-1)*(barWidth/2));
-      }
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -731,7 +662,7 @@ void vtkMyChartXY::RecalculatePlotBounds()
 }
 
 //-----------------------------------------------------------------------------
-vtkPlot * vtkMyChartXY::AddPlot(int type)
+vtkPlot * vtkMyChartXY::AddPlot()
 {
   // Use a variable to return the object created (or NULL), this is necessary
   // as the HP compiler is broken (thinks this function does not return) and
@@ -740,40 +671,11 @@ vtkPlot * vtkMyChartXY::AddPlot(int type)
   vtkPlot *plot = NULL;
   vtkColor3ub color = this->ChartPrivate->Colors->GetColorRepeating(
       static_cast<int>(this->ChartPrivate->plots.size()));
-  switch (type)
-    {
-    case LINE:
-      {
-      vtkPlotLine *line = vtkPlotLine::New();
-      line->GetPen()->SetColor(color.GetData());
-      plot = line;
-      break;
-      }
-    case POINTS:
-      {
-      vtkMyPlotPoints *points = vtkMyPlotPoints::New();
-      points->GetPen()->SetColor(color.GetData());
-      plot = points;
-      break;
-      }
-    case BAR:
-      {
-      vtkPlotBar *bar = vtkPlotBar::New();
-      bar->GetBrush()->SetColor(color.GetData());
-      plot = bar;
-      break;
-      }
-    case STACKED:
-      {
-      vtkPlotStacked *stacked = vtkPlotStacked::New();
-      stacked->SetParent(this);
-      stacked->GetBrush()->SetColor(color.GetData());
-      plot = stacked;
-      break;
-      }
-    default:
-      plot = NULL;
-    }
+
+	vtkMyPlotPoints *points = vtkMyPlotPoints::New();
+	points->GetPen()->SetColor(color.GetData());
+	plot = points;
+
   // Add the plot to the default corner
   plot->SetXAxis(this->ChartPrivate->axes[vtkAxis::BOTTOM]);
   plot->SetYAxis(this->ChartPrivate->axes[vtkAxis::LEFT]);
@@ -875,66 +777,6 @@ void vtkMyChartXY::SetScene(vtkContextScene *scene)
 {
   this->vtkContextItem::SetScene(scene);
   this->Tooltip->SetScene(scene);
-}
-//-----------------------------------------------------------------------------
-namespace {
-template <class A>
-void InitializeAccumulator(A *a, int n)
-{
-  for (int i = 0; i < n; ++i)
-    {
-    a[i] = 0;
-    }
-}
-
-}
-
-//-----------------------------------------------------------------------------
-vtkDataArray *vtkMyChartXY::GetStackedPlotAccumulator(int dataType, int n)
-{
-  if (!this->ChartPrivate->StackedPlotAccumulator) 
-    {
-    this->ChartPrivate->StackedPlotAccumulator.TakeReference(vtkDataArray::SafeDownCast(vtkDataArray::CreateArray(dataType)));
-    if (!this->ChartPrivate->StackedPlotAccumulator) 
-      {
-      return NULL;
-      }
-    this->ChartPrivate->StackedPlotAccumulator->SetNumberOfTuples(n);
-    switch (dataType) 
-      {
-          vtkTemplateMacro(
-            InitializeAccumulator(static_cast<VTK_TT*>(this->ChartPrivate->StackedPlotAccumulator->GetVoidPointer(0)),n));
-      }
-    return this->ChartPrivate->StackedPlotAccumulator;
-    }
-  else 
-    {
-    if (this->ChartPrivate->StackedPlotAccumulator->GetDataType() != dataType)
-      {
-      vtkErrorMacro("DataType of Accumulator " << this->ChartPrivate->StackedPlotAccumulator->GetDataType() << 
-                    "does not match request " << dataType);
-      return NULL;
-      }
-    if (this->ChartPrivate->StackedPlotAccumulator->GetNumberOfTuples() != n) 
-      {
-      vtkErrorMacro("Number of tuples in Accumulator " << this->ChartPrivate->StackedPlotAccumulator->GetNumberOfTuples() << 
-                    "does not match request " << n);
-      return NULL;
-      }
-    return this->ChartPrivate->StackedPlotAccumulator;
-    }
-}
-
-//-----------------------------------------------------------------------------
-vtkTimeStamp vtkMyChartXY::GetStackParticipantsChanged()
-{
-  return this->ChartPrivate->StackParticipantsChanged;
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyChartXY::SetStackPartipantsChanged()
-{
-  this->ChartPrivate->StackParticipantsChanged.Modified();
 }
 
 //-----------------------------------------------------------------------------
@@ -1063,47 +905,28 @@ bool vtkMyChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse)
           vtkPlot* plot = this->ChartPrivate->PlotCorners[i][j];
           if (plot->GetVisible())
             {
-            if (plot->IsA("vtkMyPlotPoints"))
-              {
-							vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(plot);
-              vtkVector3f plotPosAndInd;
-							bool found = myPlot->GetNearestPoint(position, tolerance, &plotPosAndInd);
-							if (found)
+
+						vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(plot);
+						vtkVector3f plotPosAndInd;
+						bool found = myPlot->GetNearestPoint(position, tolerance, &plotPosAndInd);
+						if (found)
+							{
+							// We found a point, set up the tooltip and return
+							vtksys_ios::ostringstream ostr;
+							ostr << myPlot->GetLabel() << ": " << (int)plotPosAndInd.Z();
+							this->Tooltip->SetText(ostr.str().c_str());
+							this->Tooltip->SetPosition(mouse.ScreenPos[0]+8, mouse.ScreenPos[1]+6);
+							
+							if (this->TooltipShowImage)
 								{
-								// We found a point, set up the tooltip and return
-								vtksys_ios::ostringstream ostr;
-								ostr << myPlot->GetLabel() << ": " << (int)plotPosAndInd.Z();
-								this->Tooltip->SetText(ostr.str().c_str());
-								this->Tooltip->SetPosition(mouse.ScreenPos[0]+8, mouse.ScreenPos[1]+6);
-								
-								// Testing random image from stack
-								if (this->TooltipShowImage)
+								int num_images = myPlot->GetNumberOfImages();
+								if (num_images > 0)
 									{
-									int num_images = myPlot->GetNumberOfImages();
-									if (num_images > 0)
-										{
-										// int random_index = rand() % num_images;
-										// this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(random_index));
-										this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(static_cast<int>(plotPosAndInd.Z())));
-										}
+									this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(static_cast<int>(plotPosAndInd.Z())));
 									}
-								return true;
 								}
+							return true;
 							}
-					  else
-					    {
-              vtkVector2f plotPos;
-							bool found = plot->GetNearestPoint(position, tolerance, &plotPos);
-							if (found)
-								{
-								// We found a point, set up the tooltip and return
-								vtksys_ios::ostringstream ostr;
-								ostr << plot->GetLabel() << ": " << plotPos.X() << ", " << plotPos.Y();
-								this->Tooltip->SetText(ostr.str().c_str());
-								this->Tooltip->SetPosition(mouse.ScreenPos[0]+2, mouse.ScreenPos[1]+2);
-								return true;
-								}
-              }
             }
           }
         }
