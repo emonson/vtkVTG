@@ -1206,6 +1206,8 @@ bool vtkMyChartXY::MouseButtonReleaseEvent(const vtkContextMouseEvent &mouse)
               // FIXME: Build up a selection from each plot?
               vtkSelection* selection = vtkSelection::New();
               vtkSelectionNode* node = vtkSelectionNode::New();
+							node->SetContentType(vtkSelectionNode::INDICES);
+							node->SetFieldType(vtkSelectionNode::POINT);
               selection->AddNode(node);
               node->SetSelectionList(plot->GetSelection());
               this->AnnotationLink->SetCurrentSelection(selection);
