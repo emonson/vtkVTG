@@ -75,14 +75,6 @@ public:
   virtual vtkIdType GetNumberOfPlots();
 
   // Description:
-  // Figure out which quadrant the plot is in.
-  int GetPlotCorner(vtkPlot *plot);
-
-  // Description:
-  // Figure out which quadrant the plot is in.
-  void SetPlotCorner(vtkPlot *plot, int corner);
-
-  // Description:
   // Get the axis specified by axisIndex. This should probably
   // be improved either using a string or enum to select the axis.
   // (0 - left, 1 - bottom, 2 - right, 3 - top).
