@@ -80,7 +80,7 @@ vtkMyPlotPoints::vtkMyPlotPoints()
   this->reslice = vtkSmartPointer<vtkImageReslice>::New();
   this->reslice->SetOutputDimensionality(2);
   this->reslice->SetResliceAxes(this->resliceAxes);
-  this->reslice->SetInterpolationModeToLinear();
+  this->reslice->SetInterpolationModeToNearestNeighbor();
   // Need to set the Input when ImageStack is assigned
 
   // Create a greyscale lookup table
@@ -487,7 +487,7 @@ bool vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
     this->Sorted = new VectorPIMPL3();
     for (int i = 0; i < n; i++)
       {
-      vtkVector3f combined(data[i].X(), data[i].Y(), (float)i);
+      vtkVector3f combined(data[i].X(), data[i].Y(), static_cast<float>(i));
       this->Sorted->push_back(combined);
       }
     vtkstd::sort(this->Sorted->begin(), this->Sorted->end(), compVector3fX);

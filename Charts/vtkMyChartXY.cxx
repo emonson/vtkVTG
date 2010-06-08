@@ -1084,7 +1084,7 @@ bool vtkMyChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse)
 										{
 										// int random_index = rand() % num_images;
 										// this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(random_index));
-										this->Tooltip->SetTipImage(myPlot->GetImageAtIndex((int)plotPosAndInd.Z()));
+										this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(static_cast<int>(plotPosAndInd.Z())));
 										}
 									}
 								return true;
