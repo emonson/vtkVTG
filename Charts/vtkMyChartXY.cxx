@@ -91,6 +91,9 @@ public:
 vtkStandardNewMacro(vtkMyChartXY);
 
 //-----------------------------------------------------------------------------
+vtkCxxSetObjectMacro(vtkMyChartXY, HighlightLink, vtkAnnotationLink);
+
+//-----------------------------------------------------------------------------
 vtkMyChartXY::vtkMyChartXY()
 {
   this->Legend = vtkChartLegend::New();
@@ -128,6 +131,9 @@ vtkMyChartXY::vtkMyChartXY()
   this->Tooltip = vtkTooltipImageItem::New();
   this->Tooltip->SetShowImage(this->TooltipShowImage);
   this->Tooltip->SetVisible(false);
+
+  // Link back into chart to highlight selections made in other plots
+  this->HighlightLink = NULL;
 }
 
 //-----------------------------------------------------------------------------
@@ -151,6 +157,10 @@ vtkMyChartXY::~vtkMyChartXY()
 
   this->Tooltip->Delete();
   this->Tooltip = 0;
+  if (this->HighlightLink)
+    {
+    this->HighlightLink->Delete();
+    }
 }
 
 //-----------------------------------------------------------------------------
@@ -323,6 +333,25 @@ void vtkMyChartXY::RenderPlots(vtkContext2D *painter)
     vtkDebugMacro("No annotation link set.");
     }
 
+  // Handle highlight selections back into this chart
+  vtkIdTypeArray *hidArray = 0;
+  if (this->HighlightLink)
+    {
+    this->HighlightLink->Update();
+    vtkSelection *selection =
+        vtkSelection::SafeDownCast(this->HighlightLink->GetOutputDataObject(2));
+    if (selection->GetNumberOfNodes())
+      {
+      vtkSelectionNode *node = selection->GetNode(0);
+      hidArray = vtkIdTypeArray::SafeDownCast(node->GetSelectionList());
+      }
+    }
+  else
+    {
+    vtkDebugMacro("No highlight annotation link set.");
+    }
+
+
   // Clip drawing while plotting
   float clip[] = { this->Point1[0], this->Point1[1],
                  this->Point2[0]-this->Point1[0],
@@ -352,6 +381,11 @@ void vtkMyChartXY::RenderPlots(vtkContext2D *painter)
       for ( ; it != this->ChartPrivate->PlotCorners[i].end(); ++it)
         {
         (*it)->SetSelection(idArray);
+				if ((*it)->IsA("vtkMyPlotPoints"))
+					{
+					vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(*it);
+        	myPlot->SetHighlightSelection(hidArray);
+        	}
         (*it)->Paint(painter);
         }
       painter->PopMatrix();
@@ -777,6 +811,13 @@ vtkPlot * vtkMyChartXY::AddPlot(int type)
   // Add the plot to the default corner
   plot->SetXAxis(this->ChartPrivate->axes[vtkAxis::BOTTOM]);
   plot->SetYAxis(this->ChartPrivate->axes[vtkAxis::LEFT]);
+	if (plot->IsA("vtkMyPlotPoints"))
+		{
+		vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(plot);
+		vtkIdTypeArray* highlightSelection = vtkIdTypeArray::New();
+		// NOTE: This may be dubious, setting the same highlight selection for all plots added...
+		myPlot->SetHighlightSelection(highlightSelection);
+		}
   this->ChartPrivate->plots.push_back(plot);
   this->ChartPrivate->PlotCorners[0].push_back(plot);
   // Ensure that the bounds are recalculated

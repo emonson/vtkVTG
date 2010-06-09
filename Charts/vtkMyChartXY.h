@@ -31,6 +31,7 @@ class vtkChartLegend;
 class vtkTooltipImageItem;
 class vtkContextMouseEvent;
 class vtkDataArray;
+class vtkAnnotationLink;
 class vtkMyChartXYPrivate; // Private class to keep my STL vector in...
 
 class VTK_CHARTS_EXPORT vtkMyChartXY : public vtkChartXY
@@ -118,6 +119,14 @@ public:
   // Description
   // Set a size scaling factor for tooltip image
   virtual void SetTooltipImageScalingFactor(float ScalingFactor);
+
+  // Description:
+  // Set the vtkHighlightLink for the chart.
+  virtual void SetHighlightLink(vtkAnnotationLink *link);
+
+  // Description:
+  // Get the vtkHighlightLink for the chart.
+  vtkGetObjectMacro(HighlightLink, vtkAnnotationLink);
 
 //BTX
   // Description:
@@ -237,6 +246,10 @@ private:
   void operator=(const vtkMyChartXY &);   // Not implemented.
 
   vtkMyChartXYPrivate *ChartPrivate; // Private class where I hide my STL containers
+
+  // Description:
+  // Link back into chart to highlight selections made in other plots
+  vtkAnnotationLink *HighlightLink;
 
   // Description:
   // Private functions to render different parts of the chart

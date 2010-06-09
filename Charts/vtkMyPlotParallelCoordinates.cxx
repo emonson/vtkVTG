@@ -58,10 +58,10 @@ public:
 
 
 //-----------------------------------------------------------------------------
-vtkCxxSetObjectMacro(vtkMyPlotParallelCoordinates, HighlightSelection, vtkIdTypeArray);
+vtkStandardNewMacro(vtkMyPlotParallelCoordinates);
 
 //-----------------------------------------------------------------------------
-vtkStandardNewMacro(vtkMyPlotParallelCoordinates);
+vtkCxxSetObjectMacro(vtkMyPlotParallelCoordinates, HighlightSelection, vtkIdTypeArray);
 
 //-----------------------------------------------------------------------------
 vtkMyPlotParallelCoordinates::vtkMyPlotParallelCoordinates()
@@ -85,6 +85,14 @@ vtkMyPlotParallelCoordinates::~vtkMyPlotParallelCoordinates()
     this->Points = NULL;
     }
   delete this->Storage;
+  if (this->Marker)
+    {
+    this->Marker->Delete();
+    }
+  if (this->HighlightMarker)
+    {
+    this->HighlightMarker->Delete();
+    }
   if (this->HighlightSelection)
     {
     this->HighlightSelection->Delete();

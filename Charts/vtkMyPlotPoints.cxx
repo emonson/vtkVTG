@@ -51,6 +51,9 @@ public:
 vtkStandardNewMacro(vtkMyPlotPoints);
 
 //-----------------------------------------------------------------------------
+vtkCxxSetObjectMacro(vtkMyPlotPoints, HighlightSelection, vtkIdTypeArray);
+
+//-----------------------------------------------------------------------------
 vtkMyPlotPoints::vtkMyPlotPoints()
 {
   this->Points = NULL;
@@ -60,7 +63,8 @@ vtkMyPlotPoints::vtkMyPlotPoints()
   this->LogX = false;
   this->LogY = false;
   this->Marker = NULL;
-  this->HighlightMarker = NULL;
+  this->SelectionMarker = NULL;
+  this->HighlightSelection = NULL;
   this->ImageStack = NULL;
   this->NumImages = 0;
 
@@ -116,9 +120,14 @@ vtkMyPlotPoints::~vtkMyPlotPoints()
     {
     this->Marker->Delete();
     }
-  if (this->HighlightMarker)
+  if (this->SelectionMarker)
     {
-    this->HighlightMarker->Delete();
+    this->SelectionMarker->Delete();
+    }
+  if (this->HighlightSelection)
+    {
+    this->HighlightSelection->Delete();
+    this->HighlightSelection = NULL;
     }
 }
 
@@ -171,32 +180,6 @@ bool vtkMyPlotPoints::Paint(vtkContext2D *painter)
     width = 8.0;
     }
 
-  // Now add some decorations for our selected points...
-  if (this->Selection)
-    {
-    vtkDebugMacro(<<"Selection set " << this->Selection->GetNumberOfTuples());
-    for (int i = 0; i < this->Selection->GetNumberOfTuples(); ++i)
-      {
-      this->GeneraterMarker(static_cast<int>(width+2.7), true);
-
-      painter->GetPen()->SetColor(255, 50, 0, 255);
-      painter->GetPen()->SetWidth(width+2.7);
-
-      vtkIdType id = 0;
-      this->Selection->GetTupleValue(i, &id);
-      if (id < this->Points->GetNumberOfPoints())
-        {
-        double *point = this->Points->GetPoint(id);
-        float p[] = { point[0], point[1] };
-        painter->DrawPointSprites(this->HighlightMarker, p, 1);
-        }
-      }
-    }
-  else
-    {
-    vtkDebugMacro("No selection set.");
-    }
-
   // If there is a marker style, then draw the marker for each point too
   if (this->MarkerStyle)
     {
@@ -205,6 +188,58 @@ bool vtkMyPlotPoints::Paint(vtkContext2D *painter)
     painter->ApplyBrush(this->Brush);
     painter->GetPen()->SetWidth(width);
     painter->DrawPointSprites(this->Marker, this->Points);
+    }
+
+  // Now add some decorations for our selected points...
+  if (this->Selection)
+    {
+    vtkDebugMacro(<<"Selection set " << this->Selection->GetNumberOfTuples());
+    for (int i = 0; i < this->Selection->GetNumberOfTuples(); ++i)
+      {
+      this->GeneraterMarker(static_cast<int>(width+2.7), true);
+
+      painter->GetPen()->SetColor(255, 0, 0, 100);
+      painter->GetPen()->SetWidth(width+2.7);
+
+      vtkIdType id = 0;
+      this->Selection->GetTupleValue(i, &id);
+      if (id < this->Points->GetNumberOfPoints())
+        {
+        double *point = this->Points->GetPoint(id);
+        float p[] = { point[0], point[1] };
+        painter->DrawPointSprites(this->SelectionMarker, p, 1);
+        }
+      }
+    }
+  else
+    {
+    vtkDebugMacro("No selection set.");
+    }
+
+  // Now add some decorations for our highlighted points...
+  if (this->HighlightSelection)
+    {
+    vtkDebugMacro(<<"HighlightSelection set " << this->HighlightSelection->GetNumberOfTuples());
+    for (int i = 0; i < this->HighlightSelection->GetNumberOfTuples(); ++i)
+      {
+      this->GeneraterMarker(static_cast<int>(width+2.7), true);
+
+      painter->GetPen()->SetColor(0, 128, 255, 100);
+      painter->GetPen()->SetWidth(width+2.7);
+
+      vtkIdType id = 0;
+      this->HighlightSelection->GetTupleValue(i, &id);
+      if (id < this->Points->GetNumberOfPoints())
+        {
+        double *point = this->Points->GetPoint(id);
+        float p[] = { point[0], point[1] };
+        painter->DrawPointSprites(this->SelectionMarker, p, 1);
+        }
+      }
+    }
+  else
+    {
+    vtkDebugMacro("No selection set.");
     }
 
   return true;
@@ -237,23 +272,23 @@ void vtkMyPlotPoints::GeneraterMarker(int width, bool highlight)
     }
   else
     {
-    if (!this->HighlightMarker)
+    if (!this->SelectionMarker)
       {
-      this->HighlightMarker = vtkImageData::New();
-      this->HighlightMarker->SetScalarTypeToUnsignedChar();
-      this->HighlightMarker->SetNumberOfScalarComponents(4);
-      data = this->HighlightMarker;
+      this->SelectionMarker = vtkImageData::New();
+      this->SelectionMarker->SetScalarTypeToUnsignedChar();
+      this->SelectionMarker->SetNumberOfScalarComponents(4);
+      data = this->SelectionMarker;
       }
     else
       {
-      if (this->HighlightMarker->GetMTime() >= this->GetMTime() &&
-          this->HighlightMarker->GetMTime() >= this->Pen->GetMTime())
+      if (this->SelectionMarker->GetMTime() >= this->GetMTime() &&
+          this->SelectionMarker->GetMTime() >= this->Pen->GetMTime())
         {
         // Marker already generated, no need to do this again.
         return;
         }
       }
-    data = this->HighlightMarker;
+    data = this->SelectionMarker;
     }
 
   data->SetExtent(0, width-1, 0, width-1, 0, 0);

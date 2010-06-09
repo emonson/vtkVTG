@@ -68,10 +68,10 @@ public:
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-vtkCxxSetObjectMacro(vtkMyChartParallelCoordinates, HighlightLink, vtkAnnotationLink);
+vtkStandardNewMacro(vtkMyChartParallelCoordinates);
 
 //-----------------------------------------------------------------------------
-vtkStandardNewMacro(vtkMyChartParallelCoordinates);
+vtkCxxSetObjectMacro(vtkMyChartParallelCoordinates, HighlightLink, vtkAnnotationLink);
 
 //-----------------------------------------------------------------------------
 vtkMyChartParallelCoordinates::vtkMyChartParallelCoordinates()

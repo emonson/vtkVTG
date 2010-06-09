@@ -89,6 +89,11 @@ public:
   virtual bool SelectPoints(const vtkVector2f& min, const vtkVector2f& max);
 
   // Description:
+  // Set the list of ids for highlighting (back from outside plot).
+  virtual void SetHighlightSelection(vtkIdTypeArray *id);
+  vtkGetObjectMacro(HighlightSelection, vtkIdTypeArray);
+
+  // Description:
   // Enum containing various marker styles that can be used in a plot.
   enum {
     NONE = 0,
@@ -162,7 +167,11 @@ protected:
   // The marker style that should be used
   int MarkerStyle;
   vtkImageData* Marker;
-  vtkImageData* HighlightMarker;
+  vtkImageData* SelectionMarker;
+
+  // Description:
+  // Selected indices coming back from outside the chart this plot is associated with.
+  vtkIdTypeArray *HighlightSelection;
 
   bool LogX, LogY;
   
