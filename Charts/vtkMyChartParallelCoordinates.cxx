@@ -237,7 +237,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
       }
     
     // Extra set box for current scale
-    painter->GetBrush()->SetColor(254, 209, 0, 50);
+    painter->GetBrush()->SetColor(254, 209, 0, 100);
     painter->GetPen()->SetLineType(0);
     for (int i = 0; i < this->VisibleColumns->GetNumberOfTuples(); i+=this->NumPerSet)
       {

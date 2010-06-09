@@ -65,7 +65,7 @@ vtkMyPlotPoints::vtkMyPlotPoints()
   this->Marker = NULL;
   this->SelectionMarker = NULL;
   this->HighlightSelection = NULL;
-  this->ImageStack = NULL;
+  this->TooltipImageStack = NULL;
   this->NumImages = 0;
 
   // ImageSlicing for TooltipImageItem
@@ -85,7 +85,7 @@ vtkMyPlotPoints::vtkMyPlotPoints()
   this->reslice->SetOutputDimensionality(2);
   this->reslice->SetResliceAxes(this->resliceAxes);
   this->reslice->SetInterpolationModeToNearestNeighbor();
-  // Need to set the Input when ImageStack is assigned
+  // Need to set the Input when TooltipImageStack is assigned
 
   // Create a greyscale lookup table
   this->lut = vtkSmartPointer<vtkLookupTable>::New();
@@ -834,33 +834,33 @@ inline void vtkMyPlotPoints::CalculateBounds(double bounds[4])
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyPlotPoints::SetImageStack(vtkImageData* stack)
+void vtkMyPlotPoints::SetTooltipImageStack(vtkImageData* stack)
 {
-  this->ImageStack = stack;
-  this->ImageStack->UpdateInformation();
-  this->reslice->SetInput(this->ImageStack);
+  this->TooltipImageStack = stack;
+  this->TooltipImageStack->UpdateInformation();
+  this->reslice->SetInput(this->TooltipImageStack);
   this->reslice->Modified();
-  this->lut->SetRange(this->ImageStack->GetPointData()->GetScalars()->GetRange());
+  this->lut->SetRange(this->TooltipImageStack->GetPointData()->GetScalars()->GetRange());
   this->lut->Modified();
   int extent[6];
-  this->ImageStack->UpdateInformation();
-  this->ImageStack->GetWholeExtent(extent);
+  this->TooltipImageStack->UpdateInformation();
+  this->TooltipImageStack->GetWholeExtent(extent);
   this->NumImages = (extent[5]-extent[4]+1);
 }
 
 //-----------------------------------------------------------------------------
 vtkImageData* vtkMyPlotPoints::GetImageAtIndex(int imageId)
 {
-  if (this->ImageStack)
+  if (this->TooltipImageStack)
     {
     // Calculate the center of the volume
-    this->ImageStack->UpdateInformation();
+    this->TooltipImageStack->UpdateInformation();
     int extent[6];
     double spacing[3];
     double origin[3];
-    this->ImageStack->GetWholeExtent(extent);
-    this->ImageStack->GetSpacing(spacing);
-    this->ImageStack->GetOrigin(origin);
+    this->TooltipImageStack->GetWholeExtent(extent);
+    this->TooltipImageStack->GetSpacing(spacing);
+    this->TooltipImageStack->GetOrigin(origin);
 
     double center[3];
     center[0] = origin[0] + spacing[0] * 0.5 * (extent[0] + extent[1]); 
@@ -888,7 +888,7 @@ vtkImageData* vtkMyPlotPoints::GetImageAtIndex(int imageId)
 //-----------------------------------------------------------------------------
 int vtkMyPlotPoints::GetNumberOfImages()
 {
-  if (this->ImageStack)
+  if (this->TooltipImageStack)
     {
     return this->NumImages;
     }

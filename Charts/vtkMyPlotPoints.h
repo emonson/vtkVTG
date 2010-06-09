@@ -71,7 +71,7 @@ public:
   // Description
   // ImageData associated with plot, which the tooltip in the chartXY will get
   // a slice of to display when hovering over points (needs to be just 2d)
-  virtual void SetImageStack(vtkImageData*);
+  virtual void SetTooltipImageStack(vtkImageData*);
   virtual int GetNumberOfImages();
   virtual vtkImageData* GetImageAtIndex(int imageId);
   
@@ -160,7 +160,7 @@ protected:
   // Description
   // ImageData associated with plot, which the tooltip in the chartXY will get
   // a slice of to display when hovering over points
-  vtkImageData* ImageStack;
+  vtkImageData* TooltipImageStack;
   int NumImages;
 
   // Description:
