@@ -43,6 +43,15 @@
 #include "vtkIntArray.h"
 #include "vtkIdTypeArray.h"
 
+#include "vtkImageData.h"
+#include "vtkMatrix4x4.h"
+#include "vtkImageReslice.h"
+#include "vtkLookupTable.h"
+#include "vtkColorTransferFunction.h"
+#include "vtkImageMapToColors.h"
+#include "vtkPointData.h"
+#include "vtkVector.h"
+
 #include "vtkAnnotationLink.h"
 #include "vtkSelection.h"
 #include "vtkSelectionNode.h"
@@ -65,6 +74,26 @@
 #include <vtkstd/vector>
 
 //-----------------------------------------------------------------------------
+class vtkAxisImagePrivate
+{
+public:
+  vtkAxisImagePrivate()
+    {
+    this->Point1[0] = 0;
+    this->Point1[1] = 0;
+    this->Point2[0] = 0;
+    this->Point2[1] = 0;
+    this->Image = vtkSmartPointer<vtkImageData>::New();
+    this->ColumnIndex = -1;
+    }
+
+  int Point1[2];
+  int Point2[2];
+  vtkSmartPointer<vtkImageData> Image;
+  int ColumnIndex;
+};
+
+//-----------------------------------------------------------------------------
 class vtkMyChartXYPrivate
 {
 public:
@@ -76,6 +105,7 @@ public:
     this->PlotTransforms[0] = vtkSmartPointer<vtkTransform2D>::New();
     this->StackedPlotAccumulator = vtkSmartPointer<vtkDataArray>();
     this->StackParticipantsChanged.Modified();
+    this->axisImagesScalingFactor = 1.0;
     }
 
   vtkstd::vector<vtkPlot *> plots; // Charts can contain multiple plots of data
@@ -85,6 +115,9 @@ public:
   vtkSmartPointer<vtkColorSeries> Colors; // Colors in the chart
   vtkSmartPointer<vtkDataArray> StackedPlotAccumulator;
   vtkTimeStamp StackParticipantsChanged;   // Plot added or plot visibility changed
+  
+  vtkstd::vector<vtkAxisImagePrivate *> axisImages;
+  float axisImagesScalingFactor;
 };
 
 //-----------------------------------------------------------------------------
@@ -134,6 +167,58 @@ vtkMyChartXY::vtkMyChartXY()
 
   // Link back into chart to highlight selections made in other plots
   this->HighlightLink = NULL;
+
+  this->AxisImageStack = NULL;
+  this->NumImages = 0;
+
+  // ImageSlicing for TooltipImageItem
+  // Always slicing in the Z direction
+  static double axialElements[16] = {
+           1, 0, 0, 0,
+           0, 1, 0, 0,
+           0, 0, 1, 0,
+           0, 0, 0, 1 };
+
+  // Set the slice orientation
+  this->resliceAxes = vtkSmartPointer<vtkMatrix4x4>::New();
+  this->resliceAxes->DeepCopy(axialElements);
+
+  // Extract a slice in the desired orientation
+  this->reslice = vtkSmartPointer<vtkImageReslice>::New();
+  this->reslice->SetOutputDimensionality(2);
+  this->reslice->SetResliceAxes(this->resliceAxes);
+  this->reslice->SetInterpolationModeToNearestNeighbor();
+  // Need to set the Input when AxisImageStack is assigned
+
+  // Create a blue-white-red diverging lookup table
+  this->lut = vtkSmartPointer<vtkLookupTable>::New();
+  int lutNum = 256;
+  this->lut->SetNumberOfTableValues(lutNum);
+  this->lut->Build();
+  
+  vtkSmartPointer<vtkColorTransferFunction> ctf = 
+  		vtkSmartPointer<vtkColorTransferFunction>::New();
+	ctf->SetColorSpaceToDiverging();
+	float c_blue[3] = {59.0/255.0, 76.0/255.0, 192.0/255.0};
+	float c_red[3] = {180.0/255.0, 4.0/255.0, 38.0/255.0};
+	ctf->AddRGBPoint(0.0, c_blue[0], c_blue[1], c_blue[2]);	// blue
+	ctf->AddRGBPoint(1.0, c_red[0], c_red[1], c_red[2]);		// red
+	
+	double ramp_val; 
+	double cc[3];
+  for (int ii = 0; ii < lutNum; ii++ )
+    {
+    ramp_val = static_cast<double>(ii)/static_cast<double>(lutNum); 
+    ctf->GetColor(ramp_val, cc);
+    this->lut->SetTableValue(ii,cc[0],cc[1],cc[2],1.0);
+    }
+  this->lut->SetRange(-1024,1024);
+
+  // Map the image through the lookup table
+  this->color = vtkSmartPointer<vtkImageMapToColors>::New();
+  this->color->SetLookupTable(this->lut);
+  this->color->SetInputConnection(this->reslice->GetOutputPort());
+
 }
 
 //-----------------------------------------------------------------------------
@@ -215,14 +300,14 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
 
   bool recalculateTransform = false;
   this->CalculateBarPlots();
-
+  
   if (geometry[0] != this->Geometry[0] || geometry[1] != this->Geometry[1] ||
       this->MTime > this->ChartPrivate->axes[0]->GetMTime())
     {
     // Take up the entire window right now, this could be made configurable
     this->SetGeometry(geometry);
     // Borders (Left, Right, Top, Bottom)
-    this->SetBorders(60, 20, 20, 50);
+    this->SetBorders(120, 20, 20, 50);
     // This is where we set the axes up too
     // Y axis (left)
     this->ChartPrivate->axes[0]->SetPoint1(this->Point1[0], this->Point1[1]);
@@ -305,6 +390,18 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     painter->ApplyTextProp(this->TitleProperties);
     painter->DrawStringRect(rect, this->Title);
     rect->Delete();
+    }
+    
+  // Draw the axis images
+  if (this->AxisImageStack)
+    {
+    for (int ii = 0; ii < this->NumImages; ii++)
+      {
+      painter->DrawImage(this->ChartPrivate->axisImages[ii]->Point1[0],
+      		this->ChartPrivate->axisImages[ii]->Point1[1],
+      		this->ChartPrivate->axisImagesScalingFactor,
+      		this->ChartPrivate->axisImages[ii]->Image);
+      }
     }
 
   // Draw in the current mouse location...
@@ -1405,6 +1502,86 @@ void vtkMyChartXY::SetTooltipShowImage(bool ShowImage)
 void vtkMyChartXY::SetTooltipImageScalingFactor(float ScalingFactor)
 {
   this->Tooltip->SetScalingFactor(ScalingFactor);
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartXY::SetAxisImageStack(vtkImageData* stack)
+{
+  this->AxisImageStack = stack;
+  this->AxisImageStack->UpdateInformation();
+  this->reslice->SetInput(this->AxisImageStack);
+  this->reslice->Modified();
+	double i_range[2];
+	this->AxisImageStack->GetPointData()->GetArray("DiffIntensity")->GetRange(i_range);
+	double i_abs[2] = {fabs(i_range[0]),fabs(i_range[1])};
+	double i_ext = (i_abs[0] >= i_abs[1]) ? i_abs[0] : i_abs[1];
+	if (i_ext < 1e-10) i_ext = 1024;
+  this->lut->SetRange(-i_ext, i_ext);
+  this->lut->Modified();
+  int extent[6];
+  this->AxisImageStack->UpdateInformation();
+  this->AxisImageStack->GetWholeExtent(extent);
+  this->NumImages = (extent[5]-extent[4]+1);
+  
+  for (int ii = 0; ii < this->NumImages; ii++) 
+    {
+    vtkAxisImagePrivate *ai = new vtkAxisImagePrivate;
+    ai->Image->DeepCopy(this->GetImageAtIndex(ii));
+    // DEBUG -- setting temporary positions for testing
+    ai->Point1[0] = 20;
+    ai->Point1[1] = 50 + ii*38;
+    this->ChartPrivate->axisImages.push_back(ai);
+    }
+}
+
+//-----------------------------------------------------------------------------
+vtkImageData* vtkMyChartXY::GetImageAtIndex(int imageId)
+{
+  if (this->AxisImageStack)
+    {
+    // Calculate the center of the volume
+    this->AxisImageStack->UpdateInformation();
+    int extent[6];
+    double spacing[3];
+    double origin[3];
+    this->AxisImageStack->GetWholeExtent(extent);
+    this->AxisImageStack->GetSpacing(spacing);
+    this->AxisImageStack->GetOrigin(origin);
+
+    double center[3];
+    center[0] = origin[0] + spacing[0] * 0.5 * (extent[0] + extent[1]); 
+    center[1] = origin[1] + spacing[1] * 0.5 * (extent[2] + extent[3]); 
+    center[2] = origin[2] + spacing[2] * 0.5 * (extent[4] + extent[5]); 
+
+    // Set the point through which to slice
+    vtkMatrix4x4 *resliceAxes = reslice->GetResliceAxes();
+	double zpos = origin[2] + spacing[2]*(extent[4]+static_cast<float>(imageId));
+    resliceAxes->SetElement(0, 3, center[0]);
+    resliceAxes->SetElement(1, 3, center[1]);
+    resliceAxes->SetElement(2, 3, zpos);
+    this->reslice->Modified();
+    
+    this->color->Update();
+    
+    return this->color->GetOutput();
+    }
+  else
+    {
+    return NULL;
+    }
+}
+
+//-----------------------------------------------------------------------------
+int vtkMyChartXY::GetNumberOfImages()
+{
+  if (this->AxisImageStack)
+    {
+    return this->NumImages;
+    }
+  else
+    {
+    return 0;
+    }
 }
 
 //-----------------------------------------------------------------------------

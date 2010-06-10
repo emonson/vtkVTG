@@ -22,6 +22,8 @@
 #define __vtkMyChartXY_h
 
 #include "vtkChartXY.h"
+#include "vtkSmartPointer.h"
+#include <math.h>
 
 class vtkPlot;
 class vtkAxis;
@@ -32,6 +34,12 @@ class vtkTooltipImageItem;
 class vtkContextMouseEvent;
 class vtkDataArray;
 class vtkAnnotationLink;
+class vtkImageData;
+class vtkMatrix4x4;
+class vtkImageReslice;
+class vtkLookupTable;
+class vtkImageMapToColors;
+class vtkAxisImagePrivate;
 class vtkMyChartXYPrivate; // Private class to keep my STL vector in...
 
 class VTK_CHARTS_EXPORT vtkMyChartXY : public vtkChartXY
@@ -120,6 +128,13 @@ public:
   // Set a size scaling factor for tooltip image
   virtual void SetTooltipImageScalingFactor(float ScalingFactor);
 
+  // Description
+  // ImageData associated with plot, which the tooltip in the chartXY will get
+  // a slice of to display when hovering over points (needs to be just 2d)
+  virtual void SetAxisImageStack(vtkImageData*);
+  virtual int GetNumberOfImages();
+  virtual vtkImageData* GetImageAtIndex(int imageId);
+  
   // Description:
   // Set the vtkHighlightLink for the chart.
   virtual void SetHighlightLink(vtkAnnotationLink *link);
@@ -210,6 +225,11 @@ protected:
   vtkTooltipImageItem *Tooltip;
   bool TooltipShowImage;
 
+  // Description
+  // ImageData associated with the axes. This should be in a z-stack.
+  vtkImageData* AxisImageStack;
+  int NumImages;
+
   // Description:
   // Does the plot area transform need to be recalculated?
   bool PlotTransformValid;
@@ -268,6 +288,11 @@ private:
   bool RemovePlotFromConers(vtkPlot *plot);
 
   void ZoomInAxes(vtkAxis *x, vtkAxis *y, float *orign, float *max);
+
+  vtkSmartPointer<vtkMatrix4x4> resliceAxes;
+  vtkSmartPointer<vtkImageReslice> reslice;
+  vtkSmartPointer<vtkLookupTable> lut;
+  vtkSmartPointer<vtkImageMapToColors> color;
 
 //ETX
 };
