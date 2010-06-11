@@ -68,10 +68,12 @@
 
 // Testing
 #include <time.h>
+#include <string.h>
 //#include <stdlib.h>
 
 // My STL containers
 #include <vtkstd/vector>
+#include <vtkstd/string>
 
 //-----------------------------------------------------------------------------
 class vtkAxisImagePrivate
@@ -90,7 +92,7 @@ public:
   int Point1[2];
   int Point2[2];
   vtkSmartPointer<vtkImageData> Image;
-  int ColumnIndex;
+  vtkIdType ColumnIndex;
 };
 
 //-----------------------------------------------------------------------------
@@ -105,7 +107,13 @@ public:
     this->PlotTransforms[0] = vtkSmartPointer<vtkTransform2D>::New();
     this->StackedPlotAccumulator = vtkSmartPointer<vtkDataArray>();
     this->StackParticipantsChanged.Modified();
-    this->axisImagesScalingFactor = 1.0;
+    this->aiScalingFactor = 1.0;
+    this->aiWidth = 0;
+    this->aiHeight = 0;
+    this->aiGap = 10;			// Set default here
+    this->aiXSpace = 40;	// Set default here
+    this->currentXai = 0;
+    this->currentYai = 1;
     }
 
   vtkstd::vector<vtkPlot *> plots; // Charts can contain multiple plots of data
@@ -117,7 +125,9 @@ public:
   vtkTimeStamp StackParticipantsChanged;   // Plot added or plot visibility changed
   
   vtkstd::vector<vtkAxisImagePrivate *> axisImages;
-  float axisImagesScalingFactor;
+  float aiScalingFactor;
+  int aiWidth, aiHeight, aiGap, aiXSpace;
+  int currentXai, currentYai;
 };
 
 //-----------------------------------------------------------------------------
@@ -260,6 +270,18 @@ void vtkMyChartXY::Update()
   for (size_t i = 0; i < this->ChartPrivate->plots.size(); ++i)
     {
     this->ChartPrivate->plots[i]->Update();
+    
+    // Couldn't figure out another good place to set the axis titles...
+    if (this->ChartPrivate->plots[i]-IsA("vtkMyPlotPoints") &&
+        strcmp(this->ChartPrivate->axes[0]->GetTitle(),"Y Axis") == 0)
+    	{
+			vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(this->ChartPrivate->plots[i]); 
+			vtkTable* table = myPlot->GetData()->GetInput();
+			const char* xName = myPlot->GetData()->GetInputArrayToProcess(0, table)->GetName();
+			const char* yName = myPlot->GetData()->GetInputArrayToProcess(1, table)->GetName();
+			this->ChartPrivate->axes[0]->SetTitle(yName);
+			this->ChartPrivate->axes[1]->SetTitle(xName);
+			}
     }
   if (this->ShowLegend)
     {
@@ -326,6 +348,35 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     this->Legend->SetPoint(this->Point2[0], this->Point2[1]);
     // Cause the plot transform to be recalculated if necessary
     recalculateTransform = true;
+    
+    if (this->AxisImageStack)
+      {
+			// Set axis images scaling factor
+			float pixelHeight = this->Point2[1] - this->Point1[1];
+			float sumOfYExts = this->NumImages*this->ChartPrivate->aiHeight;
+			float sumOfGaps = (this->NumImages-1)*this->ChartPrivate->aiGap;
+			float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
+			
+			float XScale = (float)this->ChartPrivate->aiXSpace/(float)this->ChartPrivate->aiWidth;
+			
+			this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
+			
+			// Create the vector of axisImage objects
+			int origin[2] = {20,50};
+			for (int ii = 0; ii < this->NumImages; ii++) 
+				{
+				vtkAxisImagePrivate *ai = this->ChartPrivate->axisImages[ii];
+				// DEBUG -- setting temporary positions for testing
+				// Real positions set in Paint() routine to adjust for scene geometry
+				ai->Point1[0] = origin[0];
+				ai->Point1[1] = origin[1] + 
+						ii*(this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor+this->ChartPrivate->aiGap);
+				ai->Point2[0] = ai->Point1[0] + 
+						this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
+				ai->Point2[1] = ai->Point1[1] + 
+						this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
+				}
+			}
     }
 
   if (this->ChartPrivate->plots[0]->GetData()->GetInput()->GetMTime() > this->MTime || 
@@ -392,6 +443,23 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     rect->Delete();
     }
     
+  // Draw the XY association graphics behind axis images
+  if (this->AxisImageStack)
+    {
+    int xI = this->ChartPrivate->currentXai;
+    int yI = this->ChartPrivate->currentYai;
+    int x0 = this->ChartPrivate->axisImages[0]->Point1[0] - 5;
+    int y0 = this->ChartPrivate->axisImages[xI]->Point1[1] + static_cast<int>((float)this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor/2.0);
+    int x1 = this->ChartPrivate->axisImages[0]->Point2[0] + 5;
+    int y1 = this->ChartPrivate->axisImages[yI]->Point1[1] + static_cast<int>((float)this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor/2.0);
+    painter->GetBrush()->SetColor(255, 255, 255, 0);
+    painter->GetPen()->SetColor(0, 0, 0, 100);
+    painter->GetPen()->SetWidth(2.0);
+    painter->DrawLine(x0,y0,x0+10,y0);
+    painter->DrawLine(x0,y1,x0+10,y1);
+    painter->DrawLine(x0,y0,x0,y1);
+    }
+  
   // Draw the axis images
   if (this->AxisImageStack)
     {
@@ -399,7 +467,7 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
       {
       painter->DrawImage(this->ChartPrivate->axisImages[ii]->Point1[0],
       		this->ChartPrivate->axisImages[ii]->Point1[1],
-      		this->ChartPrivate->axisImagesScalingFactor,
+      		this->ChartPrivate->aiScalingFactor,
       		this->ChartPrivate->axisImages[ii]->Image);
       }
     }
@@ -744,7 +812,7 @@ void vtkMyChartXY::RecalculatePlotBounds()
       }
     (*it)->GetBounds(bounds);
     int corner = this->GetPlotCorner(*it);
-
+    
     // Initialize the appropriate ranges, or push out the ranges
     if ((corner == 0 || corner == 3)) // left
       {
@@ -956,6 +1024,15 @@ void vtkMyChartXY::ClearPlots()
   this->ChartPrivate->plots.clear();
   // Ensure that the bounds are recalculated
   this->PlotTransformValid = false;
+  // Clear out all axis image stuff
+  for (int ii = 0; ii < this->ChartPrivate->axisImages.size(); ++ii)
+  	{
+  	delete this->ChartPrivate->axisImages[ii];
+  	}
+  this->ChartPrivate->axisImages.clear();
+  // TODO: Need to clear out something about axes -- they're not getting reset
+  // properly on clear...
+  
   // Mark the scene as dirty
   this->Scene->SetDirty(true);
 }
@@ -1078,10 +1155,20 @@ void vtkMyChartXY::SetStackPartipantsChanged()
 //-----------------------------------------------------------------------------
 bool vtkMyChartXY::Hit(const vtkContextMouseEvent &mouse)
 {
+  int maxI = this->NumImages-1;
+  // In plot area
   if (mouse.ScreenPos[0] > this->Point1[0] &&
       mouse.ScreenPos[0] < this->Point2[0] &&
       mouse.ScreenPos[1] > this->Point1[1] &&
       mouse.ScreenPos[1] < this->Point2[1])
+    {
+    return true;
+    }
+  // In axis images area
+  else if (mouse.ScreenPos[0] > this->ChartPrivate->axisImages[0]->Point1[0] &&
+           mouse.ScreenPos[0] < this->ChartPrivate->axisImages[0]->Point2[0] &&
+           mouse.ScreenPos[1] > this->ChartPrivate->axisImages[0]->Point1[1] &&
+           mouse.ScreenPos[1] < this->ChartPrivate->axisImages[maxI]->Point2[1])
     {
     return true;
     }
@@ -1264,6 +1351,57 @@ bool vtkMyChartXY::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
   this->Tooltip->SetVisible(false);
   if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
     {
+		// Iterate over the axis images, see if we are inside of one
+		for (size_t i = 0; i < this->ChartPrivate->axisImages.size(); ++i)
+			{
+			vtkAxisImagePrivate* image = this->ChartPrivate->axisImages[i];
+			if (mouse.ScreenPos[0] > image->Point1[0] && mouse.ScreenPos[0] < image->Point2[0] &&
+					mouse.ScreenPos[1] > image->Point1[1] && mouse.ScreenPos[1] < image->Point2[1])
+				{
+				bool modify_data;
+				if (i > this->ChartPrivate->currentYai)
+				  {
+						this->ChartPrivate->currentYai = i;
+						this->ChartPrivate->currentXai = i-1;
+						modify_data = true;
+				  }
+				else if (i < this->ChartPrivate->currentXai)
+				  {
+						this->ChartPrivate->currentYai = i+1;
+						this->ChartPrivate->currentXai = i;
+						modify_data = true;
+					}
+				else
+				  {
+				  modify_data = false;
+				  }
+				if (modify_data)
+				  {
+					// NOTE: Looking for first visible vtkMyPlotPoints
+					size_t n = this->ChartPrivate->plots.size();
+					for (size_t p = 0; p < n; ++p)
+						{
+						vtkMyPlotPoints* plot = vtkMyPlotPoints::SafeDownCast(this->ChartPrivate->plots[p]);
+						if (plot && plot->GetVisible())
+							{
+							vtkTable* table = plot->GetData()->GetInput();
+							int yI = this->ChartPrivate->axisImages[this->ChartPrivate->currentYai]->ColumnIndex;
+							int xI = this->ChartPrivate->axisImages[this->ChartPrivate->currentXai]->ColumnIndex;
+							plot->SetInputArray(0,table->GetColumnName(xI));
+							plot->SetInputArray(1,table->GetColumnName(yI));
+							this->ChartPrivate->axes[0]->SetTitle(table->GetColumnName(yI));
+							this->ChartPrivate->axes[1]->SetTitle(table->GetColumnName(xI));
+							plot->Update();
+    					this->Scene->SetDirty(true);
+    					this->RecalculatePlotBounds();
+							break;
+							}
+						}
+				  }
+				// Not sure why return true or false
+				return false;
+				}
+			}
     // The mouse panning action.
     return true;
     }
@@ -1509,8 +1647,10 @@ void vtkMyChartXY::SetAxisImageStack(vtkImageData* stack)
 {
   this->AxisImageStack = stack;
   this->AxisImageStack->UpdateInformation();
+  // Set input to reslice filter
   this->reslice->SetInput(this->AxisImageStack);
   this->reslice->Modified();
+	// Set range of blue-white-red lut to range of whole stack
 	double i_range[2];
 	this->AxisImageStack->GetPointData()->GetArray("DiffIntensity")->GetRange(i_range);
 	double i_abs[2] = {fabs(i_range[0]),fabs(i_range[1])};
@@ -1518,19 +1658,91 @@ void vtkMyChartXY::SetAxisImageStack(vtkImageData* stack)
 	if (i_ext < 1e-10) i_ext = 1024;
   this->lut->SetRange(-i_ext, i_ext);
   this->lut->Modified();
+  // Gather number of images and image dimensions (extent)
   int extent[6];
-  this->AxisImageStack->UpdateInformation();
   this->AxisImageStack->GetWholeExtent(extent);
   this->NumImages = (extent[5]-extent[4]+1);
+  this->ChartPrivate->aiWidth = extent[1];
+  this->ChartPrivate->aiHeight = extent[3];
   
+  // Look through data table column names to gather valid data column indices
+  // NOTE: Looking for first visible vtkMyPlotPoints and using that table
+  size_t n = this->ChartPrivate->plots.size();
+  vtkMyPlotPoints* plot;
+  vtkTable* table;
+  for (size_t i = 0; i < n; ++i)
+    {
+    plot = vtkMyPlotPoints::SafeDownCast(this->ChartPrivate->plots[i]);
+    if (plot && plot->GetVisible())
+      {
+      table = plot->GetData()->GetInput();
+      break;
+      }
+    }
+  if (!plot || !(table->GetNumberOfColumns()>0))
+    {
+		printf("No viable plot found in SetAxisImageStack\n");
+		return;
+    }
+  vtkstd::vector<vtkIdType> col_idxs;
+  for (vtkIdType ii = 0; ii < table->GetNumberOfColumns(); ii++)
+    {
+    const char *col_name = table->GetColumnName(ii);
+    if (strstr(col_name, "_ids"))
+      {
+      continue;
+      }
+    else
+      {
+      col_idxs.push_back(ii);
+      }
+    }
+  if (col_idxs.size() != this->NumImages)
+    {
+		printf("Number of viable columns doesn't equal the number of images!\n");
+		return;
+    }
+  const char* xName = plot->GetData()->GetInputArrayToProcess(0, table)->GetName();
+  const char* yName = plot->GetData()->GetInputArrayToProcess(1, table)->GetName();
+  
+  // Set initial scaling factor even before Paint
+  float pixelHeight = this->Point2[1] - this->Point1[1];
+  float sumOfYExts = this->NumImages*this->ChartPrivate->aiHeight;
+  float sumOfGaps = (this->NumImages-1)*this->ChartPrivate->aiGap;
+  float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
+  
+  float XScale = (float)this->ChartPrivate->aiXSpace/(float)this->ChartPrivate->aiWidth;
+  
+  this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
+  
+  // Create the vector of axisImage objects
+  int origin[2] = {20,50};
   for (int ii = 0; ii < this->NumImages; ii++) 
     {
     vtkAxisImagePrivate *ai = new vtkAxisImagePrivate;
     ai->Image->DeepCopy(this->GetImageAtIndex(ii));
     // DEBUG -- setting temporary positions for testing
-    ai->Point1[0] = 20;
-    ai->Point1[1] = 50 + ii*38;
+    // Real positions set in Paint() routine to adjust for scene geometry
+    ai->Point1[0] = origin[0];
+    ai->Point1[1] = origin[1] + 
+    		ii*(this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor+this->ChartPrivate->aiGap);
+    ai->Point2[0] = ai->Point1[0] + 
+    		this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
+    ai->Point2[1] = ai->Point1[1] + 
+    		this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
+    ai->ColumnIndex = col_idxs.at(ii);
     this->ChartPrivate->axisImages.push_back(ai);
+    
+    // Keep track of current X and Y data as axisImages indices
+    const char *col_name = table->GetColumnName(col_idxs.at(ii));
+    if (strcmp(col_name, xName) == 0) 
+    	{
+    	this->ChartPrivate->currentXai = ii;
+    	}
+    if (strcmp(col_name, yName) == 0)
+      {
+      this->ChartPrivate->currentYai = ii;
+      }
     }
 }
 
@@ -1555,7 +1767,7 @@ vtkImageData* vtkMyChartXY::GetImageAtIndex(int imageId)
 
     // Set the point through which to slice
     vtkMatrix4x4 *resliceAxes = reslice->GetResliceAxes();
-	double zpos = origin[2] + spacing[2]*(extent[4]+static_cast<float>(imageId));
+	  double zpos = origin[2] + spacing[2]*(extent[4]+static_cast<float>(imageId));
     resliceAxes->SetElement(0, 3, center[0]);
     resliceAxes->SetElement(1, 3, center[1]);
     resliceAxes->SetElement(2, 3, zpos);
