@@ -33,9 +33,6 @@
 vtkStandardNewMacro(vtkTooltipImageItem);
 
 //-----------------------------------------------------------------------------
-vtkCxxSetObjectMacro(vtkTooltipImageItem, TipImage, vtkImageData);
-
-//-----------------------------------------------------------------------------
 vtkTooltipImageItem::vtkTooltipImageItem()
 {
   this->Position = this->PositionVector.GetData();
@@ -52,6 +49,8 @@ vtkTooltipImageItem::vtkTooltipImageItem()
   this->TipImage = NULL;
   this->ScalingFactor = 1.0;
   this->ShowImage = false;
+  this->ImageWidth = 0.0;
+  this->ImageHeight = 0.0;
 }
 
 //-----------------------------------------------------------------------------
@@ -87,16 +86,34 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 
   // Compute the bounds, then make a few adjustments to the size we will use
   vtkVector2f bounds[2];
-  // TODO: Still need to set better bounds for TipImage if showing that...
-  
-  painter->ComputeStringBounds(this->Text, bounds[0].GetData());
-  bounds[0] = vtkVector2f(this->PositionVector.X()-5,
-                          this->PositionVector.Y()-3);
-  bounds[1].Set(bounds[1].X()+10, bounds[1].Y()+10);
-  // Pull the tooltip back in if it will go off the edge of the screen.
-  if (int(bounds[0].X()+bounds[1].X()) >= this->Scene->GetViewWidth())
+
+  if (!this->ShowImage)
     {
-    bounds[0].SetX(this->Scene->GetViewWidth()-bounds[1].X());
+		painter->ComputeStringBounds(this->Text, bounds[0].GetData());
+		bounds[0] = vtkVector2f(this->PositionVector.X()-5,
+														this->PositionVector.Y()-3);
+		
+		bounds[1].Set(bounds[1].X()+10, bounds[1].Y()+10);
+		// Pull the tooltip back in if it will go off the edge of the screen.
+		if (int(bounds[0].X()+bounds[1].X()) >= this->Scene->GetViewWidth())
+			{
+			bounds[0].SetX(this->Scene->GetViewWidth()-bounds[1].X());
+			}
+    }
+  // For now just recompute if image instead of text
+  if (this->ShowImage && this->TipImage)
+    {
+		bounds[0] = vtkVector2f(this->PositionVector.X()-3,
+														this->PositionVector.Y()-2);
+    bounds[1].Set(this->ImageWidth, this->ImageHeight);
+		if (int(bounds[0].X()+bounds[1].X()) >= this->Scene->GetViewWidth())
+			{
+			bounds[0].SetX(this->Scene->GetViewWidth()-bounds[1].X());
+			}
+		if (int(bounds[0].Y()+bounds[1].Y()) >= this->Scene->GetViewHeight())
+			{
+			bounds[0].SetY(this->Scene->GetViewHeight()-bounds[1].Y());
+			}
     }
   
   if (!this->ShowImage)
@@ -109,10 +126,68 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
     {
     // painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
     // painter->DrawImage(bounds[0].X(), bounds[0].Y()+20, this->TipImage);
-    painter->DrawImage(bounds[0].X()+2, bounds[0].Y()+1, this->ScalingFactor, this->TipImage);
+    painter->DrawImage(bounds[0].X(), bounds[0].Y(), this->ScalingFactor, this->TipImage);
     }
 
   return true;
+}
+
+//-----------------------------------------------------------------------------
+void vtkTooltipImageItem::SetTipImage(vtkImageData* image)
+{
+	this->TipImage = image;
+	this->TipImage->UpdateInformation();
+	int extent[6];
+
+	this->TipImage->GetWholeExtent(extent);
+	
+	// Z should be zero...
+	this->ImageWidth = this->ScalingFactor*(float)extent[1];
+	this->ImageHeight = this->ScalingFactor*(float)extent[3];
+}
+
+//-----------------------------------------------------------------------------
+void vtkTooltipImageItem::SetScalingFactor(float factor)
+{
+	if (!this->TipImage)
+	  {
+	  return;
+	  }
+	
+	this->TipImage->UpdateInformation();
+	int extent[6];
+	float scaling;
+
+	this->TipImage->GetWholeExtent(extent);
+	
+	// Z should be zero...
+	this->ScalingFactor = factor;
+	this->ImageWidth = factor*(float)extent[1];
+	this->ImageHeight = factor*(float)extent[3];
+}
+
+//-----------------------------------------------------------------------------
+void vtkTooltipImageItem::SetTargetSize(int pixels)
+{
+	if (!this->TipImage)
+	  {
+	  return;
+	  }
+	
+	this->TipImage->UpdateInformation();
+	int extent[6];
+	float scaling;
+
+	this->TipImage->GetWholeExtent(extent);
+	
+	// Z should be zero...
+	int maxdim = (extent[1] > extent[3]) ? extent[1] : extent[3];
+	scaling = (float)pixels/(float)maxdim;
+	
+	// Z should be zero...
+	this->ScalingFactor = scaling;
+	this->ImageWidth = scaling*(float)extent[1];
+	this->ImageHeight = scaling*(float)extent[3];
 }
 
 //-----------------------------------------------------------------------------

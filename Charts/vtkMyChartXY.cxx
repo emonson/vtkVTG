@@ -1030,8 +1030,9 @@ void vtkMyChartXY::ClearPlots()
   	delete this->ChartPrivate->axisImages[ii];
   	}
   this->ChartPrivate->axisImages.clear();
-  // TODO: Need to clear out something about axes -- they're not getting reset
-  // properly on clear...
+  // Set the x and y axes titles back to default
+  this->ChartPrivate->axes[vtkAxis::LEFT]->SetTitle("Y Axis");
+  this->ChartPrivate->axes[vtkAxis::BOTTOM]->SetTitle("X Axis");
   
   // Mark the scene as dirty
   this->Scene->SetDirty(true);
@@ -1634,12 +1635,38 @@ void vtkMyChartXY::SetTooltipShowImage(bool ShowImage)
 {
   this->TooltipShowImage = ShowImage;
   this->Tooltip->SetShowImage(this->TooltipShowImage);
+  
+  // Assuming for now that an image stack has been set in one of the vtkMyPlotPoints
+  // We know the plot will only ever be in one of the corners
+  for (int i = 0; i < 4; ++i)
+    {
+    vtkstd::vector<vtkPlot*>::iterator it =
+        this->ChartPrivate->PlotCorners[i].begin();
+    for ( ; it !=this->ChartPrivate->PlotCorners[i].end(); ++it)
+      {
+      if ((*it)->IsA("vtkMyPlotPoints"))
+        {
+        vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast((*it));
+        if ( myPlot->GetNumberOfImages() > 0)
+          {
+          this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(0));
+          }
+        }
+      }
+    }
+  
 }
 
 //-----------------------------------------------------------------------------
 void vtkMyChartXY::SetTooltipImageScalingFactor(float ScalingFactor)
 {
   this->Tooltip->SetScalingFactor(ScalingFactor);
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartXY::SetTooltipImageTargetSize(int pixels)
+{
+  this->Tooltip->SetTargetSize(pixels);
 }
 
 //-----------------------------------------------------------------------------

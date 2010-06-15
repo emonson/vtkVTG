@@ -122,11 +122,14 @@ public:
   
   // Description
   // Set whether tooltip will show image or text
+  // Please set the image stack on the plot before this call so here
+  // I can initialize tooltip with an example image.
   virtual void SetTooltipShowImage(bool ShowImage);
 
   // Description
   // Set a size scaling factor for tooltip image
   virtual void SetTooltipImageScalingFactor(float ScalingFactor);
+  virtual void SetTooltipImageTargetSize(int pixels);
 
   // Description
   // ImageData associated with plot, which the tooltip in the chartXY will get

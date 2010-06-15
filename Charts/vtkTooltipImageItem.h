@@ -74,9 +74,11 @@ public:
 
   // Description
   // Image to be shown if ShowImage is true
+  // You'll want to set an image scaling factor or target (max dim) size
   virtual void SetTipImage(vtkImageData*);
   vtkSetMacro(ShowImage, bool);
-  vtkSetMacro(ScalingFactor, float);
+  virtual void SetScalingFactor(float factor);
+  virtual void SetTargetSize(int pixels);
   
 //BTX
 protected:
@@ -95,6 +97,8 @@ protected:
   vtkImageData* TipImage;
   bool ShowImage;
   float ScalingFactor;
+  float ImageWidth;
+  float ImageHeight;
 
 private:
   vtkTooltipImageItem(const vtkTooltipImageItem &); // Not implemented.
