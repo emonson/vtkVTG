@@ -1191,7 +1191,7 @@ bool vtkMyChartXY::MouseEnterEvent(const vtkContextMouseEvent &)
 //-----------------------------------------------------------------------------
 bool vtkMyChartXY::MouseMoveEvent(const vtkContextMouseEvent &mouse)
 {
-  if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
+  if (mouse.Button == vtkContextMouseEvent::RIGHT_BUTTON)
     {
     // Figure out how much the mouse has moved by in plot coordinates - pan
     double screenPos[2] = { mouse.ScreenPos[0], mouse.ScreenPos[1] };
@@ -1238,14 +1238,14 @@ bool vtkMyChartXY::MouseMoveEvent(const vtkContextMouseEvent &mouse)
     // Mark the scene as dirty
     this->Scene->SetDirty(true);
     }
-  else if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
+  else if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
     {
     this->BoxGeometry[0] = mouse.Pos[0] - this->BoxOrigin[0];
     this->BoxGeometry[1] = mouse.Pos[1] - this->BoxOrigin[1];
     // Mark the scene as dirty
     this->Scene->SetDirty(true);
     }
-  else if (mouse.Button == vtkContextMouseEvent::RIGHT_BUTTON)
+  else if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
     {
     this->BoxGeometry[0] = mouse.Pos[0] - this->BoxOrigin[0];
     this->BoxGeometry[1] = mouse.Pos[1] - this->BoxOrigin[1];
@@ -1350,7 +1350,12 @@ bool vtkMyChartXY::MouseLeaveEvent(const vtkContextMouseEvent &)
 bool vtkMyChartXY::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
 {
   this->Tooltip->SetVisible(false);
-  if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
+  if (mouse.Button == vtkContextMouseEvent::RIGHT_BUTTON)
+    {
+    // The mouse panning action.
+    return true;
+    }
+  else if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
     {
 		// Iterate over the axis images, see if we are inside of one
 		for (size_t i = 0; i < this->ChartPrivate->axisImages.size(); ++i)
@@ -1403,19 +1408,16 @@ bool vtkMyChartXY::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
 				return false;
 				}
 			}
-    // The mouse panning action.
-    return true;
+		
+		// Selection, for now at least...
+		this->BoxOrigin[0] = mouse.Pos[0];
+		this->BoxOrigin[1] = mouse.Pos[1];
+		this->BoxGeometry[0] = this->BoxGeometry[1] = 0.0f;
+		this->DrawBox = true;
+		return true;
+
     }
   else if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
-    {
-    // Selection, for now at least...
-    this->BoxOrigin[0] = mouse.Pos[0];
-    this->BoxOrigin[1] = mouse.Pos[1];
-    this->BoxGeometry[0] = this->BoxGeometry[1] = 0.0f;
-    this->DrawBox = true;
-    return true;
-    }
-  else if (mouse.Button == vtkContextMouseEvent::RIGHT_BUTTON)
     {
     // Right mouse button - zoom box
     this->BoxOrigin[0] = mouse.Pos[0];
@@ -1433,7 +1435,7 @@ bool vtkMyChartXY::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
 //-----------------------------------------------------------------------------
 bool vtkMyChartXY::MouseButtonReleaseEvent(const vtkContextMouseEvent &mouse)
 {
-  if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
+  if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
     {
     // Check whether a valid selection box was drawn
     this->BoxGeometry[0] = mouse.Pos[0] - this->BoxOrigin[0];
@@ -1503,7 +1505,7 @@ bool vtkMyChartXY::MouseButtonReleaseEvent(const vtkContextMouseEvent &mouse)
     this->Scene->SetDirty(true);
     return true;
     }
-  if (mouse.Button == vtkContextMouseEvent::RIGHT_BUTTON)
+  if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
     {
     // Check whether a valid zoom box was drawn
     this->BoxGeometry[0] = mouse.Pos[0] - this->BoxOrigin[0];
