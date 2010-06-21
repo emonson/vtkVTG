@@ -339,7 +339,11 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
   
   // NOTE: using this in DrawImage for center image for now -- should set for real...
   //  partly because borders now have to be set here and in SetBorders() call later
+  // NOTE: There's also something strange here -- if data is changed, then if I don't have
+  //  the preliminary positions set for the axis images, then they'll be placed
+  //  at the origin until the first render...
 	int origin[2] = {0,0};
+	// This first call takes care of center image right after data change...
 	if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
 		{
 		origin[0] = 20;
@@ -360,21 +364,15 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
 		if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
 			{
     	this->SetBorders(120, 20, 20, 50);
+			origin[0] = 20;
+			origin[1] = 50;
     	}
     else
     	{
     	this->SetBorders(60, 20, 80, 50);
-    	}
-		if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
-			{
-			origin[0] = 20;
-			origin[1] = 50;
-			}
-		else
-			{
 			origin[0] = 60;
 			origin[1] = this->Geometry[1] - 80 + 20;
-			}
+    	}
   
     // This is where we set the axes up too
     // Y axis (left)
