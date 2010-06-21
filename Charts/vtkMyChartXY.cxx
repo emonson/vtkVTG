@@ -49,6 +49,7 @@
 #include "vtkLookupTable.h"
 #include "vtkColorTransferFunction.h"
 #include "vtkImageMapToColors.h"
+#include "vtkPassThrough.h"
 #include "vtkPointData.h"
 #include "vtkVector.h"
 
@@ -180,6 +181,7 @@ vtkMyChartXY::vtkMyChartXY()
 
   this->AxisImageStack = NULL;
   this->NumImages = 0;
+  this->CenterImage = NULL;
 
   // ImageSlicing for TooltipImageItem
   // Always slicing in the Z direction
@@ -229,6 +231,20 @@ vtkMyChartXY::vtkMyChartXY()
   this->color->SetLookupTable(this->lut);
   this->color->SetInputConnection(this->reslice->GetOutputPort());
 
+	this->pass = vtkSmartPointer<vtkPassThrough>::New();
+	this->pass->DeepCopyInputOn();
+	// Set input when CenterImage is assigned
+	
+	// Create a greyscale lookup table for center image
+  this->lutBW = vtkSmartPointer<vtkLookupTable>::New();
+	this->lutBW->SetValueRange(0.0, 1.0); 			// from black to white
+	this->lutBW->SetSaturationRange(0.0, 0.0); 	// no color saturation
+	this->lutBW->SetRampToLinear();							// set range when colorBW intput set
+	this->lutBW->Build();
+  // Map the center image through the lookup table
+  this->colorBW = vtkSmartPointer<vtkImageMapToColors>::New();
+  this->colorBW->SetLookupTable(this->lutBW);
+  this->colorBW->SetInputConnection(this->pass->GetOutputPort());
 }
 
 //-----------------------------------------------------------------------------
@@ -323,6 +339,9 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
   bool recalculateTransform = false;
   this->CalculateBarPlots();
   
+  // NOTE: using this in DrawImage for center image for now -- should set for real...
+	int origin[2] = {20,50};
+  
   if (geometry[0] != this->Geometry[0] || geometry[1] != this->Geometry[1] ||
       this->MTime > this->ChartPrivate->axes[0]->GetMTime())
     {
@@ -351,30 +370,30 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     
     if (this->AxisImageStack)
       {
-			// Set axis images scaling factor
-			float pixelHeight = this->Point2[1] - this->Point1[1];
-			float sumOfYExts = this->NumImages*this->ChartPrivate->aiHeight;
-			float sumOfGaps = (this->NumImages-1)*this->ChartPrivate->aiGap;
-			float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
+			// NOTE: Leaving space here for center image (placed below axis images for now)
+			//   which should always be the same size as axis images
 			
+			// Set initial scaling factor even before Paint for initial positions
+			float pixelHeight = this->Point2[1] - this->Point1[1];
+			float sumOfYExts = (this->NumImages+1)*this->ChartPrivate->aiHeight;
+			float sumOfGaps = (this->NumImages-1+1)*this->ChartPrivate->aiGap;
+			float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
 			float XScale = (float)this->ChartPrivate->aiXSpace/(float)this->ChartPrivate->aiWidth;
 			
 			this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
 			
 			// Create the vector of axisImage objects
-			int origin[2] = {20,50};
+			float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
+			float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
 			for (int ii = 0; ii < this->NumImages; ii++) 
 				{
 				vtkAxisImagePrivate *ai = this->ChartPrivate->axisImages[ii];
-				// DEBUG -- setting temporary positions for testing
-				// Real positions set in Paint() routine to adjust for scene geometry
+				// NOTE: Adding one imHeight and gap to origin[1] to leave room for center image
 				ai->Point1[0] = origin[0];
-				ai->Point1[1] = origin[1] + 
-						ii*(this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor+this->ChartPrivate->aiGap);
-				ai->Point2[0] = ai->Point1[0] + 
-						this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
-				ai->Point2[1] = ai->Point1[1] + 
-						this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
+				ai->Point1[1] = origin[1] + scHeight + this->ChartPrivate->aiGap +
+						ii*(scHeight + this->ChartPrivate->aiGap);
+				ai->Point2[0] = ai->Point1[0] + scWidth;
+				ai->Point2[1] = ai->Point1[1] + scHeight;
 				}
 			}
     }
@@ -460,7 +479,7 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     painter->DrawLine(x0,y0,x0,y1);
     }
   
-  // Draw the axis images
+  // Draw the axis images and center image
   if (this->AxisImageStack)
     {
     for (int ii = 0; ii < this->NumImages; ii++)
@@ -469,6 +488,13 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
       		this->ChartPrivate->axisImages[ii]->Point1[1],
       		this->ChartPrivate->aiScalingFactor,
       		this->ChartPrivate->axisImages[ii]->Image);
+      }
+    
+    if (this->CenterImage)
+      {
+      painter->DrawImage(origin[0], origin[1],
+      		this->ChartPrivate->aiScalingFactor,
+      		this->colorBW->GetOutput());      
       }
     }
 
@@ -1734,10 +1760,13 @@ void vtkMyChartXY::SetAxisImageStack(vtkImageData* stack)
   const char* xName = plot->GetData()->GetInputArrayToProcess(0, table)->GetName();
   const char* yName = plot->GetData()->GetInputArrayToProcess(1, table)->GetName();
   
-  // Set initial scaling factor even before Paint
+  // NOTE: Leaving space here for center image (placed below axis images for now)
+  //   which should always be the same size as axis images
+  
+  // Set initial scaling factor even before Paint for initial positions
   float pixelHeight = this->Point2[1] - this->Point1[1];
-  float sumOfYExts = this->NumImages*this->ChartPrivate->aiHeight;
-  float sumOfGaps = (this->NumImages-1)*this->ChartPrivate->aiGap;
+  float sumOfYExts = (this->NumImages+1)*this->ChartPrivate->aiHeight;
+  float sumOfGaps = (this->NumImages-1+1)*this->ChartPrivate->aiGap;
   float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
   
   float XScale = (float)this->ChartPrivate->aiXSpace/(float)this->ChartPrivate->aiWidth;
@@ -1746,19 +1775,21 @@ void vtkMyChartXY::SetAxisImageStack(vtkImageData* stack)
   
   // Create the vector of axisImage objects
   int origin[2] = {20,50};
+  float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
+  float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
   for (int ii = 0; ii < this->NumImages; ii++) 
     {
     vtkAxisImagePrivate *ai = new vtkAxisImagePrivate;
     ai->Image->DeepCopy(this->GetImageAtIndex(ii));
-    // DEBUG -- setting temporary positions for testing
     // Real positions set in Paint() routine to adjust for scene geometry
+    // NOTE: Doesn't crash if you remove this, but for some reason images show
+    //   up at origin until next render (mouse enter) if this is deleted...
+    // Adding one imHeight and gap to origin[1] to leave room for center image
     ai->Point1[0] = origin[0];
-    ai->Point1[1] = origin[1] + 
-    		ii*(this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor+this->ChartPrivate->aiGap);
-    ai->Point2[0] = ai->Point1[0] + 
-    		this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
-    ai->Point2[1] = ai->Point1[1] + 
-    		this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
+    ai->Point1[1] = origin[1] + scHeight + this->ChartPrivate->aiGap +
+    		ii*(scHeight + this->ChartPrivate->aiGap);
+    ai->Point2[0] = ai->Point1[0] + scWidth;
+    ai->Point2[1] = ai->Point1[1] + scHeight;
     ai->ColumnIndex = col_idxs.at(ii);
     this->ChartPrivate->axisImages.push_back(ai);
     
@@ -1773,6 +1804,24 @@ void vtkMyChartXY::SetAxisImageStack(vtkImageData* stack)
       this->ChartPrivate->currentYai = ii;
       }
     }
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartXY::SetCenterImage(vtkImageData* image)
+{
+  this->CenterImage = image;
+  this->CenterImage->UpdateInformation();
+  // Set input to colorBW filter
+  this->pass->SetInput(this->CenterImage);
+  this->pass->Modified();
+	// Set range of lutBW
+	double i_range[2];
+	this->CenterImage->GetPointData()->GetArray("Intensity")->GetRange(i_range);
+  this->lutBW->SetRange(i_range);
+  this->lutBW->Modified();
+  // Not calling update before draw, so do it here.
+  this->colorBW->UpdateWholeExtent();
+  this->colorBW->Update();
 }
 
 //-----------------------------------------------------------------------------

@@ -308,7 +308,8 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     for (int i = 0; i < this->VisibleColumns->GetNumberOfTuples(); i+=this->NumPerSet)
       {
       if ((i+this->NumPerSet-1) <= static_cast<int>(this->Storage->Axes.size()) &&
-          (i/this->NumPerSet == this->CurrentScale+2))	// keep next scale visible
+          (i/this->NumPerSet == this->CurrentScale+1))	// opaque on next scale
+          // (i/this->NumPerSet == this->CurrentScale+2))	// keep next scale visible
         {
         vtkAxis* axis0 = this->Storage->Axes[i];
         vtkAxis* axis1 = this->Storage->Axes[this->Storage->Axes.size()-1];

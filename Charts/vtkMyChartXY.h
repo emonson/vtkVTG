@@ -39,6 +39,7 @@ class vtkMatrix4x4;
 class vtkImageReslice;
 class vtkLookupTable;
 class vtkImageMapToColors;
+class vtkPassThrough;
 class vtkAxisImagePrivate;
 class vtkMyChartXYPrivate; // Private class to keep my STL vector in...
 
@@ -135,6 +136,7 @@ public:
   // ImageData associated with plot, which the tooltip in the chartXY will get
   // a slice of to display when hovering over points (needs to be just 2d)
   virtual void SetAxisImageStack(vtkImageData*);
+  virtual void SetCenterImage(vtkImageData*);
   virtual int GetNumberOfImages();
   virtual vtkImageData* GetImageAtIndex(int imageId);
   
@@ -232,6 +234,7 @@ protected:
   // ImageData associated with the axes. This should be in a z-stack.
   vtkImageData* AxisImageStack;
   int NumImages;
+  vtkImageData* CenterImage;
 
   // Description:
   // Does the plot area transform need to be recalculated?
@@ -292,10 +295,16 @@ private:
 
   void ZoomInAxes(vtkAxis *x, vtkAxis *y, float *orign, float *max);
 
+  // Pipeline for displaying axis images
   vtkSmartPointer<vtkMatrix4x4> resliceAxes;
   vtkSmartPointer<vtkImageReslice> reslice;
   vtkSmartPointer<vtkLookupTable> lut;
   vtkSmartPointer<vtkImageMapToColors> color;
+  // Pipeline for displaying center image
+  vtkSmartPointer<vtkPassThrough> pass;
+  vtkSmartPointer<vtkLookupTable> lutBW;
+  vtkSmartPointer<vtkImageMapToColors> colorBW;
+  
 
 //ETX
 };
