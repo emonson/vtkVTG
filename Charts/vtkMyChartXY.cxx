@@ -539,7 +539,26 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
 			}
 		else
 			{
-			
+			int xI = this->ChartPrivate->currentXai;
+			int x0 = this->ChartPrivate->axisImages[xI]->Point1[0];
+			int y0 = this->ChartPrivate->axisImages[xI]->Point1[1]-2;
+			int x1 = this->ChartPrivate->axisImages[xI]->Point2[0];
+			int y1 = this->ChartPrivate->axisImages[xI]->Point1[1]-2;
+			painter->GetBrush()->SetColor(255, 255, 255, 0);
+			painter->GetPen()->SetColor(0, 0, 0, 100);
+			painter->GetPen()->SetWidth(2.0);
+			painter->DrawLine(x0,y0,x1,y1);
+
+			int yI = this->ChartPrivate->currentYai;
+			x0 = this->ChartPrivate->axisImages[yI]->Point1[0]-2;
+			y0 = this->ChartPrivate->axisImages[yI]->Point1[1];
+			x1 = this->ChartPrivate->axisImages[yI]->Point1[0]-2;
+			y1 = this->ChartPrivate->axisImages[yI]->Point2[1];
+			painter->GetBrush()->SetColor(255, 255, 255, 0);
+			painter->GetPen()->SetColor(0, 0, 0, 100);
+			painter->GetPen()->SetWidth(2.0);
+			painter->DrawLine(x0,y0,x1,y1);
+
 			}
     }
   
