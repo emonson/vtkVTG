@@ -138,6 +138,8 @@ public:
   virtual void SetCenterImage(vtkImageData*);
   virtual int GetNumberOfImages();
   virtual vtkImageData* GetImageAtIndex(int imageId);
+  virtual void SetAxisImagesVertical();
+  virtual void SetAxisImagesHorizontal();
   
   // Description:
   // Set the vtkHighlightLink for the chart.
@@ -175,6 +177,13 @@ public:
   // Description:
   // Mouse wheel event, positive delta indicates forward movement of the wheel.
   virtual bool MouseWheelEvent(const vtkContextMouseEvent &mouse, int delta);
+
+  // Description:
+  // Enum containing whether axis images are 
+  enum {
+    VERTICAL = 0,
+    HORIZONTAL
+  };
 //ETX
 
   // Description:

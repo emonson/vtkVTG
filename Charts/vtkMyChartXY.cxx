@@ -110,8 +110,10 @@ public:
     this->aiScalingFactor = 1.0;
     this->aiWidth = 0;
     this->aiHeight = 0;
+    this->aiOrientation = vtkMyChartXY::VERTICAL;	// set default here
     this->aiGap = 10;			// Set default here
-    this->aiXSpace = 40;	// Set default here
+    this->aiXSpace = 40;	// Set default here : used if axis images vertical
+    this->aiYSpace = 40;	// Set default here : used if axis images horizontal
     this->currentXai = 0;
     this->currentYai = 1;
     }
@@ -126,8 +128,9 @@ public:
   
   vtkstd::vector<vtkAxisImagePrivate *> axisImages;
   float aiScalingFactor;
-  int aiWidth, aiHeight, aiGap, aiXSpace;
+  int aiWidth, aiHeight, aiGap, aiXSpace, aiYSpace;
   int currentXai, currentYai;
+  int aiOrientation;
 };
 
 //-----------------------------------------------------------------------------
@@ -335,7 +338,18 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
   this->CalculateBarPlots();
   
   // NOTE: using this in DrawImage for center image for now -- should set for real...
+  //  partly because borders now have to be set here and in SetBorders() call later
 	int origin[2] = {20,50};
+	if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
+		{
+		origin[0] = 20;
+		origin[1] = 50;
+		}
+	else
+		{
+		origin[0] = 60;
+		origin[1] = this->Geometry[1] - 80 + 20;
+		}
   
   if (geometry[0] != this->Geometry[0] || geometry[1] != this->Geometry[1] ||
       this->MTime > this->ChartPrivate->axes[0]->GetMTime())
@@ -343,7 +357,14 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     // Take up the entire window right now, this could be made configurable
     this->SetGeometry(geometry);
     // Borders (Left, Right, Top, Bottom)
-    this->SetBorders(120, 20, 20, 50);
+		if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
+			{
+    	this->SetBorders(120, 20, 20, 50);
+    	}
+    else
+    	{
+    	this->SetBorders(60, 20, 80, 50);
+    	}
     // This is where we set the axes up too
     // Y axis (left)
     this->ChartPrivate->axes[0]->SetPoint1(this->Point1[0], this->Point1[1]);
@@ -365,30 +386,62 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     
     if (this->AxisImageStack)
       {
-			// NOTE: Leaving space here for center image (placed below axis images for now)
-			//   which should always be the same size as axis images
-			
-			// Set initial scaling factor even before Paint for initial positions
-			float pixelHeight = this->Point2[1] - this->Point1[1];
-			float sumOfYExts = (this->NumImages+1)*this->ChartPrivate->aiHeight;
-			float sumOfGaps = (this->NumImages-1+1)*this->ChartPrivate->aiGap;
-			float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
-			float XScale = (float)this->ChartPrivate->aiXSpace/(float)this->ChartPrivate->aiWidth;
-			
-			this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
-			
-			// Create the vector of axisImage objects
-			float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
-			float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
-			for (int ii = 0; ii < this->NumImages; ii++) 
+			if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
 				{
-				vtkAxisImagePrivate *ai = this->ChartPrivate->axisImages[ii];
-				// NOTE: Adding one imHeight and gap to origin[1] to leave room for center image
-				ai->Point1[0] = origin[0];
-				ai->Point1[1] = origin[1] + scHeight + this->ChartPrivate->aiGap +
-						ii*(scHeight + this->ChartPrivate->aiGap);
-				ai->Point2[0] = ai->Point1[0] + scWidth;
-				ai->Point2[1] = ai->Point1[1] + scHeight;
+				// NOTE: Leaving space here for center image (placed below axis images for now)
+				//   which should always be the same size as axis images
+				
+				// Set initial scaling factor even before Paint for initial positions
+				float pixelHeight = this->Point2[1] - this->Point1[1];
+				float sumOfYExts = (this->NumImages+1)*this->ChartPrivate->aiHeight;
+				float sumOfGaps = (this->NumImages-1+1)*this->ChartPrivate->aiGap;
+				float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
+				float XScale = (float)this->ChartPrivate->aiXSpace/(float)this->ChartPrivate->aiWidth;
+				
+				this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
+				
+				// Create the vector of axisImage objects
+				float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
+				float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
+				for (int ii = 0; ii < this->NumImages; ii++) 
+					{
+					vtkAxisImagePrivate *ai = this->ChartPrivate->axisImages[ii];
+					// NOTE: Adding one imHeight and gap to origin[1] to leave room for center image
+					ai->Point1[0] = origin[0];
+					ai->Point1[1] = origin[1] + scHeight + this->ChartPrivate->aiGap +
+							ii*(scHeight + this->ChartPrivate->aiGap);
+					ai->Point2[0] = ai->Point1[0] + scWidth;
+					ai->Point2[1] = ai->Point1[1] + scHeight;
+					}
+				}
+			else
+				{
+				// NOTE: Leaving space here for center image (placed left of axis images for now)
+				//   which should always be the same size as axis images
+				
+				// Set initial scaling factor even before Paint for initial positions
+				float pixelWidth = this->Point2[0] - this->Point1[0];
+				float sumOfXExts = (this->NumImages+1)*this->ChartPrivate->aiWidth;
+				float sumOfGaps = (this->NumImages-1+1)*this->ChartPrivate->aiGap;
+				float XScale = (pixelWidth-sumOfGaps)/sumOfXExts;
+				float YScale = (float)this->ChartPrivate->aiYSpace/(float)this->ChartPrivate->aiHeight;
+				
+				this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
+				
+				// Create the vector of axisImage objects
+				int origin[2] = {this->Point1[0],this->Point2[1]+20};
+				float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
+				float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
+				for (int ii = 0; ii < this->NumImages; ii++) 
+					{
+					vtkAxisImagePrivate *ai = this->ChartPrivate->axisImages[ii];
+					// Adding one imHeight and gap to origin[1] to leave room for center image
+					ai->Point1[0] = origin[0] + scHeight + this->ChartPrivate->aiGap +
+							ii*(scHeight + this->ChartPrivate->aiGap);
+					ai->Point1[1] = origin[1];
+					ai->Point2[0] = ai->Point1[0] + scWidth;
+					ai->Point2[1] = ai->Point1[1] + scHeight;
+					}
 				}
 			}
     }
@@ -460,18 +513,25 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
   // Draw the XY association graphics behind axis images
   if (this->AxisImageStack)
     {
-    int xI = this->ChartPrivate->currentXai;
-    int yI = this->ChartPrivate->currentYai;
-    int x0 = this->ChartPrivate->axisImages[0]->Point1[0] - 5;
-    int y0 = this->ChartPrivate->axisImages[xI]->Point1[1] + static_cast<int>((float)this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor/2.0);
-    int x1 = this->ChartPrivate->axisImages[0]->Point2[0] + 5;
-    int y1 = this->ChartPrivate->axisImages[yI]->Point1[1] + static_cast<int>((float)this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor/2.0);
-    painter->GetBrush()->SetColor(255, 255, 255, 0);
-    painter->GetPen()->SetColor(0, 0, 0, 100);
-    painter->GetPen()->SetWidth(2.0);
-    painter->DrawLine(x0,y0,x0+10,y0);
-    painter->DrawLine(x0,y1,x0+10,y1);
-    painter->DrawLine(x0,y0,x0,y1);
+		if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
+			{
+			int xI = this->ChartPrivate->currentXai;
+			int yI = this->ChartPrivate->currentYai;
+			int x0 = this->ChartPrivate->axisImages[0]->Point1[0] - 5;
+			int y0 = this->ChartPrivate->axisImages[xI]->Point1[1] + static_cast<int>((float)this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor/2.0);
+			int x1 = this->ChartPrivate->axisImages[0]->Point2[0] + 5;
+			int y1 = this->ChartPrivate->axisImages[yI]->Point1[1] + static_cast<int>((float)this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor/2.0);
+			painter->GetBrush()->SetColor(255, 255, 255, 0);
+			painter->GetPen()->SetColor(0, 0, 0, 100);
+			painter->GetPen()->SetWidth(2.0);
+			painter->DrawLine(x0,y0,x0+10,y0);
+			painter->DrawLine(x0,y1,x0+10,y1);
+			painter->DrawLine(x0,y0,x0,y1);
+			}
+		else
+			{
+			
+			}
     }
   
   // Draw the axis images and center image
@@ -1187,17 +1247,34 @@ bool vtkMyChartXY::Hit(const vtkContextMouseEvent &mouse)
     return true;
     }
   // In axis images area
-  else if (mouse.ScreenPos[0] > this->ChartPrivate->axisImages[0]->Point1[0] &&
-           mouse.ScreenPos[0] < this->ChartPrivate->axisImages[0]->Point2[0] &&
-           mouse.ScreenPos[1] > this->ChartPrivate->axisImages[0]->Point1[1] &&
-           mouse.ScreenPos[1] < this->ChartPrivate->axisImages[maxI]->Point2[1])
-    {
-    return true;
-    }
-  else
-    {
-    return false;
-    }
+	if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
+		{
+		if (mouse.ScreenPos[0] > this->ChartPrivate->axisImages[0]->Point1[0] &&
+						 mouse.ScreenPos[0] < this->ChartPrivate->axisImages[0]->Point2[0] &&
+						 mouse.ScreenPos[1] > this->ChartPrivate->axisImages[0]->Point1[1] &&
+						 mouse.ScreenPos[1] < this->ChartPrivate->axisImages[maxI]->Point2[1])
+			{
+			return true;
+			}
+		else
+			{
+			return false;
+			}
+		}
+	else
+		{
+		if (mouse.ScreenPos[0] > this->ChartPrivate->axisImages[0]->Point1[0] &&
+						 mouse.ScreenPos[0] < this->ChartPrivate->axisImages[maxI]->Point2[0] &&
+						 mouse.ScreenPos[1] > this->ChartPrivate->axisImages[0]->Point1[1] &&
+						 mouse.ScreenPos[1] < this->ChartPrivate->axisImages[0]->Point2[1])
+			{
+			return true;
+			}
+		else
+			{
+			return false;
+			}
+		}
 }
 
 //-----------------------------------------------------------------------------
@@ -1755,50 +1832,100 @@ void vtkMyChartXY::SetAxisImageStack(vtkImageData* stack)
   const char* xName = plot->GetData()->GetInputArrayToProcess(0, table)->GetName();
   const char* yName = plot->GetData()->GetInputArrayToProcess(1, table)->GetName();
   
-  // NOTE: Leaving space here for center image (placed below axis images for now)
-  //   which should always be the same size as axis images
-  
-  // Set initial scaling factor even before Paint for initial positions
-  float pixelHeight = this->Point2[1] - this->Point1[1];
-  float sumOfYExts = (this->NumImages+1)*this->ChartPrivate->aiHeight;
-  float sumOfGaps = (this->NumImages-1+1)*this->ChartPrivate->aiGap;
-  float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
-  
-  float XScale = (float)this->ChartPrivate->aiXSpace/(float)this->ChartPrivate->aiWidth;
-  
-  this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
-  
-  // Create the vector of axisImage objects
-  int origin[2] = {20,50};
-  float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
-  float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
-  for (int ii = 0; ii < this->NumImages; ii++) 
-    {
-    vtkAxisImagePrivate *ai = new vtkAxisImagePrivate;
-    ai->Image->DeepCopy(this->GetImageAtIndex(ii));
-    // Real positions set in Paint() routine to adjust for scene geometry
-    // NOTE: Doesn't crash if you remove this, but for some reason images show
-    //   up at origin until next render (mouse enter) if this is deleted...
-    // Adding one imHeight and gap to origin[1] to leave room for center image
-    ai->Point1[0] = origin[0];
-    ai->Point1[1] = origin[1] + scHeight + this->ChartPrivate->aiGap +
-    		ii*(scHeight + this->ChartPrivate->aiGap);
-    ai->Point2[0] = ai->Point1[0] + scWidth;
-    ai->Point2[1] = ai->Point1[1] + scHeight;
-    ai->ColumnIndex = col_idxs.at(ii);
-    this->ChartPrivate->axisImages.push_back(ai);
-    
-    // Keep track of current X and Y data as axisImages indices
-    const char *col_name = table->GetColumnName(col_idxs.at(ii));
-    if (strcmp(col_name, xName) == 0) 
-    	{
-    	this->ChartPrivate->currentXai = ii;
-    	}
-    if (strcmp(col_name, yName) == 0)
-      {
-      this->ChartPrivate->currentYai = ii;
-      }
-    }
+	if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
+	  {
+		// NOTE: Leaving space here for center image (placed below axis images for now)
+		//   which should always be the same size as axis images
+		
+		// Set initial scaling factor even before Paint for initial positions
+		float pixelHeight = this->Point2[1] - this->Point1[1];
+		float sumOfYExts = (this->NumImages+1)*this->ChartPrivate->aiHeight;
+		float sumOfGaps = (this->NumImages-1+1)*this->ChartPrivate->aiGap;
+		float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
+		
+		float XScale = (float)this->ChartPrivate->aiXSpace/(float)this->ChartPrivate->aiWidth;
+		
+		this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
+		
+		// Create the vector of axisImage objects
+		int origin[2] = {20,50};
+		float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
+		float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
+		for (int ii = 0; ii < this->NumImages; ii++) 
+			{
+			vtkAxisImagePrivate *ai = new vtkAxisImagePrivate;
+			ai->Image->DeepCopy(this->GetImageAtIndex(ii));
+			// Real positions set in Paint() routine to adjust for scene geometry
+			// NOTE: Doesn't crash if you remove this, but for some reason images show
+			//   up at origin until next render (mouse enter) if this is deleted...
+			// Adding one imHeight and gap to origin[1] to leave room for center image
+			ai->Point1[0] = origin[0];
+			ai->Point1[1] = origin[1] + scHeight + this->ChartPrivate->aiGap +
+					ii*(scHeight + this->ChartPrivate->aiGap);
+			ai->Point2[0] = ai->Point1[0] + scWidth;
+			ai->Point2[1] = ai->Point1[1] + scHeight;
+			ai->ColumnIndex = col_idxs.at(ii);
+			this->ChartPrivate->axisImages.push_back(ai);
+			
+			// Keep track of current X and Y data as axisImages indices
+			const char *col_name = table->GetColumnName(col_idxs.at(ii));
+			if (strcmp(col_name, xName) == 0) 
+				{
+				this->ChartPrivate->currentXai = ii;
+				}
+			if (strcmp(col_name, yName) == 0)
+				{
+				this->ChartPrivate->currentYai = ii;
+				}
+			}
+		}
+	else
+	  {
+		// NOTE: Leaving space here for center image (placed left of axis images for now)
+		//   which should always be the same size as axis images
+		
+		// Set initial scaling factor even before Paint for initial positions
+		float pixelWidth = this->Point2[0] - this->Point1[0];
+		float sumOfXExts = (this->NumImages+1)*this->ChartPrivate->aiWidth;
+		float sumOfGaps = (this->NumImages-1+1)*this->ChartPrivate->aiGap;
+		float XScale = (pixelWidth-sumOfGaps)/sumOfXExts;
+		
+		float YScale = (float)this->ChartPrivate->aiYSpace/(float)this->ChartPrivate->aiHeight;
+		
+		this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
+		
+		// Create the vector of axisImage objects
+		int origin[2] = {this->Point1[0],this->Point2[1]+20};
+		float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
+		float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
+		for (int ii = 0; ii < this->NumImages; ii++) 
+			{
+			vtkAxisImagePrivate *ai = new vtkAxisImagePrivate;
+			ai->Image->DeepCopy(this->GetImageAtIndex(ii));
+			// Real positions set in Paint() routine to adjust for scene geometry
+			// NOTE: Doesn't crash if you remove this, but for some reason images show
+			//   up at origin until next render (mouse enter) if this is deleted...
+			// Adding one imHeight and gap to origin[1] to leave room for center image
+			ai->Point1[0] = origin[0] + scHeight + this->ChartPrivate->aiGap +
+					ii*(scHeight + this->ChartPrivate->aiGap);
+			ai->Point1[1] = origin[1];
+			ai->Point2[0] = ai->Point1[0] + scWidth;
+			ai->Point2[1] = ai->Point1[1] + scHeight;
+			ai->ColumnIndex = col_idxs.at(ii);
+			this->ChartPrivate->axisImages.push_back(ai);
+			
+			// Keep track of current X and Y data as axisImages indices
+			const char *col_name = table->GetColumnName(col_idxs.at(ii));
+			if (strcmp(col_name, xName) == 0) 
+				{
+				this->ChartPrivate->currentXai = ii;
+				}
+			if (strcmp(col_name, yName) == 0)
+				{
+				this->ChartPrivate->currentYai = ii;
+				}
+			}
+	  }
 }
 
 //-----------------------------------------------------------------------------
@@ -1867,6 +1994,18 @@ int vtkMyChartXY::GetNumberOfImages()
     {
     return 0;
     }
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartXY::SetAxisImagesVertical()
+{
+  this->ChartPrivate->aiOrientation = vtkMyChartXY::VERTICAL;
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartXY::SetAxisImagesHorizontal()
+{
+  this->ChartPrivate->aiOrientation = vtkMyChartXY::HORIZONTAL;
 }
 
 //-----------------------------------------------------------------------------
