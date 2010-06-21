@@ -50,10 +50,10 @@ INCLUDE_DIRECTORIES (${VTKVTG_SOURCE_DIR}/Widgets)
 # Build examples too ?
 #
 
-# OPTION(BUILD_EXAMPLES "Build examples." ON)
-# IF (BUILD_EXAMPLES)
-#   SUBDIRS(Examples)
-# ENDIF (BUILD_EXAMPLES)
+OPTION(BUILD_EXAMPLES "Build examples." ON)
+IF (BUILD_EXAMPLES)
+  SUBDIRS(Examples)
+ENDIF (BUILD_EXAMPLES)
 
 #
 # Common configuration settings
