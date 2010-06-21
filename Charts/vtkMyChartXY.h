@@ -39,7 +39,6 @@ class vtkMatrix4x4;
 class vtkImageReslice;
 class vtkLookupTable;
 class vtkImageMapToColors;
-class vtkPassThrough;
 class vtkAxisImagePrivate;
 class vtkMyChartXYPrivate; // Private class to keep my STL vector in...
 
@@ -301,7 +300,6 @@ private:
   vtkSmartPointer<vtkLookupTable> lut;
   vtkSmartPointer<vtkImageMapToColors> color;
   // Pipeline for displaying center image
-  vtkSmartPointer<vtkPassThrough> pass;
   vtkSmartPointer<vtkLookupTable> lutBW;
   vtkSmartPointer<vtkImageMapToColors> colorBW;
   

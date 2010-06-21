@@ -49,7 +49,6 @@
 #include "vtkLookupTable.h"
 #include "vtkColorTransferFunction.h"
 #include "vtkImageMapToColors.h"
-#include "vtkPassThrough.h"
 #include "vtkPointData.h"
 #include "vtkVector.h"
 
@@ -231,10 +230,6 @@ vtkMyChartXY::vtkMyChartXY()
   this->color->SetLookupTable(this->lut);
   this->color->SetInputConnection(this->reslice->GetOutputPort());
 
-	this->pass = vtkSmartPointer<vtkPassThrough>::New();
-	this->pass->DeepCopyInputOn();
-	// Set input when CenterImage is assigned
-	
 	// Create a greyscale lookup table for center image
   this->lutBW = vtkSmartPointer<vtkLookupTable>::New();
 	this->lutBW->SetValueRange(0.0, 1.0); 			// from black to white
@@ -244,7 +239,7 @@ vtkMyChartXY::vtkMyChartXY()
   // Map the center image through the lookup table
   this->colorBW = vtkSmartPointer<vtkImageMapToColors>::New();
   this->colorBW->SetLookupTable(this->lutBW);
-  this->colorBW->SetInputConnection(this->pass->GetOutputPort());
+	// Set input when CenterImage is assigned
 }
 
 //-----------------------------------------------------------------------------
@@ -1812,8 +1807,8 @@ void vtkMyChartXY::SetCenterImage(vtkImageData* image)
   this->CenterImage = image;
   this->CenterImage->UpdateInformation();
   // Set input to colorBW filter
-  this->pass->SetInput(this->CenterImage);
-  this->pass->Modified();
+  this->colorBW->SetInput(this->CenterImage);
+  this->colorBW->Modified();
 	// Set range of lutBW
 	double i_range[2];
 	this->CenterImage->GetPointData()->GetArray("Intensity")->GetRange(i_range);
