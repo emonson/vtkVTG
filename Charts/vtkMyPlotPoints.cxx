@@ -198,7 +198,7 @@ bool vtkMyPlotPoints::Paint(vtkContext2D *painter)
       {
       this->GeneraterMarker(static_cast<int>(width+2.7), true);
 
-      painter->GetPen()->SetColor(255, 0, 0, 200);
+      painter->GetPen()->SetColor(255, 0, 0, 154);
       painter->GetPen()->SetWidth(width+2.7);
 
       vtkIdType id = 0;
@@ -224,7 +224,7 @@ bool vtkMyPlotPoints::Paint(vtkContext2D *painter)
       {
       this->GeneraterMarker(static_cast<int>(width+2.7), true);
 
-      painter->GetPen()->SetColor(0, 128, 255, 200);
+      painter->GetPen()->SetColor(0, 128, 255, 154);
       painter->GetPen()->SetWidth(width+2.7);
 
       vtkIdType id = 0;

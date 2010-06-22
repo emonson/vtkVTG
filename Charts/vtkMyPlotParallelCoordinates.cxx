@@ -211,7 +211,7 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
   // Now draw the selected lines
   if (this->Selection)
     {
-    painter->GetPen()->SetColor(255, 0, 0, 100);
+    painter->GetPen()->SetColor(255, 0, 0, 154);
     for (vtkIdType i = 0; i < this->Selection->GetNumberOfTuples(); ++i)
       {
       for (size_t j = 0; j < cols; ++j)
@@ -226,7 +226,7 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
   // Now draw any highlight selected lines (coming from outside the corresponding chart)
   if (this->HighlightSelection)
     {
-    painter->GetPen()->SetColor(0, 128, 255, 100);
+    painter->GetPen()->SetColor(0, 128, 255, 154);
     painter->GetPen()->SetWidth(width*1.15);
     for (vtkIdType i = 0; i < this->HighlightSelection->GetNumberOfTuples(); ++i)
       {

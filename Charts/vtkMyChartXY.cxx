@@ -213,11 +213,33 @@ vtkMyChartXY::vtkMyChartXY()
   vtkSmartPointer<vtkColorTransferFunction> ctf = 
   		vtkSmartPointer<vtkColorTransferFunction>::New();
 	ctf->SetColorSpaceToDiverging();
-	float c_blue[3] = {59.0/255.0, 76.0/255.0, 192.0/255.0};
-	float c_red[3] = {180.0/255.0, 4.0/255.0, 38.0/255.0};
-	ctf->AddRGBPoint(0.0, c_blue[0], c_blue[1], c_blue[2]);	// blue
-	ctf->AddRGBPoint(1.0, c_red[0], c_red[1], c_red[2]);		// red
+// 	float c_lo[3] = {59.0/255.0, 76.0/255.0, 192.0/255.0}; // Blue-red
+// 	float c_hi[3] = {180.0/255.0, 4.0/255.0, 38.0/255.0};
+// 	float c_lo[3] = {1.0/255.0, 102.0/255.0, 94.0/255.0};	// Colorbrewer BrBG 7
+// 	float c_hi[3] = {140.0/255.0, 81.0/255.0, 10.0/255.0};
+// 	float c_lo[3] = {27.0/255.0, 120.0/255.0, 55.0/255.0}; 	// Colorbrewer PRGn 7
+// 	float c_hi[3] = {118.0/255.0, 42.0/255.0, 131.0/255.0};
+// 	float c_lo[3] = {84.0/255.0, 39.0/255.0, 136.0/255.0}; 	// Colorbrewer PuOr 7
+// 	float c_hi[3] = {230.0/255.0, 97.0/255.0, 1.0/255.0}; 
+// 	ctf->AddRGBPoint(0.0, c_lo[0], c_lo[1], c_lo[2]);	// blue
+// 	ctf->AddRGBPoint(1.0, c_hi[0], c_hi[1], c_hi[2]);		// red
 	
+	vtkstd::vector< vtkstd::vector<float> > cl;
+	float cc6[] = {140, 81, 10}; 		vtkstd::vector<float> cc6v(cc6,cc6+7); cl.push_back(cc6v);
+	float cc5[] = {216, 179, 101}; 	vtkstd::vector<float> cc5v(cc5,cc5+7); cl.push_back(cc5v);
+	float cc4[] = {246, 232, 195}; 	vtkstd::vector<float> cc4v(cc4,cc4+7); cl.push_back(cc4v);
+	float cc3[] = {245, 245, 245}; 	vtkstd::vector<float> cc3v(cc3,cc3+7); cl.push_back(cc3v);
+	float cc2[] = {199, 234, 229}; 	vtkstd::vector<float> cc2v(cc2,cc2+7); cl.push_back(cc2v);
+	float cc1[] = {90, 180, 172}; 	vtkstd::vector<float> cc1v(cc1,cc1+7); cl.push_back(cc1v);
+	float cc0[] = {1, 102, 94}; 		vtkstd::vector<float> cc0v(cc0,cc0+7); cl.push_back(cc0v);
+	
+	float vv[] = {6,5,4,3,2,1,0};
+	for (int ii = 0; ii < 7; ii++) 
+		{
+		float pt = vv[ii]/6.0;
+		ctf->AddRGBPoint(pt, cl.at(ii)[0]/255.0f, cl.at(ii)[1]/255.0f, cl.at(ii)[2]/255.0f);
+		}
+
 	double ramp_val; 
 	double cc[3];
   for (int ii = 0; ii < lutNum; ii++ )
