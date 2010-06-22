@@ -113,7 +113,7 @@ public:
     this->aiOrientation = vtkMyChartXY::VERTICAL;	// set default here
     this->aiGap = 10;			// Set default here
     this->aiXSpace = 40;	// Set default here : used if axis images vertical
-    this->aiYSpace = 40;	// Set default here : used if axis images horizontal
+    this->aiYSpace = 60;	// Set default here : used if axis images horizontal
     this->currentXai = 0;
     this->currentYai = 1;
     }
@@ -352,7 +352,7 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
 	else
 		{
 		origin[0] = 60;
-		origin[1] = this->Geometry[1] - 80 + 20;
+		origin[1] = this->Geometry[1] - 160 + 50;
 		}
 	
   if (geometry[0] != this->Geometry[0] || geometry[1] != this->Geometry[1] ||
@@ -369,9 +369,9 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     	}
     else
     	{
-    	this->SetBorders(60, 20, 80, 50);
+    	this->SetBorders(60, 20, 160, 80);
 			origin[0] = 60;
-			origin[1] = this->Geometry[1] - 80 + 20;
+			origin[1] = this->Geometry[1] - 160 + 50;
     	}
   
     // This is where we set the axes up too
@@ -438,7 +438,6 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
 				this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
 				
 				// Create the vector of axisImage objects
-				int origin[2] = {this->Point1[0],this->Point2[1]+20};
 				float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
 				float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
 				for (int ii = 0; ii < this->NumImages; ii++) 
@@ -1923,7 +1922,7 @@ void vtkMyChartXY::SetAxisImageStack(vtkImageData* stack)
 		this->ChartPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
 		
 		// Create the vector of axisImage objects
-		int origin[2] = {this->Point1[0],this->Point2[1]+20};
+		int origin[2] = {this->Point1[0],this->Point2[1]+50};
 		float scWidth = this->ChartPrivate->aiWidth*this->ChartPrivate->aiScalingFactor;
 		float scHeight = this->ChartPrivate->aiHeight*this->ChartPrivate->aiScalingFactor;
 		for (int ii = 0; ii < this->NumImages; ii++) 
