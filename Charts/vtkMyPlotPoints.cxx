@@ -495,9 +495,9 @@ bool compVector3fX(const vtkVector3f& v1, const vtkVector3f& v2)
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
+int vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
                                     const vtkVector2f& tol,
-                                    vtkVector3f* location)
+                                    vtkVector2f* location)
 {
   // Right now doing a simple bisector search of the array. This should be
   // revisited. Assumes the x axis is sorted, which should always be true for
@@ -537,15 +537,17 @@ bool vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
   low = vtkstd::lower_bound(v.begin(), v.end(), lowPoint, compVector3fX);
 
   // Now consider the y axis
-  float highX = point.X() + tol.X();
+    float highX = point.X() + tol.X();
   while (low != v.end())
     {
     if (inRange23(point, tol, *low))
       {
       // If we're in range, the value that's interesting is the absolute value of 
       // the "wedge" at the closest point, not the base or extent by themselves
-      *location = *low;
-      return true;
+      // *location = *low;
+      location->SetX((*low).X());
+      location->SetY((*low).Y());
+      return static_cast<int>((*low).Z());
       }
     else if (low->X() > highX)
       {
@@ -553,7 +555,7 @@ bool vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
       }
     ++low;
     }
-  return false;
+  return -1;
 }
 
 //-----------------------------------------------------------------------------

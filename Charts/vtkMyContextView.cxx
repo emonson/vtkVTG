@@ -46,9 +46,10 @@ vtkMyContextView::vtkMyContextView()
   this->Scene->SetRenderer(this->Renderer);
 
   // Set up our view to render on move, 2D interaction style
-  this->SetDisplayHoverText(false);
-  this->RenderOnMouseMoveOn();
-  this->SetInteractionModeTo2D();
+  // NOTE: These don't work now that vtkContextView inherits from vtkRenderViewBase
+  // this->SetDisplayHoverText(false);
+  // this->RenderOnMouseMoveOn();
+  // this->SetInteractionModeTo2D();
 
   // Single color background
   this->Renderer->SetBackground(1.0, 1.0, 1.0);

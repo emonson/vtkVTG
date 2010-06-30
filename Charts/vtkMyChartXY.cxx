@@ -1439,13 +1439,13 @@ bool vtkMyChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse)
             if (plot->IsA("vtkMyPlotPoints"))
               {
 							vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(plot);
-              vtkVector3f plotPosAndInd;
-							bool found = myPlot->GetNearestPoint(position, tolerance, &plotPosAndInd);
-							if (found)
+              vtkVector2f plotPos;
+							int found_ind = myPlot->GetNearestPoint(position, tolerance, &plotPos);
+							if (found_ind >= 0)
 								{
 								// We found a point, set up the tooltip and return
 								vtksys_ios::ostringstream ostr;
-								ostr << myPlot->GetLabel() << ": " << (int)plotPosAndInd.Z();
+								ostr << myPlot->GetLabel() << ": " << found_ind;
 								this->Tooltip->SetText(ostr.str().c_str());
 								this->Tooltip->SetPosition(mouse.ScreenPos[0]+8, mouse.ScreenPos[1]+6);
 								
@@ -1457,7 +1457,7 @@ bool vtkMyChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse)
 										{
 										// int random_index = rand() % num_images;
 										// this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(random_index));
-										this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(static_cast<int>(plotPosAndInd.Z())));
+										this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(found_ind));
 										}
 									}
 								return true;
@@ -1466,8 +1466,8 @@ bool vtkMyChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse)
 					  else
 					    {
               vtkVector2f plotPos;
-							bool found = plot->GetNearestPoint(position, tolerance, &plotPos);
-							if (found)
+							int found = plot->GetNearestPoint(position, tolerance, &plotPos);
+							if (found >= 0)
 								{
 								// We found a point, set up the tooltip and return
 								vtksys_ios::ostringstream ostr;
