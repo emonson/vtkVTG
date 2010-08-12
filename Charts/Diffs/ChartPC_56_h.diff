@@ -1,0 +1,157 @@
+--- /Users/emonson/Programming/VTK_5.6/Charts/vtkChartParallelCoordinates.h	2010-03-11 11:17:31.000000000 -0500
++++ vtkMyChartParallelCoordinates.h	2010-05-20 15:37:55.000000000 -0400
+@@ -1,7 +1,7 @@
+ /*=========================================================================
+ 
+   Program:   Visualization Toolkit
+-  Module:    $RCSfile: vtkChartParallelCoordinates.h,v $
++  Module:    vtkMyChartParallelCoordinates.h
+ 
+   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+   All rights reserved.
+@@ -13,27 +13,28 @@
+ 
+ =========================================================================*/
+ 
+-// .NAME vtkChartParallelCoordinates - Factory class for drawing 2D charts
++// .NAME vtkMyChartParallelCoordinates - Factory class for drawing 2D charts
+ //
+ // .SECTION Description
+-// This defines the interface for a chart.
++// This defines the interface for a parallel coordinates chart.
+ 
+-#ifndef __vtkChartParallelCoordinates_h
+-#define __vtkChartParallelCoordinates_h
++#ifndef __vtkMyChartParallelCoordinates_h
++#define __vtkMyChartParallelCoordinates_h
+ 
+ #include "vtkChart.h"
+ 
+ class vtkIdTypeArray;
++class vtkStringArray;
+ 
+-class VTK_CHARTS_EXPORT vtkChartParallelCoordinates : public vtkChart
++class VTK_CHARTS_EXPORT vtkMyChartParallelCoordinates : public vtkChart
+ {
+ public:
+-  vtkTypeRevisionMacro(vtkChartParallelCoordinates, vtkChart);
++  vtkTypeMacro(vtkMyChartParallelCoordinates, vtkChart);
+   virtual void PrintSelf(ostream &os, vtkIndent indent);
+ 
+   // Description:
+   // Creates a parallel coordinates chart
+-  static vtkChartParallelCoordinates* New();
++  static vtkMyChartParallelCoordinates* New();
+ 
+   // Description:
+   // Perform any updates to the item that may be necessary before rendering.
+@@ -46,6 +47,18 @@
+   virtual bool Paint(vtkContext2D *painter);
+ 
+   // Description:
++  // Set the visibility of the specified column.
++  void SetColumnVisibility(const char* name, bool visible);
++
++  // Description:
++  // Get the visibility of the specified column.
++  bool GetColumnVisibility(const char* name);
++
++  // Description:
++  // Get a list of the columns, and the order in which they are displayed.
++  vtkGetObjectMacro(VisibleColumns, vtkStringArray);
++
++  // Description:
+   // Add a plot to the chart, defaults to using the name of the y column
+   virtual vtkPlot* AddPlot(int type);
+ 
+@@ -67,8 +80,7 @@
+   virtual vtkIdType GetNumberOfPlots();
+ 
+   // Description:
+-  // Get the axis specified by axisIndex. 0 is x, 1 is y. This should probably
+-  // be improved either using a string or enum to select the axis.
++  // Get the axis specified by axisIndex.
+   virtual vtkAxis* GetAxis(int axisIndex);
+ 
+   // Description:
+@@ -79,6 +91,28 @@
+   // Request that the chart recalculates the range of its axes. Especially
+   // useful in applications after the parameters of plots have been modified.
+   virtual void RecalculateBounds();
++  
++  // Description
++  // When axes come in sets, draw rectangles between them to show groupings
++  vtkSetMacro(DrawSets, bool);
++
++  // Description
++  // When axes come in sets, draw rectangles between them to show groupings
++  vtkSetMacro(NumPerSet, int);
++
++  // Description
++  // When axes come in sets, draw an extra dark box at the current scale and
++  // a semi-transparent box over "non-valid" scales
++  vtkSetMacro(CurrentScale, int);
++
++  // Description:
++  // Set the vtkHighlightLink for the chart.
++  virtual void SetHighlightLink(vtkAnnotationLink *link);
++
++  // Description:
++  // Get the vtkHighlightLink for the chart.
++  vtkGetObjectMacro(HighlightLink, vtkAnnotationLink);
++
+ 
+ //BTX
+   // Description:
+@@ -112,8 +146,8 @@
+ 
+ //BTX
+ protected:
+-  vtkChartParallelCoordinates();
+-  ~vtkChartParallelCoordinates();
++  vtkMyChartParallelCoordinates();
++  ~vtkMyChartParallelCoordinates();
+ 
+   // Description:
+   // Private storage object - where we hide all of our STL objects...
+@@ -126,13 +160,37 @@
+   // Selected indices for the table the plot is rendering
+   vtkIdTypeArray *Selection;
+ 
++  // Description:
++  // Selected indices for the table the plot is rendering 
++  // coming back from outside this chart
++  vtkIdTypeArray *HighlightSelection;
++
++  // Description:
++  // A list of the visible columns in the chart.
++  vtkStringArray *VisibleColumns;
++
++  // Description:
++  // The point cache is marked dirty until it has been initialized.
++  vtkTimeStamp BuildTime;
++
++  void ResetSelection();
+   void UpdateGeometry();
+   void CalculatePlotTransform();
++  
++  // Description:
++  // Whether set-grouping rectangles get drawn, and how big those sets are.
++  bool DrawSets;
++  int NumPerSet;
++  int CurrentScale;
++  
++  // Description:
++  // Link back into chart to highlight selections made in other plots
++  vtkAnnotationLink *HighlightLink;
+ 
+ private:
+-  vtkChartParallelCoordinates(const vtkChartParallelCoordinates &); // Not implemented.
+-  void operator=(const vtkChartParallelCoordinates &);   // Not implemented.
++  vtkMyChartParallelCoordinates(const vtkMyChartParallelCoordinates &); // Not implemented.
++  void operator=(const vtkMyChartParallelCoordinates &);   // Not implemented.
+ //ETX
+ };
+ 
+-#endif //__vtkChartParallelCoordinates_h
++#endif //__vtkMyChartParallelCoordinates_h

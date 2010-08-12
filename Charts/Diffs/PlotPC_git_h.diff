@@ -1,0 +1,148 @@
+--- /Users/emonson/Programming/VTK_git/VTK/Charts/vtkPlotParallelCoordinates.h	2010-06-30 10:56:13.000000000 -0400
++++ vtkMyPlotParallelCoordinates.h	2010-06-30 11:51:08.000000000 -0400
+@@ -1,7 +1,7 @@
+ /*=========================================================================
+ 
+   Program:   Visualization Toolkit
+-  Module:    vtkPlotParallelCoordinates.h
++  Module:    vtkMyPlotParallelCoordinates.h
+ 
+   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+   All rights reserved.
+@@ -13,31 +13,32 @@
+ 
+ =========================================================================*/
+ 
+-// .NAME vtkPlotParallelCoordinates - Class for drawing an XY plot given two columns from a
++// .NAME vtkMyPlotParallelCoordinates - Class for drawing an XY plot given two columns from a
+ // vtkTable.
+ //
+ // .SECTION Description
+ //
+ 
+-#ifndef __vtkPlotParallelCoordinates_h
+-#define __vtkPlotParallelCoordinates_h
++#ifndef __vtkMyPlotParallelCoordinates_h
++#define __vtkMyPlotParallelCoordinates_h
+ 
+ #include "vtkPlot.h"
+ 
+-class vtkChartParallelCoordinates;
++class vtkMyChartParallelCoordinates;
+ class vtkTable;
+ class vtkPoints2D;
+ class vtkStdString;
++class vtkImageData;
+ 
+-class VTK_CHARTS_EXPORT vtkPlotParallelCoordinates : public vtkPlot
++class VTK_CHARTS_EXPORT vtkMyPlotParallelCoordinates : public vtkPlot
+ {
+ public:
+-  vtkTypeMacro(vtkPlotParallelCoordinates, vtkPlot);
++  vtkTypeMacro(vtkMyPlotParallelCoordinates, vtkPlot);
+   virtual void PrintSelf(ostream &os, vtkIndent indent);
+ 
+   // Description:
+   // Creates a parallel coordinates chart
+-  static vtkPlotParallelCoordinates* New();
++  static vtkMyPlotParallelCoordinates* New();
+ 
+   // Description:
+   // Perform any updates to the item that may be necessary before rendering.
+@@ -54,7 +55,7 @@
+   // plot items symbol/mark/line drawn. A rect is supplied with the lower left
+   // corner of the rect (elements 0 and 1) and with width x height (elements 2
+   // and 3). The plot can choose how to fill the space supplied.
+-  virtual bool PaintLegend(vtkContext2D *painter, float rect[4], int legendIndex);
++  virtual bool PaintLegend(vtkContext2D *painter, float rect[4]);
+ 
+   // Description:
+   // Get the bounds for this mapper as (Xmin,Xmax,Ymin,Ymax,Zmin,Zmax).
+@@ -70,7 +71,7 @@
+ 
+   // Description;
+   // Set the parent, required to query the axes etc.
+-  virtual void SetParent(vtkChartParallelCoordinates* parent);
++  virtual void SetParent(vtkMyChartParallelCoordinates* parent);
+ 
+   // Description:
+   // Set the selection criteria on the given axis in normalized space (0.0 - 1.0).
+@@ -81,6 +82,11 @@
+   bool ResetSelectionRange();
+ 
+   // Description:
++  // Set the list of ids for highlighting (back from outside plot).
++  virtual void SetHighlightSelection(vtkIdTypeArray *id);
++  vtkGetObjectMacro(HighlightSelection, vtkIdTypeArray);
++
++  // Description:
+   // This is a convenience function to set the input table.
+   virtual void SetInput(vtkTable *table);
+   virtual void SetInput(vtkTable *table, const char*, const char*)
+@@ -89,9 +95,38 @@
+   }
+ 
+ //BTX
++  // Description:
++  // Enum containing various marker styles that can be used in a plot.
++  enum {
++    NONE = 0,
++    CROSS,
++    PLUS,
++    SQUARE,
++    CIRCLE,
++    DIAMOND
++  };
++//ETX
++
++  // Description:
++  // Get/set the marker style that should be used. The default is none, the enum
++  // in this class is used as a parameter.
++  vtkGetMacro(MarkerStyle, int);
++  vtkSetMacro(MarkerStyle, int);
++
++//BTX
+ protected:
+-  vtkPlotParallelCoordinates();
+-  ~vtkPlotParallelCoordinates();
++  vtkMyPlotParallelCoordinates();
++  ~vtkMyPlotParallelCoordinates();
++
++  // Description:
++  // Generate the requested symbol for the plot
++  void GeneraterMarker(int width, bool highlight = false);
++
++  // Description:
++  // The marker style that should be used
++  int MarkerStyle;
++  vtkImageData* Marker;
++  vtkImageData* HighlightMarker;
+ 
+   // Description:
+   // Update the table cache.
+@@ -103,17 +138,21 @@
+   Private* Storage;
+   vtkPoints2D* Points;
+ 
+-  vtkChartParallelCoordinates* Parent;
++  vtkMyChartParallelCoordinates* Parent;
+ 
+   // Description:
+   // The point cache is marked dirty until it has been initialized.
+   vtkTimeStamp BuildTime;
+ 
++  // Description:
++  // Selected indices coming back from outside the chart this plot is associated with.
++  vtkIdTypeArray *HighlightSelection;
++
+ private:
+-  vtkPlotParallelCoordinates(const vtkPlotParallelCoordinates &); // Not implemented.
+-  void operator=(const vtkPlotParallelCoordinates &); // Not implemented.
++  vtkMyPlotParallelCoordinates(const vtkMyPlotParallelCoordinates &); // Not implemented.
++  void operator=(const vtkMyPlotParallelCoordinates &); // Not implemented.
+ 
+ //ETX
+ };
+ 
+-#endif //__vtkPlotParallelCoordinates_h
++#endif //__vtkMyPlotParallelCoordinates_h

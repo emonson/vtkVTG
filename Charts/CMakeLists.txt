@@ -10,9 +10,6 @@ SET (Charts_SRCS
   vtkMyPlotPoints.cxx
   vtkMyChartXY.cxx
   vtkTooltipImageItem.cxx
-  vtkMyContextView.cxx
-  vtkMyOpenGLContextDevice2D.cxx
-  vtkMyContextActor.cxx
 )
 
 # --------------------------------------------------------------------------

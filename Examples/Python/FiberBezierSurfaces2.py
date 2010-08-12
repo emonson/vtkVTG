@@ -7,8 +7,8 @@
 
 import vtk
 import sys
-sys.path.append("/Users/emonson/Programming/VTK_cvs/vtkVTG/build/bin")
-import libvtkvtgFilteringPython as vtgF
+# sys.path.append("/Users/emonson/Programming/VTK_cvs/vtkVTG/build/bin")
+# import libvtkvtgFilteringPython as vtgF
 # sys.path.append("/Users/emonson/Programming/Xdmf/build/bin")
 # import libvtkXdmfPython as vtkX
 from numpy import array
@@ -21,14 +21,14 @@ tubeSides = 4
 bezierDim = 8		# number of divisions in each direction for bezier surface
 
 reader = vtk.vtkXMLUnstructuredGridReader()
-reader.SetFileName('/Users/emonson/Programming/VTK_cvs/vtkVTG/Examples/Python/test1_fibers.vtu')
+reader.SetFileName('/Users/emonson/Programming/VTK_git/vtkVTG/Examples/Python/X_Output/test1_fibers.vtu')
 reader.Update()
 
 # Try (non-merging) clipping with scalar
-import libvtkvtgGraphicsPython as vtgG
+import vtkvtg
 box = vtk.vtkBox()
 box.SetBounds(0,320,0,320,140,200)
-clip = vtgG.vtkMyClipDataSet()
+clip = vtkvtg.vtkMyClipDataSet()
 clip.SetInputConnection(reader.GetOutputPort(0))
 # clip.SetValue(1.5)
 clip.SetClipFunction(box)
@@ -159,7 +159,7 @@ for pp in range(stroma.GetNumberOfPoints()):
 		# print center
 		
 		# Create bezier surface source
-		bs = vtgF.vtkBezierSurfaceSource()
+		bs = vtkvtg.vtkBezierSurfaceSource()
 		bs.SetDimensions(bezierDim,bezierDim)
 		bs.SetNumberOfControlPoints(4,4)
 		

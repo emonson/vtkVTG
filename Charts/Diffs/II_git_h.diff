@@ -1,0 +1,179 @@
+--- /Users/emonson/Programming/VTK_git/VTK/Charts/vtkImageItem.h	2010-04-23 15:13:40.000000000 -0400
++++ vtkTooltipImageItem.h	2010-06-21 13:28:46.000000000 -0400
+@@ -1,7 +1,7 @@
+ /*=========================================================================
+ 
+   Program:   Visualization Toolkit
+-  Module:    vtkImageItem.h
++  Module:    vtkTooltipImageItem.h
+ 
+   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+   All rights reserved.
+@@ -13,109 +13,97 @@
+ 
+ =========================================================================*/
+ 
+-// .NAME vtkImageItem - a vtkContextItem that draws a supplied image in the
+-// scene.
++// .NAME vtkTooltipImageItem - takes care of drawing 2D axes
+ //
+ // .SECTION Description
+-// This vtkContextItem draws the supplied image in the scene. Optionally showing
+-// the label as a tooltip on mouse over.
++// The vtkTooltipImageItem is drawn in screen coordinates. It is used to display a
++// tooltip on a scene, giving additional information about an element on the
++// scene, such as in vtkChartXY. It takes care of ensuring that it draws itself
++// within the bounds of the screen.
+ 
+-#ifndef __vtkImageItem_h
+-#define __vtkImageItem_h
++#ifndef __vtkTooltipImageItem_h
++#define __vtkTooltipImageItem_h
+ 
+ #include "vtkContextItem.h"
++#include "vtkVector.h" // Needed for vtkVector2f
+ 
+-class vtkContext2D;
++class vtkPen;
++class vtkBrush;
++class vtkTextProperty;
+ class vtkImageData;
+ 
+-class VTK_CHARTS_EXPORT vtkImageItem : public vtkContextItem
++class VTK_CHARTS_EXPORT vtkTooltipImageItem : public vtkContextItem
+ {
+ public:
+-  vtkTypeMacro(vtkImageItem, vtkContextItem);
++  vtkTypeMacro(vtkTooltipImageItem, vtkContextItem);
+   virtual void PrintSelf(ostream &os, vtkIndent indent);
+ 
+-  static vtkImageItem *New();
+-
+-  // Description:
+-  // Paint event for the item.
+-  virtual bool Paint(vtkContext2D *painter);
+-
+-//BTX
+-  // Description:
+-  // Return true if the supplied x, y coordinate is inside the item.
+-  virtual bool Hit(const vtkContextMouseEvent &mouse);
+-
+-  // Description:
+-  // Mouse enter event.
+-  virtual bool MouseEnterEvent(const vtkContextMouseEvent &mouse);
+-
+-  // Description:
+-  // Mouse move event.
+-  virtual bool MouseMoveEvent(const vtkContextMouseEvent &mouse);
+-
+   // Description:
+-  // Mouse leave event.
+-  virtual bool MouseLeaveEvent(const vtkContextMouseEvent &mouse);
++  // Creates a 2D Chart object.
++  static vtkTooltipImageItem *New();
+ 
+   // Description:
+-  // Mouse button down event.
+-  virtual bool MouseButtonPressEvent(const vtkContextMouseEvent &mouse);
++  // Set the position of the tooltip (in pixels).
++  vtkSetVector2Macro(Position, float);
+ 
+   // Description:
+-  // Mouse button release event.
+-  virtual bool MouseButtonReleaseEvent(const vtkContextMouseEvent &mouse);
+-//ETX
+-
+-  // Description:
+-  // Set the mouse over label for the item.
+-  vtkSetStringMacro(Label);
++  // Get position of the axis (in pixels).
++  vtkGetVector2Macro(Position, float);
+ 
+   // Description:
+-  // Get the mouse over label for the item.
+-  vtkGetStringMacro(Label);
++  // Get/set the text of the item.
++  vtkSetStringMacro(Text);
++  vtkGetStringMacro(Text);
+ 
+   // Description:
+-  // Set the image of the item.
+-  void SetImage(vtkImageData *image);
++  // Get a pointer to the vtkTextProperty object that controls the way the
++  // text is rendered.
++  vtkGetObjectMacro(Pen, vtkPen);
+ 
+   // Description:
+-  // Get the image of the item.
+-  vtkGetObjectMacro(Image, vtkImageData);
++  // Get a pointer to the vtkPen object.
++  vtkGetObjectMacro(Brush, vtkBrush);
+ 
+   // Description:
+-  // Set the dimensions of the item, bottom corner, width, height.
+-  vtkSetVector4Macro(Dimensions, int);
++  // Update the geometry of the tooltip.
++  virtual void Update();
+ 
+   // Description:
+-  // Get the dimensions of the item, bottom corner, width, height.
+-  vtkGetVector4Macro(Dimensions, int);
+-
+-//BTX
+-  void SetScalarFunctor(double (*scalarFunction)(double, double));
+-//ETX
++  // Paint event for the tooltip.
++  virtual bool Paint(vtkContext2D *painter);
+ 
++  // Description
++  // Image to be shown if ShowImage is true
++  // You'll want to set an image scaling factor or target (max dim) size
++  virtual void SetTipImage(vtkImageData*);
++  vtkSetMacro(ShowImage, bool);
++  virtual void SetScalingFactor(float factor);
++  virtual void SetTargetSize(int pixels);
++  
+ //BTX
+ protected:
+-  vtkImageItem();
+-  ~vtkImageItem();
+-
+-  int Dimensions[4];
+-
+-  int LastPosition[2];
+-
+-  char *Label;
+-  vtkImageData *Image;
+-
+-  bool MouseOver;
+-  int MouseButtonPressed;
++  vtkTooltipImageItem();
++  ~vtkTooltipImageItem();
+ 
+-  // Some function pointers to optionally do funky things...
+-  double (*ScalarFunction)(double, double);
++  vtkVector2f PositionVector;
++  float* Position;
++  char* Text;
++  vtkTextProperty* TextProperties;
++  vtkPen* Pen;
++  vtkBrush* Brush;
++  
++  // Description
++  // Image to be shown if ShowImage is true
++  vtkImageData* TipImage;
++  bool ShowImage;
++  float ScalingFactor;
++  float ImageWidth;
++  float ImageHeight;
+ 
+ private:
+-  vtkImageItem(const vtkImageItem &); // Not implemented.
+-  void operator=(const vtkImageItem &);   // Not implemented.
++  vtkTooltipImageItem(const vtkTooltipImageItem &); // Not implemented.
++  void operator=(const vtkTooltipImageItem &);   // Not implemented.
+ //ETX
+ };
+ 
+-#endif //__vtkImageItem_h
++#endif //__vtkTooltipImageItem_h

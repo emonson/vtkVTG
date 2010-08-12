@@ -1,0 +1,608 @@
+--- /Users/emonson/Programming/VTK_git/VTK/Charts/vtkPlotPoints.cxx	2010-08-04 13:30:01.000000000 -0400
++++ vtkMyPlotPoints.cxx	2010-06-30 11:52:45.000000000 -0400
+@@ -1,7 +1,7 @@
+ /*=========================================================================
+ 
+   Program:   Visualization Toolkit
+-  Module:    vtkPlotPoints.cxx
++  Module:    vtkMyPlotPoints.cxx
+ 
+   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+   All rights reserved.
+@@ -13,7 +13,7 @@
+ 
+ =========================================================================*/
+ 
+-#include "vtkPlotPoints.h"
++#include "vtkMyPlotPoints.h"
+ 
+ #include "vtkContext2D.h"
+ #include "vtkPen.h"
+@@ -27,37 +27,83 @@
+ #include "vtkMath.h"
+ #include "vtkObjectFactory.h"
+ 
++#include "vtkMatrix4x4.h"
++#include "vtkImageReslice.h"
++#include "vtkLookupTable.h"
++#include "vtkImageMapToColors.h"
++#include "vtkPointData.h"
++#include "vtkVector.h"
++
+ #include "vtkstd/vector"
+ #include "vtkstd/algorithm"
+ 
+ // PIMPL for STL vector...
+-class vtkPlotPoints::VectorPIMPL : public vtkstd::vector<vtkVector2f>
++class vtkMyPlotPoints::VectorPIMPL3 : public vtkstd::vector<vtkVector3f>
+ {
+ public:
+-  VectorPIMPL(vtkVector2f* startPos, vtkVector2f* finishPos)
+-    : vtkstd::vector<vtkVector2f>(startPos, finishPos)
++  VectorPIMPL3()
++    : vtkstd::vector<vtkVector3f>::vector()
+   {
+   }
+ };
+ 
+ //-----------------------------------------------------------------------------
+-vtkStandardNewMacro(vtkPlotPoints);
++vtkStandardNewMacro(vtkMyPlotPoints);
++
++//-----------------------------------------------------------------------------
++vtkCxxSetObjectMacro(vtkMyPlotPoints, HighlightSelection, vtkIdTypeArray);
+ 
+ //-----------------------------------------------------------------------------
+-vtkPlotPoints::vtkPlotPoints()
++vtkMyPlotPoints::vtkMyPlotPoints()
+ {
+   this->Points = NULL;
+   this->Sorted = NULL;
+   this->BadPoints = NULL;
+-  this->MarkerStyle = vtkPlotPoints::CIRCLE;
++  this->MarkerStyle = vtkMyPlotPoints::NONE;
+   this->LogX = false;
+   this->LogY = false;
+   this->Marker = NULL;
+-  this->HighlightMarker = NULL;
++  this->SelectionMarker = NULL;
++  this->HighlightSelection = NULL;
++  this->TooltipImageStack = NULL;
++  this->NumImages = 0;
++
++  // ImageSlicing for TooltipImageItem
++  // Always slicing in the Z direction
++  static double axialElements[16] = {
++           1, 0, 0, 0,
++           0, 1, 0, 0,
++           0, 0, 1, 0,
++           0, 0, 0, 1 };
++
++  // Set the slice orientation
++  this->resliceAxes = vtkSmartPointer<vtkMatrix4x4>::New();
++  this->resliceAxes->DeepCopy(axialElements);
++
++  // Extract a slice in the desired orientation
++  this->reslice = vtkSmartPointer<vtkImageReslice>::New();
++  this->reslice->SetOutputDimensionality(2);
++  this->reslice->SetResliceAxes(this->resliceAxes);
++  this->reslice->SetInterpolationModeToNearestNeighbor();
++  // Need to set the Input when TooltipImageStack is assigned
++
++  // Create a greyscale lookup table
++  this->lut = vtkSmartPointer<vtkLookupTable>::New();
++  this->lut->SetRange(0, 1); 			// image intensity range
++  this->lut->SetValueRange(0.0, 1.0); 		// from black to white
++  this->lut->SetSaturationRange(0.0, 0.0); 	// no color saturation
++  this->lut->SetRampToLinear();
++  this->lut->Build();
++
++  // Map the image through the lookup table
++  this->color = vtkSmartPointer<vtkImageMapToColors>::New();
++  this->color->SetLookupTable(this->lut);
++  this->color->SetInputConnection(this->reslice->GetOutputPort());
++
+ }
+ 
+ //-----------------------------------------------------------------------------
+-vtkPlotPoints::~vtkPlotPoints()
++vtkMyPlotPoints::~vtkMyPlotPoints()
+ {
+   if (this->Points)
+     {
+@@ -74,14 +120,19 @@
+     {
+     this->Marker->Delete();
+     }
+-  if (this->HighlightMarker)
++  if (this->SelectionMarker)
+     {
+-    this->HighlightMarker->Delete();
++    this->SelectionMarker->Delete();
++    }
++  if (this->HighlightSelection)
++    {
++    this->HighlightSelection->Delete();
++    this->HighlightSelection = NULL;
+     }
+ }
+ 
+ //-----------------------------------------------------------------------------
+-void vtkPlotPoints::Update()
++void vtkMyPlotPoints::Update()
+ {
+   if (!this->Visible)
+     {
+@@ -113,10 +164,10 @@
+ }
+ 
+ //-----------------------------------------------------------------------------
+-bool vtkPlotPoints::Paint(vtkContext2D *painter)
++bool vtkMyPlotPoints::Paint(vtkContext2D *painter)
+ {
+   // This is where everything should be drawn, or dispatched to other methods.
+-  vtkDebugMacro(<< "Paint event called in vtkPlotPoints.");
++  vtkDebugMacro(<< "Paint event called in vtkMyPlotPoints.");
+ 
+   if (!this->Visible || !this->Points)
+     {
+@@ -129,6 +180,16 @@
+     width = 8.0;
+     }
+ 
++  // If there is a marker style, then draw the marker for each point too
++  if (this->MarkerStyle)
++    {
++    this->GeneraterMarker(static_cast<int>(width));
++    painter->ApplyPen(this->Pen);
++    painter->ApplyBrush(this->Brush);
++    painter->GetPen()->SetWidth(width);
++    painter->DrawPointSprites(this->Marker, this->Points);
++    }
++
+   // Now add some decorations for our selected points...
+   if (this->Selection)
+     {
+@@ -137,7 +198,7 @@
+       {
+       this->GeneraterMarker(static_cast<int>(width+2.7), true);
+ 
+-      painter->GetPen()->SetColor(255, 50, 0, 255);
++      painter->GetPen()->SetColor(255, 0, 0, 154);
+       painter->GetPen()->SetWidth(width+2.7);
+ 
+       vtkIdType id = 0;
+@@ -146,7 +207,7 @@
+         {
+         double *point = this->Points->GetPoint(id);
+         float p[] = { point[0], point[1] };
+-        painter->DrawPointSprites(this->HighlightMarker, p, 1);
++        painter->DrawPointSprites(this->SelectionMarker, p, 1);
+         }
+       }
+     }
+@@ -155,42 +216,37 @@
+     vtkDebugMacro("No selection set.");
+     }
+ 
+-  // If there is a marker style, then draw the marker for each point too
+-  if (this->MarkerStyle)
++  // Now add some decorations for our highlighted points...
++  if (this->HighlightSelection)
+     {
+-    this->GeneraterMarker(static_cast<int>(width));
+-    painter->ApplyPen(this->Pen);
+-    painter->ApplyBrush(this->Brush);
+-    painter->GetPen()->SetWidth(width);
+-    painter->DrawPointSprites(this->Marker, this->Points);
+-    }
++    vtkDebugMacro(<<"HighlightSelection set " << this->HighlightSelection->GetNumberOfTuples());
++    for (int i = 0; i < this->HighlightSelection->GetNumberOfTuples(); ++i)
++      {
++      this->GeneraterMarker(static_cast<int>(width+2.7), true);
+ 
+-  return true;
+-}
++      painter->GetPen()->SetColor(0, 128, 255, 154);
++      painter->GetPen()->SetWidth(width+2.7);
+ 
+-//-----------------------------------------------------------------------------
+-bool vtkPlotPoints::PaintLegend(vtkContext2D *painter, float rect[4], int )
+-{
+-  if (this->MarkerStyle)
+-    {
+-    float width = this->Pen->GetWidth() * 2.3;
+-    if (width < 8.0)
+-      {
+-      width = 8.0;
++      vtkIdType id = 0;
++      this->HighlightSelection->GetTupleValue(i, &id);
++      if (id < this->Points->GetNumberOfPoints())
++        {
++        double *point = this->Points->GetPoint(id);
++        float p[] = { point[0], point[1] };
++        painter->DrawPointSprites(this->SelectionMarker, p, 1);
++        }
+       }
+-    this->GeneraterMarker(static_cast<int>(width));
+-    painter->ApplyPen(this->Pen);
+-    painter->ApplyBrush(this->Brush);
+-    painter->GetPen()->SetWidth(width);
+-
+-    float point[] = { rect[0]+0.5*rect[2], rect[1]+0.5*rect[3] };
+-    painter->DrawPointSprites(this->Marker, point, 1);
+     }
++  else
++    {
++    vtkDebugMacro("No selection set.");
++    }
++
+   return true;
+ }
+ 
+ //-----------------------------------------------------------------------------
+-void vtkPlotPoints::GeneraterMarker(int width, bool highlight)
++void vtkMyPlotPoints::GeneraterMarker(int width, bool highlight)
+ {
+   // Set up the image data, if highlight then the mark shape is different
+   vtkImageData *data = 0;
+@@ -216,23 +272,23 @@
+     }
+   else
+     {
+-    if (!this->HighlightMarker)
++    if (!this->SelectionMarker)
+       {
+-      this->HighlightMarker = vtkImageData::New();
+-      this->HighlightMarker->SetScalarTypeToUnsignedChar();
+-      this->HighlightMarker->SetNumberOfScalarComponents(4);
+-      data = this->HighlightMarker;
++      this->SelectionMarker = vtkImageData::New();
++      this->SelectionMarker->SetScalarTypeToUnsignedChar();
++      this->SelectionMarker->SetNumberOfScalarComponents(4);
++      data = this->SelectionMarker;
+       }
+     else
+       {
+-      if (this->HighlightMarker->GetMTime() >= this->GetMTime() &&
+-          this->HighlightMarker->GetMTime() >= this->Pen->GetMTime())
++      if (this->SelectionMarker->GetMTime() >= this->GetMTime() &&
++          this->SelectionMarker->GetMTime() >= this->Pen->GetMTime())
+         {
+         // Marker already generated, no need to do this again.
+         return;
+         }
+       }
+-    data = this->HighlightMarker;
++    data = this->SelectionMarker;
+     }
+ 
+   data->SetExtent(0, width-1, 0, width-1, 0, 0);
+@@ -243,7 +299,7 @@
+   // Generate the marker image at the required size
+   switch (this->MarkerStyle)
+     {
+-    case vtkPlotPoints::CROSS:
++    case vtkMyPlotPoints::CROSS:
+       {
+       for (int i = 0; i < width; ++i)
+         {
+@@ -272,7 +328,7 @@
+         }
+       break;
+       }
+-    case vtkPlotPoints::PLUS:
++    case vtkMyPlotPoints::PLUS:
+       {
+       int x = width / 2;
+       int y = width / 2;
+@@ -299,7 +355,7 @@
+         }
+       break;
+       }
+-    case vtkPlotPoints::SQUARE:
++    case vtkMyPlotPoints::SQUARE:
+       {
+       for (int i = 0; i < width; ++i)
+         {
+@@ -313,7 +369,7 @@
+         }
+       break;
+       }
+-    case vtkPlotPoints::CIRCLE:
++    case vtkMyPlotPoints::CIRCLE:
+       {
+       double c = width/2.0;
+       for (int i = 0; i < width; ++i)
+@@ -323,7 +379,7 @@
+           {
+           double dy2 = (j - c)*(j - c);
+           unsigned char color = 0;
+-          if (sqrt(dx2 + dy2) < c)
++          if ((c-sqrt(dx2 + dy2)) < 1.0)
+             {
+             color = 255;
+             }
+@@ -334,7 +390,7 @@
+         }
+       break;
+       }
+-    case vtkPlotPoints::DIAMOND:
++    case vtkMyPlotPoints::DIAMOND:
+       {
+       int c = width/2;
+       for (int i = 0; i < width; ++i)
+@@ -378,7 +434,16 @@
+ }
+ 
+ //-----------------------------------------------------------------------------
+-void vtkPlotPoints::GetBounds(double bounds[4])
++bool vtkMyPlotPoints::PaintLegend(vtkContext2D *painter, float rect[4])
++{
++  painter->ApplyPen(this->Pen);
++  painter->DrawLine(rect[0], rect[1]+0.5*rect[3],
++                    rect[0]+rect[2], rect[1]+0.5*rect[3]);
++  return true;
++}
++
++//-----------------------------------------------------------------------------
++void vtkMyPlotPoints::GetBounds(double bounds[4])
+ {
+   if (this->Points)
+     {
+@@ -399,10 +464,12 @@
+ namespace
+ {
+ 
+-// Compare the two vectors, in X component only
+-bool compVector2fX(const vtkVector2f& v1, const vtkVector2f& v2)
++// See if the point is within tolerance.
++bool inRange23(const vtkVector2f& point, const vtkVector2f& tol,
++             const vtkVector3f& current)
+ {
+-  if (v1.X() < v2.X())
++  if (current.X() > point.X() - tol.X() && current.X() < point.X() + tol.X() &&
++      current.Y() > point.Y() - tol.Y() && current.Y() < point.Y() + tol.Y())
+     {
+     return true;
+     }
+@@ -412,12 +479,10 @@
+     }
+ }
+ 
+-// See if the point is within tolerance.
+-bool inRange(const vtkVector2f& point, const vtkVector2f& tol,
+-             const vtkVector2f& current)
++// Compare the two vectors, in X component only
++bool compVector3fX(const vtkVector3f& v1, const vtkVector3f& v2)
+ {
+-  if (current.X() > point.X() - tol.X() && current.X() < point.X() + tol.X() &&
+-      current.Y() > point.Y() - tol.Y() && current.Y() < point.Y() + tol.Y())
++  if (v1.X() < v2.X())
+     {
+     return true;
+     }
+@@ -430,7 +495,7 @@
+ }
+ 
+ //-----------------------------------------------------------------------------
+-int vtkPlotPoints::GetNearestPoint(const vtkVector2f& point,
++int vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
+                                     const vtkVector2f& tol,
+                                     vtkVector2f* location)
+ {
+@@ -439,39 +504,50 @@
+   // line plots.
+   if (!this->Points)
+     {
+-    return -1;
++    return false;
+     }
+   vtkIdType n = this->Points->GetNumberOfPoints();
+   if (n < 2)
+     {
+-    return -1;
++    return false;
+     }
+ 
+-  // Sort the data if it has not been done already...
++  // Sort the data if it has not been done already.  We need to sort it
++  // and collect the base and extent into the same vector since both will
++  // get involved in range checking.
+   if (!this->Sorted)
+     {
+     vtkVector2f* data =
+         static_cast<vtkVector2f*>(this->Points->GetVoidPointer(0));
+-    this->Sorted = new VectorPIMPL(data, data+n);
+-    vtkstd::sort(this->Sorted->begin(), this->Sorted->end(), compVector2fX);
++    this->Sorted = new VectorPIMPL3();
++    for (int i = 0; i < n; i++)
++      {
++      vtkVector3f combined(data[i].X(), data[i].Y(), static_cast<float>(i));
++      this->Sorted->push_back(combined);
++      }
++    vtkstd::sort(this->Sorted->begin(), this->Sorted->end(), compVector3fX);
+     }
+ 
+   // Set up our search array, use the STL lower_bound algorithm
+-  VectorPIMPL::iterator low;
+-  VectorPIMPL &v = *this->Sorted;
++  VectorPIMPL3::iterator low;
++  VectorPIMPL3 &v = *this->Sorted;
+ 
+   // Get the lowest point we might hit within the supplied tolerance
+-  vtkVector2f lowPoint(point.X()-tol.X(), 0.0f);
+-  low = vtkstd::lower_bound(v.begin(), v.end(), lowPoint, compVector2fX);
++  vtkVector3f lowPoint(point.X()-tol.X(), 0.0f, 0.0f);
++  low = vtkstd::lower_bound(v.begin(), v.end(), lowPoint, compVector3fX);
+ 
+   // Now consider the y axis
+-  float highX = point.X() + tol.X();
++    float highX = point.X() + tol.X();
+   while (low != v.end())
+     {
+-    if (inRange(point, tol, *low))
++    if (inRange23(point, tol, *low))
+       {
+-      *location = *low;
+-      return 0;
++      // If we're in range, the value that's interesting is the absolute value of 
++      // the "wedge" at the closest point, not the base or extent by themselves
++      // *location = *low;
++      location->SetX((*low).X());
++      location->SetY((*low).Y());
++      return static_cast<int>((*low).Z());
+       }
+     else if (low->X() > highX)
+       {
+@@ -483,7 +559,7 @@
+ }
+ 
+ //-----------------------------------------------------------------------------
+-bool vtkPlotPoints::SelectPoints(const vtkVector2f& min, const vtkVector2f& max)
++bool vtkMyPlotPoints::SelectPoints(const vtkVector2f& min, const vtkVector2f& max)
+ {
+   if (!this->Points)
+     {
+@@ -515,6 +591,17 @@
+ namespace {
+ 
+ // Copy the two arrays into the points array
++template<class A>
++void CopyToPointsSwitch(vtkPoints2D *points, A *a, vtkDataArray *b, int n)
++{
++  switch(b->GetDataType())
++    {
++    vtkTemplateMacro(
++        CopyToPoints(points, a, static_cast<VTK_TT*>(b->GetVoidPointer(0)), n));
++    }
++}
++
++// Copy the two arrays into the points array
+ template<class A, class B>
+ void CopyToPoints(vtkPoints2D *points, A *a, B *b, int n)
+ {
+@@ -540,21 +627,10 @@
+     }
+ }
+ 
+-// Copy the two arrays into the points array
+-template<class A>
+-void CopyToPointsSwitch(vtkPoints2D *points, A *a, vtkDataArray *b, int n)
+-{
+-  switch(b->GetDataType())
+-    {
+-    vtkTemplateMacro(
+-        CopyToPoints(points, a, static_cast<VTK_TT*>(b->GetVoidPointer(0)), n));
+-    }
+-}
+-
+ }
+ 
+ //-----------------------------------------------------------------------------
+-bool vtkPlotPoints::UpdateTableCache(vtkTable *table)
++bool vtkMyPlotPoints::UpdateTableCache(vtkTable *table)
+ {
+   // Get the x and y arrays (index 0 and 1 respectively)
+   vtkDataArray* x = this->UseIndexForXSeries ?
+@@ -620,7 +696,7 @@
+ }
+ 
+ //-----------------------------------------------------------------------------
+-inline void vtkPlotPoints::CalculateLogSeries()
++inline void vtkMyPlotPoints::CalculateLogSeries()
+ {
+   if (!this->XAxis || !this->YAxis)
+     {
+@@ -647,7 +723,7 @@
+ }
+ 
+ //-----------------------------------------------------------------------------
+-inline void vtkPlotPoints::FindBadPoints()
++inline void vtkMyPlotPoints::FindBadPoints()
+ {
+   // This should be run after CalculateLogSeries as a final step.
+   float* data = static_cast<float*>(this->Points->GetVoidPointer(0));
+@@ -680,7 +756,7 @@
+ }
+ 
+ //-----------------------------------------------------------------------------
+-inline void vtkPlotPoints::CalculateBounds(double bounds[4])
++inline void vtkMyPlotPoints::CalculateBounds(double bounds[4])
+ {
+   // We can use the BadPoints array to skip the bad points
+   if (!this->Points || !this->BadPoints)
+@@ -760,7 +836,72 @@
+ }
+ 
+ //-----------------------------------------------------------------------------
+-void vtkPlotPoints::PrintSelf(ostream &os, vtkIndent indent)
++void vtkMyPlotPoints::SetTooltipImageStack(vtkImageData* stack)
++{
++  this->TooltipImageStack = stack;
++  this->TooltipImageStack->UpdateInformation();
++  this->reslice->SetInput(this->TooltipImageStack);
++  this->reslice->Modified();
++  this->lut->SetRange(this->TooltipImageStack->GetPointData()->GetScalars()->GetRange());
++  this->lut->Modified();
++  int extent[6];
++  this->TooltipImageStack->UpdateInformation();
++  this->TooltipImageStack->GetWholeExtent(extent);
++  this->NumImages = (extent[5]-extent[4]+1);
++}
++
++//-----------------------------------------------------------------------------
++vtkImageData* vtkMyPlotPoints::GetImageAtIndex(int imageId)
++{
++  if (this->TooltipImageStack)
++    {
++    // Calculate the center of the volume
++    this->TooltipImageStack->UpdateInformation();
++    int extent[6];
++    double spacing[3];
++    double origin[3];
++    this->TooltipImageStack->GetWholeExtent(extent);
++    this->TooltipImageStack->GetSpacing(spacing);
++    this->TooltipImageStack->GetOrigin(origin);
++
++    double center[3];
++    center[0] = origin[0] + spacing[0] * 0.5 * (extent[0] + extent[1]); 
++    center[1] = origin[1] + spacing[1] * 0.5 * (extent[2] + extent[3]); 
++    center[2] = origin[2] + spacing[2] * 0.5 * (extent[4] + extent[5]); 
++
++    // Set the point through which to slice
++    vtkMatrix4x4 *resliceAxes = reslice->GetResliceAxes();
++	double zpos = origin[2] + spacing[2]*(extent[4]+static_cast<float>(imageId));
++    resliceAxes->SetElement(0, 3, center[0]);
++    resliceAxes->SetElement(1, 3, center[1]);
++    resliceAxes->SetElement(2, 3, zpos);
++    this->reslice->Modified();
++    
++    this->color->Update();
++    
++    return this->color->GetOutput();
++    }
++  else
++    {
++    return NULL;
++    }
++}
++
++//-----------------------------------------------------------------------------
++int vtkMyPlotPoints::GetNumberOfImages()
++{
++  if (this->TooltipImageStack)
++    {
++    return this->NumImages;
++    }
++  else
++    {
++    return 0;
++    }
++}
++
++//-----------------------------------------------------------------------------
++void vtkMyPlotPoints::PrintSelf(ostream &os, vtkIndent indent)
+ {
+   this->Superclass::PrintSelf(os, indent);
+ }

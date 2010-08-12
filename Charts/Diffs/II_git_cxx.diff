@@ -1,0 +1,312 @@
+--- /Users/emonson/Programming/VTK_git/VTK/Charts/vtkImageItem.cxx	2010-08-09 09:06:54.000000000 -0400
++++ vtkTooltipImageItem.cxx	2010-06-21 13:28:46.000000000 -0400
+@@ -1,7 +1,7 @@
+ /*=========================================================================
+ 
+   Program:   Visualization Toolkit
+-  Module:    vtkImageItem.cxx
++  Module:    vtkTooltipImageItem.cxx
+ 
+   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+   All rights reserved.
+@@ -13,176 +13,185 @@
+ 
+ =========================================================================*/
+ 
+-#include "vtkImageItem.h"
+-
+-// Get my new commands
+-#include "vtkCommand.h"
++#include "vtkTooltipImageItem.h"
+ 
+ #include "vtkContext2D.h"
+ #include "vtkContextScene.h"
+-#include "vtkContextMouseEvent.h"
+-#include "vtkTransform2D.h"
+ #include "vtkPen.h"
+ #include "vtkBrush.h"
+ #include "vtkTextProperty.h"
+ #include "vtkImageData.h"
++
+ #include "vtkStdString.h"
++#include "vtksys/ios/sstream"
+ 
+ #include "vtkObjectFactory.h"
+ 
+ //-----------------------------------------------------------------------------
+-vtkStandardNewMacro(vtkImageItem);
+ 
+ //-----------------------------------------------------------------------------
+-vtkCxxSetObjectMacro(vtkImageItem, Image, vtkImageData);
++vtkStandardNewMacro(vtkTooltipImageItem);
+ 
+ //-----------------------------------------------------------------------------
+-vtkImageItem::vtkImageItem()
++vtkTooltipImageItem::vtkTooltipImageItem()
+ {
+-  this->Label = NULL;
+-  this->Image = NULL;
+-  this->MouseOver = false;
+-  this->MouseButtonPressed = -1;
+-  this->ScalarFunction = NULL;
++  this->Position = this->PositionVector.GetData();
++  this->Text = NULL;
++  this->TextProperties = vtkTextProperty::New();
++  this->TextProperties->SetVerticalJustificationToBottom();
++  this->TextProperties->SetJustificationToLeft();
++  this->TextProperties->SetColor(0.0, 0.0, 0.0);
++  this->Pen = vtkPen::New();
++  this->Pen->SetColor(0, 0, 0);
++  this->Pen->SetWidth(1.0);
++  this->Brush = vtkBrush::New();
++  this->Brush->SetColor(242, 242, 242);
++  this->TipImage = NULL;
++  this->ScalingFactor = 1.0;
++  this->ShowImage = false;
++  this->ImageWidth = 0.0;
++  this->ImageHeight = 0.0;
+ }
+ 
+ //-----------------------------------------------------------------------------
+-vtkImageItem::~vtkImageItem()
++vtkTooltipImageItem::~vtkTooltipImageItem()
+ {
+-  this->SetLabel(NULL);
++
++  this->SetText(NULL);
++  this->Pen->Delete();
++  this->Brush->Delete();
++  this->TextProperties->Delete();
+ }
+ 
+ //-----------------------------------------------------------------------------
+-bool vtkImageItem::Paint(vtkContext2D *painter)
++void vtkTooltipImageItem::Update()
+ {
+-  // Drawing a hard wired diagram 800x600 as a demonstration of the 2D API
+-  painter->GetTextProp()->SetVerticalJustificationToCentered();
+-  painter->GetTextProp()->SetJustificationToCentered();
+-  painter->GetTextProp()->SetColor(0.0, 0.0, 0.0);
+-  painter->GetTextProp()->SetFontSize(24);
+-  painter->GetPen()->SetColor(0, 0, 0);
+-
+-  if (this->MouseOver)
+-    {
+-    painter->GetBrush()->SetColor(255, 0, 0);
+-    }
+-  else
+-    {
+-    painter->GetBrush()->SetColor(0, 255, 0);
+-    }
+-  painter->DrawRect(this->Dimensions[0], this->Dimensions[1],
+-                    this->Dimensions[2], this->Dimensions[3]);
+-
+-  if (this->Image)
+-    {
+-    // Draw our image in the bottom left corner of the item
+-    painter->DrawImage(this->Dimensions[0]+10, this->Dimensions[1]+10, this->Image);
+-    }
+-
+-  if (this->MouseOver && this->Label)
+-    {
+-    painter->GetBrush()->SetColor(255, 200, 0);
+-    painter->DrawRect(this->Dimensions[0]+10, this->Dimensions[1]+50,
+-                      100, 20);
+-    painter->GetTextProp()->SetColor(0.0, 0.0, 0.0);
+-    painter->GetTextProp()->SetFontSize(12);
+-    painter->DrawString(this->Dimensions[0]+60, this->Dimensions[1]+60,
+-                        this->Label);
+-    }
+ 
+-  if (this->ScalarFunction)
+-    {
+-    // We have a function pointer - do something...
+-    ;
+-    }
+-
+-  return true;
+ }
+ 
+ //-----------------------------------------------------------------------------
+-bool vtkImageItem::Hit(const vtkContextMouseEvent &mouse)
++bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
+ {
+-  if (mouse.Pos[0] > this->Dimensions[0] &&
+-      mouse.Pos[0] < this->Dimensions[0]+this->Dimensions[2] &&
+-      mouse.Pos[1] > this->Dimensions[1] &&
+-      mouse.Pos[1] < this->Dimensions[1]+this->Dimensions[3])
++  // This is where everything should be drawn, or dispatched to other methods.
++  vtkDebugMacro(<< "Paint event called in vtkTooltipImageItem.");
++
++  if (!this->Visible || !this->Text)
+     {
+-    return true;
++    return false;
++    }
++
++  painter->ApplyPen(this->Pen);
++  painter->ApplyBrush(this->Brush);
++  painter->ApplyTextProp(this->TextProperties);
++
++  // Compute the bounds, then make a few adjustments to the size we will use
++  vtkVector2f bounds[2];
++
++  if (!this->ShowImage)
++    {
++		painter->ComputeStringBounds(this->Text, bounds[0].GetData());
++		bounds[0] = vtkVector2f(this->PositionVector.X()-5,
++														this->PositionVector.Y()-3);
++		
++		bounds[1].Set(bounds[1].X()+10, bounds[1].Y()+10);
++		// Pull the tooltip back in if it will go off the edge of the screen.
++		if (int(bounds[0].X()+bounds[1].X()) >= this->Scene->GetViewWidth())
++			{
++			bounds[0].SetX(this->Scene->GetViewWidth()-bounds[1].X());
++			}
++    }
++  // For now just recompute if image instead of text
++  if (this->ShowImage && this->TipImage)
++    {
++		bounds[0] = vtkVector2f(this->PositionVector.X()-3,
++														this->PositionVector.Y()-2);
++    bounds[1].Set(this->ImageWidth, this->ImageHeight);
++		if (int(bounds[0].X()+bounds[1].X()) >= this->Scene->GetViewWidth())
++			{
++			bounds[0].SetX(this->Scene->GetViewWidth()-bounds[1].X());
++			}
++		if (int(bounds[0].Y()+bounds[1].Y()) >= this->Scene->GetViewHeight())
++			{
++			bounds[0].SetY(this->Scene->GetViewHeight()-bounds[1].Y());
++			}
++    }
++  
++  if (!this->ShowImage)
++    {
++		// Draw a rectangle as background, and then center our text in there
++		painter->DrawRect(bounds[0].X(), bounds[0].Y(), bounds[1].X(), bounds[1].Y());
++    painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
+     }
+   else
+     {
+-    return false;
++    // painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
++    // painter->DrawImage(bounds[0].X(), bounds[0].Y()+20, this->TipImage);
++    painter->DrawImage(bounds[0].X(), bounds[0].Y(), this->ScalingFactor, this->TipImage);
+     }
+-}
+ 
+-//-----------------------------------------------------------------------------
+-bool vtkImageItem::MouseEnterEvent(const vtkContextMouseEvent &)
+-{
+-  this->MouseOver = true;
+   return true;
+ }
+ 
+ //-----------------------------------------------------------------------------
+-bool vtkImageItem::MouseMoveEvent(const vtkContextMouseEvent &mouse)
++void vtkTooltipImageItem::SetTipImage(vtkImageData* image)
+ {
+-  // Work out our deltas...
+-  int deltaX = static_cast<int>(mouse.ScenePos[0] - mouse.LastScenePos[0]);
+-  int deltaY = static_cast<int>(mouse.ScenePos[1] - mouse.LastScenePos[1]);
++	this->TipImage = image;
++	this->TipImage->UpdateInformation();
++	int extent[6];
+ 
+-  if (mouse.Button == 0) // Left mouse button - translate
+-    {
+-    // Move the block by this amount
+-    this->Dimensions[0] += deltaX;
+-    this->Dimensions[1] += deltaY;
+-    return true;
+-    }
+-  else if (mouse.Button == 1)
+-    {
+-    // Resize the block by this amount
+-    this->Dimensions[0] += deltaX;
+-    this->Dimensions[1] += deltaY;
+-    this->Dimensions[2] -= deltaX;
+-    this->Dimensions[3] -= deltaY;
+-
+-    return true;
+-    }
+-  else if (mouse.Button == 2)
+-    {
+-    // Resize the block by this amount
+-    this->Dimensions[2] += deltaX;
+-    this->Dimensions[3] += deltaY;
+-
+-    return true;
+-    }
+-  return false;
++	this->TipImage->GetWholeExtent(extent);
++	
++	// Z should be zero...
++	this->ImageWidth = this->ScalingFactor*(float)extent[1];
++	this->ImageHeight = this->ScalingFactor*(float)extent[3];
+ }
+ 
+ //-----------------------------------------------------------------------------
+-bool vtkImageItem::MouseLeaveEvent(const vtkContextMouseEvent &)
++void vtkTooltipImageItem::SetScalingFactor(float factor)
+ {
+-  this->MouseOver = false;
+-  return true;
+-}
++	if (!this->TipImage)
++	  {
++	  return;
++	  }
++	
++	this->TipImage->UpdateInformation();
++	int extent[6];
++	float scaling;
+ 
+-//-----------------------------------------------------------------------------
+-bool vtkImageItem::MouseButtonPressEvent(const vtkContextMouseEvent &)
+-{
+-  return true;
++	this->TipImage->GetWholeExtent(extent);
++	
++	// Z should be zero...
++	this->ScalingFactor = factor;
++	this->ImageWidth = factor*(float)extent[1];
++	this->ImageHeight = factor*(float)extent[3];
+ }
+ 
+ //-----------------------------------------------------------------------------
+-bool vtkImageItem::MouseButtonReleaseEvent(const vtkContextMouseEvent &)
++void vtkTooltipImageItem::SetTargetSize(int pixels)
+ {
+-  return true;
+-}
++	if (!this->TipImage)
++	  {
++	  return;
++	  }
++	
++	this->TipImage->UpdateInformation();
++	int extent[6];
++	float scaling;
+ 
+-void vtkImageItem::SetScalarFunctor(double (*scalarFunction)(double, double))
+-{
+-  this->ScalarFunction = scalarFunction;
++	this->TipImage->GetWholeExtent(extent);
++	
++	// Z should be zero...
++	int maxdim = (extent[1] > extent[3]) ? extent[1] : extent[3];
++	scaling = (float)pixels/(float)maxdim;
++	
++	// Z should be zero...
++	this->ScalingFactor = scaling;
++	this->ImageWidth = scaling*(float)extent[1];
++	this->ImageHeight = scaling*(float)extent[3];
+ }
+ 
+ //-----------------------------------------------------------------------------
+-void vtkImageItem::PrintSelf(ostream &os, vtkIndent indent)
++void vtkTooltipImageItem::PrintSelf(ostream &os, vtkIndent indent)
+ {
+   this->Superclass::PrintSelf(os, indent);
+ }

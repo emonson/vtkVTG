@@ -1,0 +1,240 @@
+--- /Users/emonson/Programming/VTK_git/VTK/Charts/vtkChartXY.h	2010-08-04 13:30:01.000000000 -0400
++++ vtkMyChartXY.h	2010-06-21 15:54:59.000000000 -0400
+@@ -1,7 +1,7 @@
+ /*=========================================================================
+ 
+   Program:   Visualization Toolkit
+-  Module:    vtkChartXY.h
++  Module:    vtkMyChartXY.h
+ 
+   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
+   All rights reserved.
+@@ -13,36 +13,44 @@
+ 
+ =========================================================================*/
+ 
+-// .NAME vtkChartXY - Factory class for drawing XY charts
++// .NAME vtkMyChartXY - Factory class for drawing XY charts
+ //
+ // .SECTION Description
+ // This class implements an XY chart.
+ 
+-#ifndef __vtkChartXY_h
+-#define __vtkChartXY_h
++#ifndef __vtkMyChartXY_h
++#define __vtkMyChartXY_h
+ 
+-#include "vtkChart.h"
++#include "vtkChartXY.h"
++#include "vtkSmartPointer.h"
++#include <math.h>
+ 
+ class vtkPlot;
+ class vtkAxis;
+-class vtkTransform2D;
+ class vtkPlotGrid;
+ class vtkTable;
+ class vtkChartLegend;
+-class vtkTooltipItem;
++class vtkTooltipImageItem;
+ class vtkContextMouseEvent;
+ class vtkDataArray;
+-class vtkChartXYPrivate; // Private class to keep my STL vector in...
++class vtkAnnotationLink;
++class vtkImageData;
++class vtkMatrix4x4;
++class vtkImageReslice;
++class vtkLookupTable;
++class vtkImageMapToColors;
++class vtkAxisImagePrivate;
++class vtkMyChartXYPrivate; // Private class to keep my STL vector in...
+ 
+-class VTK_CHARTS_EXPORT vtkChartXY : public vtkChart
++class VTK_CHARTS_EXPORT vtkMyChartXY : public vtkChartXY
+ {
+ public:
+-  vtkTypeMacro(vtkChartXY, vtkChart);
++  vtkTypeMacro(vtkMyChartXY, vtkChartXY);
+   virtual void PrintSelf(ostream &os, vtkIndent indent);
+ 
+   // Description:
+   // Creates a 2D Chart object.
+-  static vtkChartXY *New();
++  static vtkMyChartXY *New();
+ 
+   // Description:
+   // Perform any updates to the item that may be necessary before rendering.
+@@ -59,10 +67,6 @@
+   virtual vtkPlot * AddPlot(int type);
+ 
+   // Description:
+-  // Adds a plot to the chart
+-  virtual vtkIdType AddPlot(vtkPlot* plot);
+-
+-  // Description:
+   // Remove the plot at the specified index, returns true if successful,
+   // false if the index was invalid.
+   virtual bool RemovePlot(vtkIdType index);
+@@ -108,12 +112,6 @@
+   vtkGetMacro(DrawAxesAtOrigin, bool);
+ 
+   // Description:
+-  // If true then the axes will be turned on and off depending upon whether
+-  // any plots are in that corner. Defaults to true.
+-  vtkSetMacro(AutoAxes, bool);
+-  vtkGetMacro(AutoAxes, bool);
+-
+-  // Description:
+   // Set the width fraction for any bar charts drawn in this chart. It is
+   // assumed that all bar plots will use the same array for the X axis, and that
+   // this array is regularly spaced. The delta between the first two x values is
+@@ -121,6 +119,35 @@
+   // The default value is 0.8, 1.0 would lead to bars that touch.
+   vtkSetMacro(BarWidthFraction, float);
+   vtkGetMacro(BarWidthFraction, float);
++  
++  // Description
++  // Set whether tooltip will show image or text
++  // Please set the image stack on the plot before this call so here
++  // I can initialize tooltip with an example image.
++  virtual void SetTooltipShowImage(bool ShowImage);
++
++  // Description
++  // Set a size scaling factor for tooltip image
++  virtual void SetTooltipImageScalingFactor(float ScalingFactor);
++  virtual void SetTooltipImageTargetSize(int pixels);
++
++  // Description
++  // ImageData associated with plot, which the tooltip in the chartXY will get
++  // a slice of to display when hovering over points (needs to be just 2d)
++  virtual void SetAxisImageStack(vtkImageData*);
++  virtual void SetCenterImage(vtkImageData*);
++  virtual int GetNumberOfImages();
++  virtual vtkImageData* GetImageAtIndex(int imageId);
++  virtual void SetAxisImagesVertical();
++  virtual void SetAxisImagesHorizontal();
++  
++  // Description:
++  // Set the vtkHighlightLink for the chart.
++  virtual void SetHighlightLink(vtkAnnotationLink *link);
++
++  // Description:
++  // Get the vtkHighlightLink for the chart.
++  vtkGetObjectMacro(HighlightLink, vtkAnnotationLink);
+ 
+ //BTX
+   // Description:
+@@ -150,12 +177,35 @@
+   // Description:
+   // Mouse wheel event, positive delta indicates forward movement of the wheel.
+   virtual bool MouseWheelEvent(const vtkContextMouseEvent &mouse, int delta);
++
++  // Description:
++  // Enum containing whether axis images are 
++  enum {
++    VERTICAL = 0,
++    HORIZONTAL
++  };
+ //ETX
+ 
++  // Description:
++  // Set the vtkContextScene for the item, always set for an item in a scene.
++  virtual void SetScene(vtkContextScene *scene);
++
++  // Description:
++  // Return the Stacked plot accumulator so that each vtkPlotStacked can 
++  // use it to determine its base and contribute to the position of the next
++  // stacked plot.
++  vtkDataArray *GetStackedPlotAccumulator(int dataType, int n);
++
++  // Description:
++  // Timestamp identifying the last time the participants in a stacked plot
++  // have changed (either by being added or having their visibility change)
++  vtkTimeStamp GetStackParticipantsChanged();
++  void SetStackPartipantsChanged();
++
+ //BTX
+ protected:
+-  vtkChartXY();
+-  ~vtkChartXY();
++  vtkMyChartXY();
++  ~vtkMyChartXY();
+ 
+   // Description:
+   // Recalculate the necessary transforms.
+@@ -185,7 +235,14 @@
+ 
+   // Description:
+   // The tooltip item for the chart - can be used to display extra information.
+-  vtkTooltipItem *Tooltip;
++  vtkTooltipImageItem *Tooltip;
++  bool TooltipShowImage;
++
++  // Description
++  // ImageData associated with the axes. This should be in a z-stack.
++  vtkImageData* AxisImageStack;
++  int NumImages;
++  vtkImageData* CenterImage;
+ 
+   // Description:
+   // Does the plot area transform need to be recalculated?
+@@ -214,24 +271,23 @@
+   bool DrawAxesAtOrigin;
+ 
+   // Description:
+-  // Should axes be turned on and off automatically - defaults to on.
+-  bool AutoAxes;
+-
+-  // Description:
+   // The fraction of the interval taken up along the x axis by any bars that are
+   // drawn on the chart.
+   float BarWidthFraction;
+ 
+-  // Description:
+-  // Indicate if the layout has changed in some way that would require layout
+-  // code to be called.
+-  bool LayoutChanged;
+-
+ private:
+-  vtkChartXY(const vtkChartXY &); // Not implemented.
+-  void operator=(const vtkChartXY &);   // Not implemented.
++  vtkMyChartXY(const vtkMyChartXY &); // Not implemented.
++  void operator=(const vtkMyChartXY &);   // Not implemented.
++
++  vtkMyChartXYPrivate *ChartPrivate; // Private class where I hide my STL containers
++
++  // Description:
++  // Link back into chart to highlight selections made in other plots
++  vtkAnnotationLink *HighlightLink;
+ 
+-  vtkChartXYPrivate *ChartPrivate; // Private class where I hide my STL containers
++  // Description:
++  // Private functions to render different parts of the chart
++  void RenderPlots(vtkContext2D *painter);
+ 
+   // Description:
+   // Figure out the spacing between the bar chart plots, and their offsets.
+@@ -243,11 +299,21 @@
+ 
+   // Description:
+   // Remove the plot from the plot corners list.
+-  bool RemovePlotFromCorners(vtkPlot *plot);
++  bool RemovePlotFromConers(vtkPlot *plot);
+ 
+   void ZoomInAxes(vtkAxis *x, vtkAxis *y, float *orign, float *max);
+ 
++  // Pipeline for displaying axis images
++  vtkSmartPointer<vtkMatrix4x4> resliceAxes;
++  vtkSmartPointer<vtkImageReslice> reslice;
++  vtkSmartPointer<vtkLookupTable> lut;
++  vtkSmartPointer<vtkImageMapToColors> color;
++  // Pipeline for displaying center image
++  vtkSmartPointer<vtkLookupTable> lutBW;
++  vtkSmartPointer<vtkImageMapToColors> colorBW;
++  
++
+ //ETX
+ };
+ 
+-#endif //__vtkChartXY_h
++#endif //__vtkMyChartXY_h

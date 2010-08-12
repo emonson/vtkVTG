@@ -20,6 +20,7 @@
 #include "vtkBrush.h"
 #include "vtkPen.h"
 #include "vtkContextScene.h"
+#include "vtkContextMouseEvent.h"
 #include "vtkTextProperty.h"
 #include "vtkAxis.h"
 #include "vtkContextMapper2D.h"
@@ -440,7 +441,9 @@ void vtkMyChartParallelCoordinates::UpdateGeometry()
     {
     // Take up the entire window right now, this could be made configurable
     this->SetGeometry(geometry.GetData());
-    this->SetBorders(60, 20, 20, 50);
+    // this->SetBorders(60, 20, 20, 50);
+    // New API uses (left, bottom, right, top)
+    this->SetBorders(60, 50, 20, 20);
 
     // Iterate through the axes and set them up to span the chart area.
     int xStep = (this->Point2[0] - this->Point1[0]) /

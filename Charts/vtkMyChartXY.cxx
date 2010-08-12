@@ -20,6 +20,7 @@
 #include "vtkBrush.h"
 #include "vtkColorSeries.h"
 #include "vtkContextDevice2D.h"
+#include "vtkContextMouseEvent.h"
 #include "vtkTransform2D.h"
 #include "vtkContextScene.h"
 #include "vtkPoints2D.h"
@@ -383,15 +384,17 @@ bool vtkMyChartXY::Paint(vtkContext2D *painter)
     // Take up the entire window right now, this could be made configurable
     this->SetGeometry(geometry);
     // Borders (Left, Right, Top, Bottom)
+    // I think the new API uses (Left, Bottom, Right, Top)
 		if (this->ChartPrivate->aiOrientation == vtkMyChartXY::VERTICAL)
 			{
-    	this->SetBorders(120, 20, 20, 50);
+    	// this->SetBorders(120, 20, 20, 50);
+    	this->SetBorders(120, 50, 20, 20);
 			origin[0] = 20;
 			origin[1] = 50;
     	}
     else
     	{
-    	this->SetBorders(60, 20, 160, 80);
+    	this->SetBorders(60, 80, 20, 160);
 			origin[0] = 60;
 			origin[1] = this->Geometry[1] - 160 + 50;
     	}
