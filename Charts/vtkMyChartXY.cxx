@@ -67,28 +67,6 @@
 // My STL containers
 #include <vtkstd/vector>
 
-//-----------------------------------------------------------------------------
-class vtkMyChartXYPrivate
-{
-public:
-  vtkMyChartXYPrivate()
-    {
-    this->Colors = vtkSmartPointer<vtkColorSeries>::New();
-    this->Clip = vtkSmartPointer<vtkContextClip>::New();
-    this->Borders[0] = 60;
-    this->Borders[1] = 50;
-    this->Borders[2] = 20;
-    this->Borders[3] = 20;
-    }
-
-  vtkstd::vector<vtkPlot *> plots; // Charts can contain multiple plots of data
-  vtkstd::vector<vtkContextTransform *> PlotCorners; // Stored by corner...
-  vtkstd::vector<vtkAxis *> axes; // Charts can contain multiple axes
-  vtkSmartPointer<vtkColorSeries> Colors; // Colors in the chart
-  vtkSmartPointer<vtkContextClip> Clip; // Colors in the chart
-  int Borders[4];
-};
-
 
 //-----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMyChartXY);
@@ -101,8 +79,8 @@ vtkMyChartXY::vtkMyChartXY()
 {
   this->TooltipShowImage = false;
   this->Tooltip = vtkTooltipImageItem::New();
-  this->Tooltip->SetShowImage(this->TooltipShowImage);
-  this->Tooltip->SetVisible(false);
+  vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetShowImage(this->TooltipShowImage);
+  vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetVisible(false);
   this->AddItem(this->Tooltip);
   this->Tooltip->Delete();
 
@@ -128,6 +106,8 @@ void vtkMyChartXY::Update()
   vtkChartXY::Update();
   
   // Update the selections if necessary.
+  // Do this without reference to this->ChartPrivate since that is private
+  // data in the parent class. Using public API instead to get plots...
   if (this->HighlightLink)
     {
     this->HighlightLink->Update();
@@ -139,13 +119,12 @@ void vtkMyChartXY::Update()
       vtkIdTypeArray *hidArray =
           vtkIdTypeArray::SafeDownCast(node->GetSelectionList());
       // Now iterate through the plots to update selection data
-      vtkstd::vector<vtkPlot*>::iterator it =
-          this->ChartPrivate->plots.begin();
-      for ( ; it != this->ChartPrivate->plots.end(); ++it)
+      for (int ii=0; ii < this->GetNumberOfPlots(); ++ii)
         {
-				if ((*it)->IsA("vtkMyPlotPoints"))
+        vtkPlot* pp = this->GetPlot(ii);
+				if (pp->IsA("vtkMyPlotPoints"))
 					{
-					vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(*it);
+					vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(pp);
         	myPlot->SetHighlightSelection(hidArray);
         	}
         }
@@ -161,53 +140,38 @@ void vtkMyChartXY::Update()
 void vtkMyChartXY::SetTooltipInfo(const vtkContextMouseEvent& mouse, vtkVector2f plotPos, 
                                 int seriesIndex, vtkPlot* plot)
 {
-  printf("Reaching proper SetTooltipInfo\n");
-	this->Tooltip->SetImageIndex(seriesIndex);
+	this->Tooltip->SetPosition(mouse.ScreenPos[0]+8, mouse.ScreenPos[1]+6);
+	vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetImageIndex(seriesIndex);
 }
 
 //-----------------------------------------------------------------------------
 void vtkMyChartXY::SetTooltipShowImage(bool ShowImage)
 {
   this->TooltipShowImage = ShowImage;
-  this->Tooltip->SetShowImage(this->TooltipShowImage);  
+  vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetShowImage(this->TooltipShowImage);  
 }
 
 //-----------------------------------------------------------------------------
 void vtkMyChartXY::SetTooltipImageScalingFactor(float ScalingFactor)
 {
-  this->Tooltip->SetScalingFactor(ScalingFactor);
+  vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetScalingFactor(ScalingFactor);
 }
 
 //-----------------------------------------------------------------------------
 void vtkMyChartXY::SetTooltipImageTargetSize(int pixels)
 {
-  this->Tooltip->SetTargetSize(pixels);
+  vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetTargetSize(pixels);
 }
 
 //-----------------------------------------------------------------------------
 void vtkMyChartXY::SetTooltipImageStack(vtkImageData* stack)
 {
-  this->Tooltip->SetImageStack(stack);
+  vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetImageStack(stack);
 }
 
 //-----------------------------------------------------------------------------
 void vtkMyChartXY::PrintSelf(ostream &os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
-  os << indent << "Axes: " << endl;
-  for (int i = 0; i < 4; ++i)
-    {
-    this->ChartPrivate->axes[i]->PrintSelf(os, indent.GetNextIndent());
-    }
-  if (this->ChartPrivate)
-    {
-    os << indent << "Number of plots: " << this->ChartPrivate->plots.size()
-       << endl;
-    for (unsigned int i = 0; i < this->ChartPrivate->plots.size(); ++i)
-      {
-      os << indent << "Plot " << i << ":" << endl;
-      this->ChartPrivate->plots[i]->PrintSelf(os, indent.GetNextIndent());
-      }
-    }
 
 }

@@ -72,8 +72,6 @@ protected:
   class VectorPIMPL3;
   VectorPIMPL3* Sorted;
 
-  vtkImageData* SelectionMarker;
-
   // Description:
   // Selected indices coming back from outside the chart this plot is associated with.
   vtkIdTypeArray *HighlightSelection;
@@ -82,7 +80,6 @@ private:
   vtkMyPlotPoints(const vtkMyPlotPoints &); // Not implemented.
   void operator=(const vtkMyPlotPoints &); // Not implemented.
 
-//ETX
 };
 
 #endif //__vtkMyPlotPoints_h

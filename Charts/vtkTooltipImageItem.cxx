@@ -40,17 +40,6 @@ vtkStandardNewMacro(vtkTooltipImageItem);
 //-----------------------------------------------------------------------------
 vtkTooltipImageItem::vtkTooltipImageItem()
 {
-  this->Position = this->PositionVector.GetData();
-  this->Text = NULL;
-  this->TextProperties = vtkTextProperty::New();
-  this->TextProperties->SetVerticalJustificationToBottom();
-  this->TextProperties->SetJustificationToLeft();
-  this->TextProperties->SetColor(0.0, 0.0, 0.0);
-  this->Pen = vtkPen::New();
-  this->Pen->SetColor(0, 0, 0);
-  this->Pen->SetWidth(1.0);
-  this->Brush = vtkBrush::New();
-  this->Brush->SetColor(242, 242, 242);
   this->TipImage = NULL;
   this->ScalingFactor = 1.0;
   this->ShowImage = false;
@@ -91,21 +80,10 @@ vtkTooltipImageItem::vtkTooltipImageItem()
   this->color = vtkSmartPointer<vtkImageMapToColors>::New();
   this->color->SetLookupTable(this->lut);
   this->color->SetInputConnection(this->reslice->GetOutputPort());
-
 }
 
 //-----------------------------------------------------------------------------
 vtkTooltipImageItem::~vtkTooltipImageItem()
-{
-
-  this->SetText(NULL);
-  this->Pen->Delete();
-  this->Brush->Delete();
-  this->TextProperties->Delete();
-}
-
-//-----------------------------------------------------------------------------
-void vtkTooltipImageItem::Update()
 {
 
 }
@@ -116,16 +94,10 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
   // This is where everything should be drawn, or dispatched to other methods.
   vtkDebugMacro(<< "Paint event called in vtkTooltipImageItem.");
   
-  printf("vtkTooltipImageItem, visible = %d\n", (bool)this->Visible);
-  printf("vtkTooltipImageItem, text = %d\n", (bool)this->Text);
-  printf("vtkTooltipImageItem, tip image = %d\n", (bool)this->TipImage);
-
-  if (!this->Visible || (!this->Text || !this->TipImage))
+  if (!this->Visible)
     {
     return false;
     }
-
-  printf("Proceeding vtkTooltipImageItem paint\n");
 
   painter->ApplyPen(this->Pen);
   painter->ApplyBrush(this->Brush);
@@ -162,9 +134,7 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 			bounds[0].SetY(this->Scene->GetViewHeight()-bounds[1].Y());
 			}
     }
-  
-  printf("Reaching vtkTooltipImageItem Draw\n");
-  
+    
   if (!this->ShowImage)
     {
 		// Draw a rectangle as background, and then center our text in there

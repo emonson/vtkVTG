@@ -59,21 +59,16 @@ vtkCxxSetObjectMacro(vtkMyPlotPoints, HighlightSelection, vtkIdTypeArray);
 //-----------------------------------------------------------------------------
 vtkMyPlotPoints::vtkMyPlotPoints()
 {
-  // For some reason Sorted wasn't coming out NULL in first pass to 
-  // GetNearestPoint without an explicit setting here...
+  // Since Sorted is a new type in this class, won't be set to null
+  // in the superclass constructor
   this->Sorted = NULL;
   
-  this->SelectionMarker = NULL;
   this->HighlightSelection = NULL;
 }
 
 //-----------------------------------------------------------------------------
 vtkMyPlotPoints::~vtkMyPlotPoints()
 {
-  if (this->SelectionMarker)
-    {
-    this->SelectionMarker->Delete();
-    }
   if (this->HighlightSelection)
     {
     this->HighlightSelection->Delete();
@@ -85,7 +80,7 @@ vtkMyPlotPoints::~vtkMyPlotPoints()
 bool vtkMyPlotPoints::Paint(vtkContext2D *painter)
 {
   // Paint superclass methods first
-  vtkPlotPoints::Paint(painter);
+  this->Superclass::Paint(painter);
 
   float width = this->Pen->GetWidth() * 2.3;
   if (width < 8.0)
@@ -110,7 +105,7 @@ bool vtkMyPlotPoints::Paint(vtkContext2D *painter)
         {
         double *point = this->Points->GetPoint(id);
         float p[] = { point[0], point[1] };
-        painter->DrawPointSprites(this->SelectionMarker, p, 1);
+        painter->DrawPointSprites(this->HighlightMarker, p, 1);
         }
       }
     }

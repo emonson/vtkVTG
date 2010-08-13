@@ -92,7 +92,7 @@ protected:
 
   // Description:
   // The tooltip item for the chart - can be used to display extra information.
-  vtkTooltipImageItem *Tooltip;
+  // vtkTooltipImageItem *Tooltip;
   bool TooltipShowImage;
   
   // Description:
@@ -102,8 +102,6 @@ protected:
 private:
   vtkMyChartXY(const vtkMyChartXY &); // Not implemented.
   void operator=(const vtkMyChartXY &);   // Not implemented.
-
-  vtkMyChartXYPrivate *ChartPrivate; // Private class where I hide my STL containers
 
   // Description:
   // Link back into chart to highlight selections made in other plots

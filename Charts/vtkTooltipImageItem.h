@@ -24,7 +24,7 @@
 #ifndef __vtkTooltipImageItem_h
 #define __vtkTooltipImageItem_h
 
-#include "vtkContextItem.h"
+#include "vtkTooltipItem.h"
 #include "vtkSmartPointer.h"
 #include "vtkVector.h" // Needed for vtkVector2f
 
@@ -37,41 +37,15 @@ class vtkImageReslice;
 class vtkLookupTable;
 class vtkImageMapToColors;
 
-class VTK_CHARTS_EXPORT vtkTooltipImageItem : public vtkContextItem
+class VTK_CHARTS_EXPORT vtkTooltipImageItem : public vtkTooltipItem
 {
 public:
-  vtkTypeMacro(vtkTooltipImageItem, vtkContextItem);
+  vtkTypeMacro(vtkTooltipImageItem, vtkTooltipItem);
   virtual void PrintSelf(ostream &os, vtkIndent indent);
 
   // Description:
   // Creates a 2D Chart object.
   static vtkTooltipImageItem *New();
-
-  // Description:
-  // Set the position of the tooltip (in pixels).
-  vtkSetVector2Macro(Position, float);
-
-  // Description:
-  // Get position of the axis (in pixels).
-  vtkGetVector2Macro(Position, float);
-
-  // Description:
-  // Get/set the text of the item.
-  vtkSetStringMacro(Text);
-  vtkGetStringMacro(Text);
-
-  // Description:
-  // Get a pointer to the vtkTextProperty object that controls the way the
-  // text is rendered.
-  vtkGetObjectMacro(Pen, vtkPen);
-
-  // Description:
-  // Get a pointer to the vtkPen object.
-  vtkGetObjectMacro(Brush, vtkBrush);
-
-  // Description:
-  // Update the geometry of the tooltip.
-  virtual void Update();
 
   // Description:
   // Paint event for the tooltip.
@@ -97,13 +71,6 @@ protected:
   vtkTooltipImageItem();
   ~vtkTooltipImageItem();
 
-  vtkVector2f PositionVector;
-  float* Position;
-  char* Text;
-  vtkTextProperty* TextProperties;
-  vtkPen* Pen;
-  vtkBrush* Brush;
-  
   // Description
   // Image to be shown if ShowImage is true
   vtkImageData* TipImage;
