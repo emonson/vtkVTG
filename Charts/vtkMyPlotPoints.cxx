@@ -38,6 +38,9 @@
 #include "vtkstd/algorithm"
 
 // PIMPL for STL vector...
+// This is an older form which should probably be updated to newer version, but
+// since this really should be a different class/structure anyway, not worrying for now...
+// (Cheating by storing integer index in 3rd float Z point)
 class vtkMyPlotPoints::VectorPIMPL3 : public vtkstd::vector<vtkVector3f>
 {
 public:
@@ -56,6 +59,10 @@ vtkCxxSetObjectMacro(vtkMyPlotPoints, HighlightSelection, vtkIdTypeArray);
 //-----------------------------------------------------------------------------
 vtkMyPlotPoints::vtkMyPlotPoints()
 {
+  // For some reason Sorted wasn't coming out NULL in first pass to 
+  // GetNearestPoint without an explicit setting here...
+  this->Sorted = NULL;
+  
   this->SelectionMarker = NULL;
   this->HighlightSelection = NULL;
 }
@@ -159,17 +166,20 @@ int vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
   // line plots.
   if (!this->Points)
     {
-    return false;
+    return -1;
     }
   vtkIdType n = this->Points->GetNumberOfPoints();
   if (n < 2)
     {
-    return false;
+    return -1;
     }
 
   // Sort the data if it has not been done already.  We need to sort it
   // and collect the base and extent into the same vector since both will
   // get involved in range checking.
+  // This initial Sorted creation is probably slow compared to newer PlotPoints
+  // version which just uses pointers to data, so need to update this sometime
+  // when I switch to real non-float/int cheating method...
   if (!this->Sorted)
     {
     vtkVector2f* data =
@@ -192,7 +202,7 @@ int vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
   low = vtkstd::lower_bound(v.begin(), v.end(), lowPoint, compVector3fX);
 
   // Now consider the y axis
-    float highX = point.X() + tol.X();
+  float highX = point.X() + tol.X();
   while (low != v.end())
     {
     if (inRange23(point, tol, *low))
@@ -211,6 +221,7 @@ int vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
     ++low;
     }
   return -1;
+
 }
 
 

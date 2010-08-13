@@ -25,12 +25,17 @@
 #define __vtkTooltipImageItem_h
 
 #include "vtkContextItem.h"
+#include "vtkSmartPointer.h"
 #include "vtkVector.h" // Needed for vtkVector2f
 
 class vtkPen;
 class vtkBrush;
 class vtkTextProperty;
 class vtkImageData;
+class vtkMatrix4x4;
+class vtkImageReslice;
+class vtkLookupTable;
+class vtkImageMapToColors;
 
 class VTK_CHARTS_EXPORT vtkTooltipImageItem : public vtkContextItem
 {
@@ -75,10 +80,17 @@ public:
   // Description
   // Image to be shown if ShowImage is true
   // You'll want to set an image scaling factor or target (max dim) size
-  virtual void SetTipImage(vtkImageData*);
   vtkSetMacro(ShowImage, bool);
   virtual void SetScalingFactor(float factor);
   virtual void SetTargetSize(int pixels);
+  
+  // Description
+  // ImageData associated with plot, which the tooltip in the chartXY will get
+  // a slice of to display when hovering over points (needs to be just 2d)
+  virtual void SetImageStack(vtkImageData*);
+  virtual int GetNumberOfImages();
+  virtual void SetImageIndex(int imageId);
+  virtual vtkImageData* GetImageAtIndex(int imageId);
   
 //BTX
 protected:
@@ -99,6 +111,19 @@ protected:
   float ScalingFactor;
   float ImageWidth;
   float ImageHeight;
+
+  // Description
+  // ImageData associated with plot, which the tooltip in the chartXY will get
+  // a slice of to display when hovering over points
+  vtkImageData* ImageStack;
+  int NumImages;
+
+  // Description
+  // Filters for selecting a single slice out of the image stack for display as tooltip
+  vtkSmartPointer<vtkMatrix4x4> resliceAxes;
+  vtkSmartPointer<vtkImageReslice> reslice;
+  vtkSmartPointer<vtkLookupTable> lut;
+  vtkSmartPointer<vtkImageMapToColors> color;
 
 private:
   vtkTooltipImageItem(const vtkTooltipImageItem &); // Not implemented.

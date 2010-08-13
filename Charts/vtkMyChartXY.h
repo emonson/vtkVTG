@@ -81,6 +81,10 @@ public:
   virtual void SetTooltipImageScalingFactor(float ScalingFactor);
   virtual void SetTooltipImageTargetSize(int pixels);
 
+  // Description
+  // ImageData associated with plot, which the tooltip in the chartXY will get
+  // a slice of to display when hovering over points (needs to be just 2d)
+  virtual void SetTooltipImageStack(vtkImageData*);
 
 protected:
   vtkMyChartXY();
@@ -90,7 +94,10 @@ protected:
   // The tooltip item for the chart - can be used to display extra information.
   vtkTooltipImageItem *Tooltip;
   bool TooltipShowImage;
-
+  
+  // Description:
+  // Set the information passed to the tooltip
+  virtual void SetTooltipInfo(const vtkContextMouseEvent&, vtkVector2f, int, vtkPlot*);
 
 private:
   vtkMyChartXY(const vtkMyChartXY &); // Not implemented.
@@ -99,17 +106,8 @@ private:
   vtkMyChartXYPrivate *ChartPrivate; // Private class where I hide my STL containers
 
   // Description:
-  // Private functions to render different parts of the chart
-  void RenderPlotHighlights(vtkContext2D *painter);
-
-  // Description:
   // Link back into chart to highlight selections made in other plots
   vtkAnnotationLink *HighlightLink;
-
-  // Description:
-  // Try to locate a point within the plots to display in a tooltip
-  bool LocatePointInPlots(const vtkContextMouseEvent &mouse);
-
 
 };
 

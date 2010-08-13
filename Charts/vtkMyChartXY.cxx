@@ -20,9 +20,11 @@
 #include "vtkBrush.h"
 #include "vtkColorSeries.h"
 #include "vtkContextDevice2D.h"
-#include "vtkContextMouseEvent.h"
 #include "vtkTransform2D.h"
 #include "vtkContextScene.h"
+#include "vtkContextMouseEvent.h"
+#include "vtkContextTransform.h"
+#include "vtkContextClip.h"
 #include "vtkPoints2D.h"
 #include "vtkVector.h"
 
@@ -30,28 +32,19 @@
 #include "vtkPlotBar.h"
 #include "vtkPlotStacked.h"
 #include "vtkPlotLine.h"
-#include "vtkMyPlotPoints.h"
+#include "vtkPlotPoints.h"
 #include "vtkContextMapper2D.h"
 
 #include "vtkAxis.h"
 #include "vtkPlotGrid.h"
 #include "vtkChartLegend.h"
-#include "vtkTooltipImageItem.h"
+#include "vtkTooltipItem.h"
 
 #include "vtkTable.h"
 #include "vtkAbstractArray.h"
 #include "vtkFloatArray.h"
 #include "vtkIntArray.h"
 #include "vtkIdTypeArray.h"
-
-#include "vtkImageData.h"
-#include "vtkMatrix4x4.h"
-#include "vtkImageReslice.h"
-#include "vtkLookupTable.h"
-#include "vtkColorTransferFunction.h"
-#include "vtkImageMapToColors.h"
-#include "vtkPointData.h"
-#include "vtkVector.h"
 
 #include "vtkAnnotationLink.h"
 #include "vtkSelection.h"
@@ -67,14 +60,12 @@
 #include "vtksys/ios/sstream"
 #include "vtkDataArray.h"
 
-// Testing
-#include <time.h>
-#include <string.h>
-//#include <stdlib.h>
+// Custom
+#include "vtkMyPlotPoints.h"
+#include "vtkTooltipImageItem.h"
 
 // My STL containers
 #include <vtkstd/vector>
-#include <vtkstd/string>
 
 //-----------------------------------------------------------------------------
 class vtkMyChartXYPrivate
@@ -83,21 +74,21 @@ public:
   vtkMyChartXYPrivate()
     {
     this->Colors = vtkSmartPointer<vtkColorSeries>::New();
-    this->PlotCorners.resize(4);
-    this->PlotTransforms.resize(4);
-    this->PlotTransforms[0] = vtkSmartPointer<vtkTransform2D>::New();
-    this->StackedPlotAccumulator = vtkSmartPointer<vtkDataArray>();
-    this->StackParticipantsChanged.Modified();
+    this->Clip = vtkSmartPointer<vtkContextClip>::New();
+    this->Borders[0] = 60;
+    this->Borders[1] = 50;
+    this->Borders[2] = 20;
+    this->Borders[3] = 20;
     }
 
   vtkstd::vector<vtkPlot *> plots; // Charts can contain multiple plots of data
-  vtkstd::vector< vtkstd::vector<vtkPlot *> > PlotCorners; // Stored by corner...
-  vtkstd::vector< vtkSmartPointer<vtkTransform2D> > PlotTransforms; // Transforms
+  vtkstd::vector<vtkContextTransform *> PlotCorners; // Stored by corner...
   vtkstd::vector<vtkAxis *> axes; // Charts can contain multiple axes
   vtkSmartPointer<vtkColorSeries> Colors; // Colors in the chart
-  vtkSmartPointer<vtkDataArray> StackedPlotAccumulator;
-  vtkTimeStamp StackParticipantsChanged;   // Plot added or plot visibility changed
+  vtkSmartPointer<vtkContextClip> Clip; // Colors in the chart
+  int Borders[4];
 };
+
 
 //-----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMyChartXY);
@@ -167,109 +158,18 @@ void vtkMyChartXY::Update()
 
 }
 
-//-----------------------------------------------------------------------------
-bool vtkMyChartXY::LocatePointInPlots(const vtkContextMouseEvent &mouse)
+void vtkMyChartXY::SetTooltipInfo(const vtkContextMouseEvent& mouse, vtkVector2f plotPos, 
+                                int seriesIndex, vtkPlot* plot)
 {
-  size_t n = this->ChartPrivate->plots.size();
-  if (mouse.ScreenPos[0] > this->Point1[0] &&
-      mouse.ScreenPos[0] < this->Point2[0] &&
-      mouse.ScreenPos[1] > this->Point1[1] &&
-      mouse.ScreenPos[1] < this->Point2[1] && n)
-    {
-    // Iterate through each corner, and check for a nearby point
-    for (int i = 0; i < 4; ++i)
-      {
-      if (this->ChartPrivate->PlotCorners[i].size())
-        {
-        vtkVector2f position;
-        vtkTransform2D* transform = this->ChartPrivate->PlotTransforms[i];
-        transform->InverseTransformPoints(mouse.Pos.GetData(),
-                                          position.GetData(), 1);
-        // Use a tolerance of +/- 5 pixels
-        vtkVector2f tolerance(5*(1.0/transform->GetMatrix()->GetElement(0, 0)),
-                              5*(1.0/transform->GetMatrix()->GetElement(1, 1)));
-        // Iterate through the visible plots and return on the first hit
-        for (int j = static_cast<int>(this->ChartPrivate->PlotCorners[i].size()-1);
-             j >= 0; --j)
-          {
-          vtkPlot* plot = this->ChartPrivate->PlotCorners[i][j];
-          if (plot->GetVisible())
-            {
-            if (plot->IsA("vtkMyPlotPoints"))
-              {
-							vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(plot);
-              vtkVector2f plotPos;
-							int found_ind = myPlot->GetNearestPoint(position, tolerance, &plotPos);
-							if (found_ind >= 0)
-								{
-								// We found a point, set up the tooltip and return
-								vtksys_ios::ostringstream ostr;
-								ostr << myPlot->GetLabel() << ": " << found_ind;
-								this->Tooltip->SetText(ostr.str().c_str());
-								this->Tooltip->SetPosition(mouse.ScreenPos[0]+8, mouse.ScreenPos[1]+6);
-								
-								// Testing random image from stack
-// 								if (this->TooltipShowImage)
-// 									{
-// 									int num_images = myPlot->GetNumberOfImages();
-// 									if (num_images > 0)
-// 										{
-// 										// int random_index = rand() % num_images;
-// 										// this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(random_index));
-// 										this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(found_ind));
-// 										}
-// 									}
-								return true;
-								}
-							}
-					  else
-					    {
-              vtkVector2f plotPos;
-							int found = plot->GetNearestPoint(position, tolerance, &plotPos);
-							if (found >= 0)
-								{
-								// We found a point, set up the tooltip and return
-								vtksys_ios::ostringstream ostr;
-								ostr << plot->GetLabel() << ": " << plotPos.X() << ", " << plotPos.Y();
-								this->Tooltip->SetText(ostr.str().c_str());
-								this->Tooltip->SetPosition(mouse.ScreenPos[0]+2, mouse.ScreenPos[1]+2);
-								return true;
-								}
-              }
-            }
-          }
-        }
-      }
-    }
-  return false;
+  printf("Reaching proper SetTooltipInfo\n");
+	this->Tooltip->SetImageIndex(seriesIndex);
 }
-
 
 //-----------------------------------------------------------------------------
 void vtkMyChartXY::SetTooltipShowImage(bool ShowImage)
 {
   this->TooltipShowImage = ShowImage;
-  this->Tooltip->SetShowImage(this->TooltipShowImage);
-  
-  // Assuming for now that an image stack has been set in one of the vtkMyPlotPoints
-  // We know the plot will only ever be in one of the corners
-  for (int i = 0; i < 4; ++i)
-    {
-    vtkstd::vector<vtkPlot*>::iterator it =
-        this->ChartPrivate->PlotCorners[i].begin();
-    for ( ; it !=this->ChartPrivate->PlotCorners[i].end(); ++it)
-      {
-//       if ((*it)->IsA("vtkMyPlotPoints"))
-//         {
-//         vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast((*it));
-//         if ( myPlot->GetNumberOfImages() > 0)
-//           {
-//           this->Tooltip->SetTipImage(myPlot->GetImageAtIndex(0));
-//           }
-//         }
-      }
-    }
-  
+  this->Tooltip->SetShowImage(this->TooltipShowImage);  
 }
 
 //-----------------------------------------------------------------------------
@@ -284,6 +184,11 @@ void vtkMyChartXY::SetTooltipImageTargetSize(int pixels)
   this->Tooltip->SetTargetSize(pixels);
 }
 
+//-----------------------------------------------------------------------------
+void vtkMyChartXY::SetTooltipImageStack(vtkImageData* stack)
+{
+  this->Tooltip->SetImageStack(stack);
+}
 
 //-----------------------------------------------------------------------------
 void vtkMyChartXY::PrintSelf(ostream &os, vtkIndent indent)

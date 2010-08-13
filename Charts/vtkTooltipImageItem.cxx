@@ -21,6 +21,11 @@
 #include "vtkBrush.h"
 #include "vtkTextProperty.h"
 #include "vtkImageData.h"
+#include "vtkMatrix4x4.h"
+#include "vtkImageReslice.h"
+#include "vtkLookupTable.h"
+#include "vtkImageMapToColors.h"
+#include "vtkPointData.h"
 
 #include "vtkStdString.h"
 #include "vtksys/ios/sstream"
@@ -51,6 +56,42 @@ vtkTooltipImageItem::vtkTooltipImageItem()
   this->ShowImage = false;
   this->ImageWidth = 0.0;
   this->ImageHeight = 0.0;
+
+  this->ImageStack = NULL;
+  this->NumImages = 0;
+
+  // ImageSlicing for TooltipImageItem
+  // Always slicing in the Z direction
+  static double axialElements[16] = {
+           1, 0, 0, 0,
+           0, 1, 0, 0,
+           0, 0, 1, 0,
+           0, 0, 0, 1 };
+
+  // Set the slice orientation
+  this->resliceAxes = vtkSmartPointer<vtkMatrix4x4>::New();
+  this->resliceAxes->DeepCopy(axialElements);
+
+  // Extract a slice in the desired orientation
+  this->reslice = vtkSmartPointer<vtkImageReslice>::New();
+  this->reslice->SetOutputDimensionality(2);
+  this->reslice->SetResliceAxes(this->resliceAxes);
+  this->reslice->SetInterpolationModeToNearestNeighbor();
+  // Need to set the Input when ImageStack is assigned
+
+  // Create a greyscale lookup table
+  this->lut = vtkSmartPointer<vtkLookupTable>::New();
+  this->lut->SetRange(0, 1); 			// image intensity range
+  this->lut->SetValueRange(0.0, 1.0); 		// from black to white
+  this->lut->SetSaturationRange(0.0, 0.0); 	// no color saturation
+  this->lut->SetRampToLinear();
+  this->lut->Build();
+
+  // Map the image through the lookup table
+  this->color = vtkSmartPointer<vtkImageMapToColors>::New();
+  this->color->SetLookupTable(this->lut);
+  this->color->SetInputConnection(this->reslice->GetOutputPort());
+
 }
 
 //-----------------------------------------------------------------------------
@@ -74,11 +115,17 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 {
   // This is where everything should be drawn, or dispatched to other methods.
   vtkDebugMacro(<< "Paint event called in vtkTooltipImageItem.");
+  
+  printf("vtkTooltipImageItem, visible = %d\n", (bool)this->Visible);
+  printf("vtkTooltipImageItem, text = %d\n", (bool)this->Text);
+  printf("vtkTooltipImageItem, tip image = %d\n", (bool)this->TipImage);
 
-  if (!this->Visible || !this->Text)
+  if (!this->Visible || (!this->Text || !this->TipImage))
     {
     return false;
     }
+
+  printf("Proceeding vtkTooltipImageItem paint\n");
 
   painter->ApplyPen(this->Pen);
   painter->ApplyBrush(this->Brush);
@@ -116,6 +163,8 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 			}
     }
   
+  printf("Reaching vtkTooltipImageItem Draw\n");
+  
   if (!this->ShowImage)
     {
 		// Draw a rectangle as background, and then center our text in there
@@ -133,9 +182,9 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 }
 
 //-----------------------------------------------------------------------------
-void vtkTooltipImageItem::SetTipImage(vtkImageData* image)
+void vtkTooltipImageItem::SetImageIndex(int imageId)
 {
-	this->TipImage = image;
+	this->TipImage = this->GetImageAtIndex(imageId);
 	this->TipImage->UpdateInformation();
 	int extent[6];
 
@@ -145,6 +194,7 @@ void vtkTooltipImageItem::SetTipImage(vtkImageData* image)
 	this->ImageWidth = this->ScalingFactor*(float)extent[1];
 	this->ImageHeight = this->ScalingFactor*(float)extent[3];
 }
+
 
 //-----------------------------------------------------------------------------
 void vtkTooltipImageItem::SetScalingFactor(float factor)
@@ -188,6 +238,74 @@ void vtkTooltipImageItem::SetTargetSize(int pixels)
 	this->ScalingFactor = scaling;
 	this->ImageWidth = scaling*(float)extent[1];
 	this->ImageHeight = scaling*(float)extent[3];
+}
+
+//-----------------------------------------------------------------------------
+void vtkTooltipImageItem::SetImageStack(vtkImageData* stack)
+{
+  this->ImageStack = stack;
+  this->ImageStack->UpdateInformation();
+  this->reslice->SetInput(this->ImageStack);
+  this->reslice->Modified();
+  this->lut->SetRange(this->ImageStack->GetPointData()->GetScalars()->GetRange());
+  this->lut->Modified();
+  int extent[6];
+  this->ImageStack->UpdateInformation();
+  this->ImageStack->GetWholeExtent(extent);
+  this->NumImages = (extent[5]-extent[4]+1);
+  
+  // Default to 0 index image so there's something in TipImage
+  this->SetImageIndex(0);
+}
+
+//-----------------------------------------------------------------------------
+vtkImageData* vtkTooltipImageItem::GetImageAtIndex(int imageId)
+{
+  if (this->ImageStack)
+    {
+    // Calculate the center of the volume
+    this->ImageStack->UpdateInformation();
+    int extent[6];
+    double spacing[3];
+    double origin[3];
+    this->ImageStack->GetWholeExtent(extent);
+    this->ImageStack->GetSpacing(spacing);
+    this->ImageStack->GetOrigin(origin);
+
+    double center[3];
+    center[0] = origin[0] + spacing[0] * 0.5 * (extent[0] + extent[1]); 
+    center[1] = origin[1] + spacing[1] * 0.5 * (extent[2] + extent[3]); 
+    center[2] = origin[2] + spacing[2] * 0.5 * (extent[4] + extent[5]); 
+
+    // Set the point through which to slice
+    vtkMatrix4x4 *resliceAxes = reslice->GetResliceAxes();
+	  double zpos = origin[2] + spacing[2]*(extent[4]+static_cast<float>(imageId));
+    resliceAxes->SetElement(0, 3, center[0]);
+    resliceAxes->SetElement(1, 3, center[1]);
+    resliceAxes->SetElement(2, 3, zpos);
+    this->reslice->Modified();
+    
+    this->color->Update();
+    
+    return this->color->GetOutput();
+    }
+  else
+    {
+    return NULL;
+    }
+}
+
+//-----------------------------------------------------------------------------
+int vtkTooltipImageItem::GetNumberOfImages()
+{
+  if (this->ImageStack)
+    {
+    return this->NumImages;
+    }
+  else
+    {
+    return 0;
+    }
 }
 
 //-----------------------------------------------------------------------------
