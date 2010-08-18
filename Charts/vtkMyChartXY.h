@@ -63,12 +63,17 @@ public:
   // virtual bool Paint(vtkContext2D *painter);
 
   // Description:
-  // Set the vtkHighlightLink for the chart.
+  // Get/Set the HighlightLink for the chart.
   virtual void SetHighlightLink(vtkAnnotationLink *link);
+  vtkGetObjectMacro(HighlightLink, vtkAnnotationLink);
 
   // Description:
-  // Get the vtkHighlightLink for the chart.
-  vtkGetObjectMacro(HighlightLink, vtkAnnotationLink);
+  // Get/Set the DataColumnsLink for the chart.
+  // Link used to externally control which columns are plotted against
+  // each other. If being used, should contain a selection node with
+  // a selection list of two indices which will be the X and Y axis columns.
+  virtual void SetDataColumnsLink(vtkAnnotationLink *link);
+  vtkGetObjectMacro(DataColumnsLink, vtkAnnotationLink);
 
   // Description
   // Set whether tooltip will show image or text
@@ -106,6 +111,12 @@ private:
   // Description:
   // Link back into chart to highlight selections made in other plots
   vtkAnnotationLink *HighlightLink;
+  
+  // Description
+  // Link used to externally control which columns are plotted against
+  // each other. If being used, should contain a selection node with
+  // a selection list of two indices which will be the X and Y axis columns.
+  vtkAnnotationLink *DataColumnsLink;
 
 };
 
