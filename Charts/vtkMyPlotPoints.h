@@ -48,6 +48,12 @@ public:
   static vtkMyPlotPoints *New();
 
   // Description:
+  // Perform any updates to the item that may be necessary before rendering.
+  // The scene should take care of calling this on all items before their
+  // Paint function is invoked.
+  virtual void Update();
+
+  // Description:
   // Paint event for the XY plot, called whenever the chart needs to be drawn
   virtual bool Paint(vtkContext2D *painter);
 
@@ -68,9 +74,13 @@ protected:
   ~vtkMyPlotPoints();
 
   // Description:
+  // Update the table cache.
+  bool UpdateTableCache(vtkTable *table);
+
+  // Description:
   // Sorted points, used when searching for the nearest point.
   class VectorPIMPL3;
-  VectorPIMPL3* Sorted;
+  VectorPIMPL3* Sorted3;
 
   // Description:
   // Selected indices coming back from outside the chart this plot is associated with.

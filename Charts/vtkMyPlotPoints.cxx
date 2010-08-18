@@ -61,7 +61,7 @@ vtkMyPlotPoints::vtkMyPlotPoints()
 {
   // Since Sorted is a new type in this class, won't be set to null
   // in the superclass constructor
-  this->Sorted = NULL;
+  this->Sorted3 = NULL;
   
   this->HighlightSelection = NULL;
 }
@@ -73,6 +73,39 @@ vtkMyPlotPoints::~vtkMyPlotPoints()
     {
     this->HighlightSelection->Delete();
     this->HighlightSelection = NULL;
+    }
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyPlotPoints::Update()
+{
+  // Had to reimplement this so the correct UpdateTableCache would be called...
+  if (!this->Visible)
+    {
+    return;
+    }
+  // Check if we have an input
+  vtkTable *table = this->Data->GetInput();
+  if (!table)
+    {
+    vtkDebugMacro(<< "Update event called with no input table set.");
+    return;
+    }
+  else if(this->Data->GetMTime() > this->BuildTime ||
+          table->GetMTime() > this->BuildTime ||
+          this->MTime > this->BuildTime)
+    {
+    vtkDebugMacro(<< "Updating cached values.");
+    this->UpdateTableCache(table);
+    }
+  else if ((this->XAxis && this->XAxis->GetMTime() > this->BuildTime) ||
+           (this->YAxis && this->YAxis->GetMaximum() > this->BuildTime))
+    {
+    if (this->LogX != this->XAxis->GetLogScale() ||
+        this->LogY != this->YAxis->GetLogScale())
+      {
+      this->UpdateTableCache(table);
+      }
     }
 }
 
@@ -175,22 +208,23 @@ int vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
   // This initial Sorted creation is probably slow compared to newer PlotPoints
   // version which just uses pointers to data, so need to update this sometime
   // when I switch to real non-float/int cheating method...
-  if (!this->Sorted)
+  if (!this->Sorted3)
     {
+    // printf("* * * Rebuilding Sorted3 * * * \n");
     vtkVector2f* data =
         static_cast<vtkVector2f*>(this->Points->GetVoidPointer(0));
-    this->Sorted = new VectorPIMPL3();
+    this->Sorted3 = new VectorPIMPL3();
     for (int i = 0; i < n; i++)
       {
       vtkVector3f combined(data[i].X(), data[i].Y(), static_cast<float>(i));
-      this->Sorted->push_back(combined);
+      this->Sorted3->push_back(combined);
       }
-    vtkstd::sort(this->Sorted->begin(), this->Sorted->end(), compVector3fX);
+    vtkstd::sort(this->Sorted3->begin(), this->Sorted3->end(), compVector3fX);
     }
 
   // Set up our search array, use the STL lower_bound algorithm
   VectorPIMPL3::iterator low;
-  VectorPIMPL3 &v = *this->Sorted;
+  VectorPIMPL3 &v = *this->Sorted3;
 
   // Get the lowest point we might hit within the supplied tolerance
   vtkVector3f lowPoint(point.X()-tol.X(), 0.0f, 0.0f);
@@ -219,6 +253,21 @@ int vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
 
 }
 
+
+//-----------------------------------------------------------------------------
+bool vtkMyPlotPoints::UpdateTableCache(vtkTable *table)
+{
+	this->Superclass::UpdateTableCache(table);
+	
+  if (this->Sorted3)
+    {
+    delete this->Sorted3;
+    this->Sorted3 = NULL;
+    }
+
+  this->BuildTime.Modified();
+  return true;
+}
 
 //-----------------------------------------------------------------------------
 void vtkMyPlotPoints::PrintSelf(ostream &os, vtkIndent indent)

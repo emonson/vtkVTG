@@ -25,7 +25,8 @@
 #include "vtkSmartPointer.h"
 #include <math.h>
 
-class vtkChartXY;
+class vtkMyChartXY;
+class vtkContextView;
 class vtkPlot;
 class vtkAxis;
 class vtkPlotGrid;
@@ -80,7 +81,8 @@ public:
   // you can just register the vtkChartXY with the vtkAxisImageItem and
   // it will look for _ids table columns to avoid and can control the 
   // chart plotting directly
-  virtual void SetChartXY(vtkChartXY *chart);
+  virtual void SetChartXY(vtkMyChartXY *chart);
+  virtual void SetChartXYView(vtkContextView*);
 
   // Description:
   // Return true if the supplied x, y coordinate is inside the item.
@@ -191,7 +193,8 @@ private:
   // you can just register the vtkChartXY with the vtkAxisImageItem and
   // it will look for _ids table columns to avoid and can control the 
   // chart plotting directly
-  vtkChartXY *ChartXY;
+  vtkMyChartXY *ChartXY;
+  vtkContextView *ChartXYView;
 
   // Pipeline for displaying axis images
   vtkSmartPointer<vtkMatrix4x4> resliceAxes;

@@ -16,6 +16,8 @@
 #include "vtkAxisImageItem.h"
 
 #include "vtkContext2D.h"
+#include "vtkContextView.h"
+#include "vtkRenderWindow.h"
 #include "vtkPen.h"
 #include "vtkBrush.h"
 #include "vtkColorSeries.h"
@@ -32,7 +34,7 @@
 #include "vtkPlotLine.h"
 #include "vtkMyPlotPoints.h"
 #include "vtkContextMapper2D.h"
-#include "vtkChartXY.h"
+#include "vtkMyChartXY.h"
 
 #include "vtkAxis.h"
 #include "vtkPlotGrid.h"
@@ -134,6 +136,7 @@ vtkStandardNewMacro(vtkAxisImageItem);
 
 //-----------------------------------------------------------------------------
 vtkCxxSetObjectMacro(vtkAxisImageItem, DataColumnsLink, vtkAnnotationLink);
+vtkCxxSetObjectMacro(vtkAxisImageItem, ChartXYView, vtkContextView);
 
 //-----------------------------------------------------------------------------
 vtkAxisImageItem::vtkAxisImageItem()
@@ -155,6 +158,7 @@ vtkAxisImageItem::vtkAxisImageItem()
 
   // Link into chart to externally control which columns are plotted
   this->ChartXY = NULL;
+  this->ChartXYView = NULL;
 
   // ImageSlicing for TooltipImageItem
   // Always slicing in the Z direction
@@ -269,9 +273,7 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
   // NOTE: There's also something strange here -- if data is changed, then if I don't have
   //  the preliminary positions set for the axis images, then they'll be placed
   //  at the origin until the first render...
-  
-  // TODO: These borders are still for vtkMyChartXY which included the axis images...
-  
+    
 	int origin[2] = {0,0};
 	// This first call takes care of center image right after data change...
 	if (this->AIPrivate->aiOrientation == vtkAxisImageItem::VERTICAL)
@@ -418,6 +420,11 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
       }
     }
 
+//   if (this->ChartXY && this->ChartXYView && this->ChartXY->GetMTime() > this->GetMTime())
+//   	{
+//   	this->ChartXYView->Update();
+//   	}
+//   	
   return true;
 }
 
@@ -530,11 +537,9 @@ bool vtkAxisImageItem::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
 				if (modify_data)
 				  {
 					// Direct chart control method of chaning plotted data
-					// NOTE: DOES NOT WORK...
 					
 					// Looking for first visible vtkMyPlotPoints
-					vtkIdType n = this->ChartXY->GetNumberOfPlots();
-					for (vtkIdType p = 0; p < n; ++p)
+					for (vtkIdType p = 0; p < this->ChartXY->GetNumberOfPlots(); ++p)
 						{
 						vtkMyPlotPoints* plot = vtkMyPlotPoints::SafeDownCast(this->ChartXY->GetPlot(p));
 						if (plot && plot->GetVisible())
@@ -544,14 +549,24 @@ bool vtkAxisImageItem::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
 							int xI = this->AIPrivate->axisImages[this->AIPrivate->currentXai]->ColumnIndex;
 							// plot->SetInputArray(0,table->GetColumnName(xI));
 							// plot->SetInputArray(1,table->GetColumnName(yI));
+							// printf("Setting input %d, %d\n", xI, yI);
+							// printf("Names %s, %s\n", table->GetColumnName(xI), table->GetColumnName(yI));
 							plot->SetInput(table,xI,yI);
 							this->ChartXY->GetAxis(0)->SetTitle(table->GetColumnName(yI));
+							this->ChartXY->GetAxis(0)->Modified();
 							this->ChartXY->GetAxis(1)->SetTitle(table->GetColumnName(xI));
-							plot->Update();
+							this->ChartXY->GetAxis(1)->Modified();
 							this->ChartXY->Modified();
+							plot->Modified();
+							plot->Update();
+							this->ChartXY->RecalculateBounds();
+							this->ChartXY->Update();
     					this->Scene->SetDirty(true);
-    					this->ChartXY->GetScene()->SetDirty(true);
-    					// this->RecalculatePlotBounds();
+    					if (this->ChartXYView)
+    						{
+    						// this->ChartXYView->Update();
+    						this->ChartXYView->Render();
+    						}
 							break;
 							}
 						}
@@ -629,7 +644,7 @@ bool vtkAxisImageItem::MouseWheelEvent(const vtkContextMouseEvent &, int delta)
 }
 
 //-----------------------------------------------------------------------------
-void vtkAxisImageItem::SetChartXY(vtkChartXY* chart)
+void vtkAxisImageItem::SetChartXY(vtkMyChartXY* chart)
 {
 	this->ChartXY = chart;
 	this->SetColumnIndices();
