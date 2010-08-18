@@ -57,6 +57,10 @@ public:
   // Description:
   // Paint event for the chart, called whenever the chart needs to be drawn
   virtual bool Paint(vtkContext2D *painter);
+  
+  // Description:
+  // Clear out the axis image stack
+  virtual void ClearAxisImages();
 
   // Description
   // ImageData associated with plot, which the tooltip in the chartXY will get

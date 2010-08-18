@@ -245,6 +245,10 @@ vtkAxisImageItem::vtkAxisImageItem()
 //-----------------------------------------------------------------------------
 vtkAxisImageItem::~vtkAxisImageItem()
 {
+  for (unsigned int i = 0; i < this->AIPrivate->axisImages.size(); ++i)
+    {
+    delete this->AIPrivate->axisImages[i];
+    }
   delete this->AIPrivate;
   this->AIPrivate = 0;
 
@@ -426,6 +430,22 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
 //   	}
 //   	
   return true;
+}
+
+//-----------------------------------------------------------------------------
+void vtkAxisImageItem::ClearAxisImages()
+{
+  for (unsigned int i = 0; i < this->AIPrivate->axisImages.size(); ++i)
+    {
+    delete this->AIPrivate->axisImages[i];
+    }
+  this->AIPrivate->axisImages.clear();
+	this->AIPrivate->col_idxs.clear();
+	
+	this->AxisImageStack = NULL;
+
+  // Mark the scene as dirty
+  this->Scene->SetDirty(true);
 }
 
 //-----------------------------------------------------------------------------
@@ -748,6 +768,12 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
   // Storing actual number of pixels in width and height
   this->AIPrivate->aiWidth = extent[1];
   this->AIPrivate->aiHeight = extent[3];
+
+	// If we've kept the same chart, but switched AxisImageStack, need to recompute	
+	if (this->ChartXY)
+		{
+		SetColumnIndices();
+		}
 
 	// NOTE: Leaving space here for center image (placed below axis images for now)
 	//   which should always be the same size as axis images
