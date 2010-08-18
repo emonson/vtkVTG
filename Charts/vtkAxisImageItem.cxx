@@ -298,17 +298,18 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
   
     if (this->AxisImageStack)
       {
+			float pixelWidth = this->Point2[0] - this->Point1[0];
+			float pixelHeight = this->Point2[1] - this->Point1[1];
+			float sumOfGaps = (this->NumImages-1+1)*this->AIPrivate->aiGap;
 			if (this->AIPrivate->aiOrientation == vtkAxisImageItem::VERTICAL)
 				{
 				// NOTE: Leaving space here for center image (placed below axis images for now)
 				//   which should always be the same size as axis images
 				
 				// Set initial scaling factor even before Paint for initial positions
-				float pixelHeight = this->Point2[1] - this->Point1[1];
 				float sumOfYExts = (this->NumImages+1)*this->AIPrivate->aiHeight;
-				float sumOfGaps = (this->NumImages-1+1)*this->AIPrivate->aiGap;
 				float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
-				float XScale = (float)this->AIPrivate->aiXSpace/(float)this->AIPrivate->aiWidth;
+				float XScale = pixelWidth/(float)this->AIPrivate->aiWidth;
 				
 				this->AIPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
 				
@@ -332,11 +333,9 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
 				//   which should always be the same size as axis images
 				
 				// Set initial scaling factor even before Paint for initial positions
-				float pixelWidth = this->Point2[0] - this->Point1[0];
 				float sumOfXExts = (this->NumImages+1)*this->AIPrivate->aiWidth;
-				float sumOfGaps = (this->NumImages-1+1)*this->AIPrivate->aiGap;
 				float XScale = (pixelWidth-sumOfGaps)/sumOfXExts;
-				float YScale = (float)this->AIPrivate->aiYSpace/(float)this->AIPrivate->aiHeight;
+				float YScale = pixelHeight/(float)this->AIPrivate->aiHeight;
 				
 				this->AIPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
 				
@@ -543,8 +542,9 @@ bool vtkAxisImageItem::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
 							vtkTable* table = plot->GetData()->GetInput();
 							int yI = this->AIPrivate->axisImages[this->AIPrivate->currentYai]->ColumnIndex;
 							int xI = this->AIPrivate->axisImages[this->AIPrivate->currentXai]->ColumnIndex;
-							plot->SetInputArray(0,table->GetColumnName(xI));
-							plot->SetInputArray(1,table->GetColumnName(yI));
+							// plot->SetInputArray(0,table->GetColumnName(xI));
+							// plot->SetInputArray(1,table->GetColumnName(yI));
+							plot->SetInput(table,xI,yI);
 							this->ChartXY->GetAxis(0)->SetTitle(table->GetColumnName(yI));
 							this->ChartXY->GetAxis(1)->SetTitle(table->GetColumnName(xI));
 							plot->Update();
@@ -730,6 +730,7 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
   int extent[6];
   this->AxisImageStack->GetWholeExtent(extent);
   this->NumImages = (extent[5]-extent[4]+1);
+  // Storing actual number of pixels in width and height
   this->AIPrivate->aiWidth = extent[1];
   this->AIPrivate->aiHeight = extent[3];
 
@@ -738,21 +739,21 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 	
 	// Set initial scaling factor even before Paint for initial positions
 	float sumOfGaps = (this->NumImages-1+1)*this->AIPrivate->aiGap;
-	float pixelHeight, pixelWidth, sumOfXExts, sumOfYExts, YScale, XScale;
+	float pixelHeight = this->Point2[1] - this->Point1[1];
+	float pixelWidth = this->Point2[0] - this->Point1[0];
+	float sumOfXExts, sumOfYExts, YScale, XScale;
 	
 	if (this->AIPrivate->aiOrientation == vtkAxisImageItem::VERTICAL)
 		{
-		pixelHeight = this->Point2[1] - this->Point1[1];
 		sumOfYExts = (this->NumImages+1)*this->AIPrivate->aiHeight;
 		YScale = (pixelHeight-sumOfGaps)/sumOfYExts;		
-		XScale = (float)this->AIPrivate->aiXSpace/(float)this->AIPrivate->aiWidth;
+		XScale = pixelWidth/(float)this->AIPrivate->aiWidth;
 		}
 	else
 		{
-		pixelWidth = this->Point2[0] - this->Point1[0];
 		sumOfXExts = (this->NumImages+1)*this->AIPrivate->aiWidth;
 		XScale = (pixelWidth-sumOfGaps)/sumOfXExts;
-		YScale = (float)this->AIPrivate->aiYSpace/(float)this->AIPrivate->aiHeight;
+		YScale = pixelHeight/(float)this->AIPrivate->aiHeight;
 		}
 	
 	this->AIPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
