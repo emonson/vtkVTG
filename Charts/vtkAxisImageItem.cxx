@@ -352,8 +352,8 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
 					{
 					vtkAxisImagePrivate *ai = this->AIPrivate->axisImages[ii];
 					// Adding one imHeight and gap to origin[1] to leave room for center image
-					ai->Point1[0] = origin[0] + scHeight + this->AIPrivate->aiGap +
-							ii*(scHeight + this->AIPrivate->aiGap);
+					ai->Point1[0] = origin[0] + scWidth + this->AIPrivate->aiGap +
+							ii*(scWidth + this->AIPrivate->aiGap);
 					ai->Point1[1] = origin[1];
 					ai->Point2[0] = ai->Point1[0] + scWidth;
 					ai->Point2[1] = ai->Point1[1] + scHeight;
@@ -821,8 +821,8 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 			}
 		else
 			{
-			ai->Point1[0] = origin[0] + scHeight + this->AIPrivate->aiGap +
-											ii*(scHeight + this->AIPrivate->aiGap);
+			ai->Point1[0] = origin[0] + scWidth + this->AIPrivate->aiGap +
+											ii*(scWidth + this->AIPrivate->aiGap);
 			ai->Point1[1] = origin[1];
 			}
 		
