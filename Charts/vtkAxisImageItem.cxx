@@ -304,60 +304,79 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
   
     if (this->AxisImageStack)
       {
-			float pixelWidth = this->Point2[0] - this->Point1[0];
-			float pixelHeight = this->Point2[1] - this->Point1[1];
-			float sumOfGaps = (this->NumImages-1+1)*this->AIPrivate->aiGap;
-			if (this->AIPrivate->aiOrientation == vtkAxisImageItem::VERTICAL)
+			// NOTE: Leaving space here for center image (placed below axis images for now)
+			//   which should always be the same size as axis images
+			// Set initial scaling factor even before Paint for initial positions
+			
+			// Convenience assignments for shorter equations
+			float pH = this->Point2[1] - this->Point1[1];	// pixel height of panel
+			float pW = this->Point2[0] - this->Point1[0];	// pixel width of panel
+			float S = 0.0;	// scaling factor
+			float G = this->AIPrivate->aiGap;
+			float H = this->AIPrivate->aiHeight;
+			float W = this->AIPrivate->aiWidth;
+			int nY = 0;		// n-up in Y direction
+			int nX = 0;		// n-up in X direction		
+			
+			if (this->AIPrivate->aiOrientation == vtkAxisImageItem::HORIZONTAL)
 				{
-				// NOTE: Leaving space here for center image (placed below axis images for now)
-				//   which should always be the same size as axis images
+				// For horizontal-flowing images, pixel height constrains scaling factor (S)
+				// and how many can be placed on each row (nX)
 				
-				// Set initial scaling factor even before Paint for initial positions
-				float sumOfYExts = (this->NumImages+1)*this->AIPrivate->aiHeight;
-				float YScale = (pixelHeight-sumOfGaps)/sumOfYExts;
-				float XScale = pixelWidth/(float)this->AIPrivate->aiWidth;
+				float prevS = -1.0;
+				// Increment nY and see when we hit the max in S
+				while (S > prevS)
+				 {
+				 nY++;
+				 prevS = S;
+				 S = (pH - (nY-1)*G)/(nY*H);
+				 printf("pH: %3.2f, nY: %d, prevS: %3.2f, S: %3.2f\n", pH, nY, prevS, S);
+				 nX = floor( (pW + G)/(W*S + G) );
+				 // Now calculate whether all of the images will fit with that
+				 // scale and nY
+				 if (nX*nY < (this->NumImages+1))
+				 	{
+				 	// max number can fit in a row with this nY
+				 	// nX = this->NumImages/nY + 1;
+				 	nX = ceil(float(this->NumImages+1)/float(nY));
+				 	S = (pW - (nX-1)*G)/(nX*W);
+				 	}
+				 }
+				// Went one past, so reset S to max values
+				nY--;
+				S = prevS;
+				this->AIPrivate->aiScalingFactor = S;
 				
-				this->AIPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
-				
-				// Create the vector of axisImage objects
-				float scWidth = this->AIPrivate->aiWidth*this->AIPrivate->aiScalingFactor;
-				float scHeight = this->AIPrivate->aiHeight*this->AIPrivate->aiScalingFactor;
-				for (int ii = 0; ii < this->NumImages; ii++) 
-					{
-					vtkAxisImagePrivate *ai = this->AIPrivate->axisImages[ii];
-					// NOTE: Adding one imHeight and gap to origin[1] to leave room for center image
-					ai->Point1[0] = origin[0];
-					ai->Point1[1] = origin[1] + scHeight + this->AIPrivate->aiGap +
-							ii*(scHeight + this->AIPrivate->aiGap);
-					ai->Point2[0] = ai->Point1[0] + scWidth;
-					ai->Point2[1] = ai->Point1[1] + scHeight;
-					}
+				// Now figure out how many can fit in each row
+				nX = floor( (pW + G)/(W*S + G) );
 				}
 			else
 				{
-				// NOTE: Leaving space here for center image (placed left of axis images for now)
-				//   which should always be the same size as axis images
+				// TODO: Fill in VERTICAL routine...
+				}
 				
-				// Set initial scaling factor even before Paint for initial positions
-				float sumOfXExts = (this->NumImages+1)*this->AIPrivate->aiWidth;
-				float XScale = (pixelWidth-sumOfGaps)/sumOfXExts;
-				float YScale = pixelHeight/(float)this->AIPrivate->aiHeight;
-				
-				this->AIPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
-				
-				// Create the vector of axisImage objects
-				float scWidth = this->AIPrivate->aiWidth*this->AIPrivate->aiScalingFactor;
-				float scHeight = this->AIPrivate->aiHeight*this->AIPrivate->aiScalingFactor;
-				for (int ii = 0; ii < this->NumImages; ii++) 
+			int upper_left[2] = {this->Point1[0],this->Point2[1]};
+			float scW = this->AIPrivate->aiWidth*this->AIPrivate->aiScalingFactor;
+			float scH = this->AIPrivate->aiHeight*this->AIPrivate->aiScalingFactor;
+			
+			for (int ii = 0; ii < this->NumImages; ii++) 
+				{
+				vtkAxisImagePrivate *ai = this->AIPrivate->axisImages[ii];
+				if (this->AIPrivate->aiOrientation == vtkAxisImageItem::HORIZONTAL)
 					{
-					vtkAxisImagePrivate *ai = this->AIPrivate->axisImages[ii];
-					// Adding one imHeight and gap to origin[1] to leave room for center image
-					ai->Point1[0] = origin[0] + scWidth + this->AIPrivate->aiGap +
-							ii*(scWidth + this->AIPrivate->aiGap);
-					ai->Point1[1] = origin[1];
-					ai->Point2[0] = ai->Point1[0] + scWidth;
-					ai->Point2[1] = ai->Point1[1] + scHeight;
+					int xi = (ii+1) % nX;
+					int yi = (ii+1) / nX;
+					
+					ai->Point1[0] = upper_left[0] + xi*scW + xi*G;
+					ai->Point1[1] = upper_left[1] - (yi+1)*scH - yi*G;
 					}
+				else
+					{
+					// TODO: Fill in VERTICAL routine...
+					}
+				
+				ai->Point2[0] = ai->Point1[0] + scW;
+				ai->Point2[1] = ai->Point1[1] + scH;
 				}
 			}
     }
@@ -408,6 +427,7 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
   // Draw the axis images and center image
   if (this->AxisImageStack)
     {
+    printf("AI Scaling factor: %3.2f\n", this->AIPrivate->aiScalingFactor);
     for (int ii = 0; ii < this->NumImages; ii++)
       {
       painter->DrawImage(this->AIPrivate->axisImages[ii]->Point1[0],
@@ -418,7 +438,8 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
     
     if (this->CenterImage)
       {
-      painter->DrawImage(origin[0], origin[1],
+      painter->DrawImage(this->Point1[0], 
+          this->Point2[1] - this->AIPrivate->aiHeight*this->AIPrivate->aiScalingFactor,
       		this->AIPrivate->aiScalingFactor,
       		this->colorBW->GetOutput());      
       }
@@ -777,33 +798,61 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 
 	// NOTE: Leaving space here for center image (placed below axis images for now)
 	//   which should always be the same size as axis images
-	
 	// Set initial scaling factor even before Paint for initial positions
-	float sumOfGaps = (this->NumImages-1+1)*this->AIPrivate->aiGap;
-	float pixelHeight = this->Point2[1] - this->Point1[1];
-	float pixelWidth = this->Point2[0] - this->Point1[0];
-	float sumOfXExts, sumOfYExts, YScale, XScale;
 	
-	if (this->AIPrivate->aiOrientation == vtkAxisImageItem::VERTICAL)
+	// Convenience assignments for shorter equations
+	float pH = this->Point2[1] - this->Point1[1];	// pixel height of panel
+	float pW = this->Point2[0] - this->Point1[0];	// pixel width of panel
+	float S = 0.0;	// scaling factor
+	float G = this->AIPrivate->aiGap;
+	float H = this->AIPrivate->aiHeight;
+	float W = this->AIPrivate->aiWidth;
+	int nY = 0;		// n-up in Y direction
+	int nX = 0;		// n-up in X direction		
+	
+	if (this->AIPrivate->aiOrientation == vtkAxisImageItem::HORIZONTAL)
 		{
-		sumOfYExts = (this->NumImages+1)*this->AIPrivate->aiHeight;
-		YScale = (pixelHeight-sumOfGaps)/sumOfYExts;		
-		XScale = pixelWidth/(float)this->AIPrivate->aiWidth;
+		// For horizontal-flowing images, pixel height constrains scaling factor (S)
+		// and how many can be placed on each row (nX)
+		
+		float prevS = -1.0;
+		// Increment nY and see when we hit the max in S
+		while (S > prevS)
+		 {
+		 nY++;
+		 prevS = S;
+		 S = (pH - (nY-1)*G)/(nY*H);
+		 printf("pH: %3.2f, nY: %d, prevS: %3.2f, S: %3.2f\n", pH, nY, prevS, S);
+		 nX = floor( (pW + G)/(W*S + G) );
+		 // Now calculate whether all of the images will fit with that
+		 // scale and nY
+		 if (nX*nY < (this->NumImages+1))
+			{
+			// max number can fit in a row with this nY
+			// nX = this->NumImages/nY + 1;
+			nX = ceil(float(this->NumImages+1)/float(nY));
+			S = (pW - (nX-1)*G)/(nX*W);
+			}
+		 }
+		// Went one past, so reset S to max values
+		nY--;
+		S = prevS;
+		this->AIPrivate->aiScalingFactor = S;
+		
+		// Now figure out how many can fit in each row
+		nX = floor( (pW + G)/(W*S + G) );
 		}
 	else
 		{
-		sumOfXExts = (this->NumImages+1)*this->AIPrivate->aiWidth;
-		XScale = (pixelWidth-sumOfGaps)/sumOfXExts;
-		YScale = pixelHeight/(float)this->AIPrivate->aiHeight;
+		// TODO: Fill in VERTICAL routine...
 		}
-	
-	this->AIPrivate->aiScalingFactor = (XScale < YScale) ? XScale : YScale;
-	
+		
 	// Create the vector of axisImage objects
 	this->AIPrivate->axisImages.clear();
-	int origin[2] = {this->Point1[0],this->Point1[1]};
-	float scWidth = this->AIPrivate->aiWidth*this->AIPrivate->aiScalingFactor;
-	float scHeight = this->AIPrivate->aiHeight*this->AIPrivate->aiScalingFactor;
+	int upper_left[2] = {this->Point1[0],this->Point2[1]};
+	float scW = this->AIPrivate->aiWidth*this->AIPrivate->aiScalingFactor;
+	float scH = this->AIPrivate->aiHeight*this->AIPrivate->aiScalingFactor;
+	
 	for (int ii = 0; ii < this->NumImages; ii++) 
 		{
 		vtkAxisImagePrivate *ai = new vtkAxisImagePrivate;
@@ -813,21 +862,22 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 		//   up at origin until next render (mouse enter) if this is deleted...
 		// Adding one imHeight and gap to origin[1] to leave room for center image
 		
-		if (this->AIPrivate->aiOrientation == vtkAxisImageItem::VERTICAL)
+		if (this->AIPrivate->aiOrientation == vtkAxisImageItem::HORIZONTAL)
 			{
-			ai->Point1[0] = origin[0];
-			ai->Point1[1] = origin[1] + scHeight + this->AIPrivate->aiGap +
-											ii*(scHeight + this->AIPrivate->aiGap);
+			int xi = (ii+1) % nX;
+			int yi = (ii+1) / nX;
+			
+			ai->Point1[0] = upper_left[0] + xi*scW + xi*G;
+			ai->Point1[1] = upper_left[1] - (yi+1)*scH - yi*G;
 			}
 		else
 			{
-			ai->Point1[0] = origin[0] + scWidth + this->AIPrivate->aiGap +
-											ii*(scWidth + this->AIPrivate->aiGap);
-			ai->Point1[1] = origin[1];
+			// TODO: Fill in VERTICAL routine...
 			}
 		
-		ai->Point2[0] = ai->Point1[0] + scWidth;
-		ai->Point2[1] = ai->Point1[1] + scHeight;
+		ai->Point2[0] = ai->Point1[0] + scW;
+		ai->Point2[1] = ai->Point1[1] + scH;
+		
 		// If chart has been registered, record the actual column index
 		if (this->AIPrivate->col_idxs.size() > 0)
 			{
