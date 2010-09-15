@@ -311,10 +311,16 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
 			// Convenience assignments for shorter equations
 			float pH = this->Point2[1] - this->Point1[1];	// pixel height of panel
 			float pW = this->Point2[0] - this->Point1[0];	// pixel width of panel
+			// Since there are borders usable space can go negative -- prevent detection of this
+			if (pH < 1.0) pH = 1.0;
+			if (pW < 1.0) pW = 1.0;
 			float S = 0.0;	// scaling factor
 			float G = this->AIPrivate->aiGap;
 			float H = this->AIPrivate->aiHeight;
 			float W = this->AIPrivate->aiWidth;
+			// Want to peg the min scaling factor at 1 px for smallest dimension
+			// since scaling factor calc can go negative with fixed (not proportional) gaps
+			float minS = (1.0/G > 1.0/W) ? (1.0/G) : (1.0/W);
 			int nY = 0;		// n-up in Y direction
 			int nX = 0;		// n-up in X direction		
 			
@@ -324,13 +330,15 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
 				// and how many can be placed on each row (nX)
 				
 				float prevS = -1.0;
+				int prevNx = 0;
 				// Increment nY and see when we hit the max in S
-				while (S > prevS)
+				while ((S-0.00001) > prevS)
 				 {
 				 nY++;
 				 prevS = S;
-				 S = (pH - (nY-1)*G)/(nY*H);
-				 printf("pH: %3.2f, nY: %d, prevS: %3.2f, S: %3.2f\n", pH, nY, prevS, S);
+				 prevNx = nX;
+				 S = (pH - float((nY-1)*G))/((float)nY*H);
+				 if (S < minS) S = minS;
 				 nX = floor( (pW + G)/(W*S + G) );
 				 // Now calculate whether all of the images will fit with that
 				 // scale and nY
@@ -339,7 +347,8 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
 				 	// max number can fit in a row with this nY
 				 	// nX = this->NumImages/nY + 1;
 				 	nX = ceil(float(this->NumImages+1)/float(nY));
-				 	S = (pW - (nX-1)*G)/(nX*W);
+				 	S = (pW - float((nX-1)*G))/((float)nX*W);
+				 	if (S < minS) S = minS;
 				 	}
 				 }
 				// Went one past, so reset S to max values
@@ -348,7 +357,9 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
 				this->AIPrivate->aiScalingFactor = S;
 				
 				// Now figure out how many can fit in each row
-				nX = floor( (pW + G)/(W*S + G) );
+				// nX = floor( (pW + G)/(W*S + G) );
+				// nX = ceil(float(this->NumImages+1)/float(nY));
+				nX = prevNx;
 				}
 			else
 				{
@@ -427,7 +438,6 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
   // Draw the axis images and center image
   if (this->AxisImageStack)
     {
-    printf("AI Scaling factor: %3.2f\n", this->AIPrivate->aiScalingFactor);
     for (int ii = 0; ii < this->NumImages; ii++)
       {
       painter->DrawImage(this->AIPrivate->axisImages[ii]->Point1[0],
@@ -480,33 +490,16 @@ bool vtkAxisImageItem::Hit(const vtkContextMouseEvent &mouse)
 {
   int maxI = this->NumImages-1;
   // In axis images area
-	if (this->AIPrivate->aiOrientation == vtkAxisImageItem::VERTICAL)
+	if (mouse.ScreenPos[0] > this->Point1[0] &&
+					 mouse.ScreenPos[0] < this->Point2[0] &&
+					 mouse.ScreenPos[1] > this->Point1[1] &&
+					 mouse.ScreenPos[1] < this->Point2[1])
 		{
-		if (mouse.ScreenPos[0] > this->AIPrivate->axisImages[0]->Point1[0] &&
-						 mouse.ScreenPos[0] < this->AIPrivate->axisImages[0]->Point2[0] &&
-						 mouse.ScreenPos[1] > this->AIPrivate->axisImages[0]->Point1[1] &&
-						 mouse.ScreenPos[1] < this->AIPrivate->axisImages[maxI]->Point2[1])
-			{
-			return true;
-			}
-		else
-			{
-			return false;
-			}
+		return true;
 		}
 	else
 		{
-		if (mouse.ScreenPos[0] > this->AIPrivate->axisImages[0]->Point1[0] &&
-						 mouse.ScreenPos[0] < this->AIPrivate->axisImages[maxI]->Point2[0] &&
-						 mouse.ScreenPos[1] > this->AIPrivate->axisImages[0]->Point1[1] &&
-						 mouse.ScreenPos[1] < this->AIPrivate->axisImages[0]->Point2[1])
-			{
-			return true;
-			}
-		else
-			{
-			return false;
-			}
+		return false;
 		}
 }
 
@@ -787,8 +780,8 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
   this->AxisImageStack->GetWholeExtent(extent);
   this->NumImages = (extent[5]-extent[4]+1);
   // Storing actual number of pixels in width and height
-  this->AIPrivate->aiWidth = extent[1];
-  this->AIPrivate->aiHeight = extent[3];
+  this->AIPrivate->aiWidth = extent[1]+1;		// extent is largest 0-based index
+  this->AIPrivate->aiHeight = extent[3]+1;
 
 	// If we've kept the same chart, but switched AxisImageStack, need to recompute	
 	if (this->ChartXY)
@@ -800,52 +793,63 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 	//   which should always be the same size as axis images
 	// Set initial scaling factor even before Paint for initial positions
 	
-	// Convenience assignments for shorter equations
-	float pH = this->Point2[1] - this->Point1[1];	// pixel height of panel
-	float pW = this->Point2[0] - this->Point1[0];	// pixel width of panel
-	float S = 0.0;	// scaling factor
-	float G = this->AIPrivate->aiGap;
-	float H = this->AIPrivate->aiHeight;
-	float W = this->AIPrivate->aiWidth;
-	int nY = 0;		// n-up in Y direction
-	int nX = 0;		// n-up in X direction		
-	
-	if (this->AIPrivate->aiOrientation == vtkAxisImageItem::HORIZONTAL)
-		{
-		// For horizontal-flowing images, pixel height constrains scaling factor (S)
-		// and how many can be placed on each row (nX)
-		
-		float prevS = -1.0;
-		// Increment nY and see when we hit the max in S
-		while (S > prevS)
-		 {
-		 nY++;
-		 prevS = S;
-		 S = (pH - (nY-1)*G)/(nY*H);
-		 printf("pH: %3.2f, nY: %d, prevS: %3.2f, S: %3.2f\n", pH, nY, prevS, S);
-		 nX = floor( (pW + G)/(W*S + G) );
-		 // Now calculate whether all of the images will fit with that
-		 // scale and nY
-		 if (nX*nY < (this->NumImages+1))
-			{
-			// max number can fit in a row with this nY
-			// nX = this->NumImages/nY + 1;
-			nX = ceil(float(this->NumImages+1)/float(nY));
-			S = (pW - (nX-1)*G)/(nX*W);
-			}
-		 }
-		// Went one past, so reset S to max values
-		nY--;
-		S = prevS;
-		this->AIPrivate->aiScalingFactor = S;
-		
-		// Now figure out how many can fit in each row
-		nX = floor( (pW + G)/(W*S + G) );
-		}
-	else
-		{
-		// TODO: Fill in VERTICAL routine...
-		}
+			// Convenience assignments for shorter equations
+			float pH = this->Point2[1] - this->Point1[1];	// pixel height of panel
+			float pW = this->Point2[0] - this->Point1[0];	// pixel width of panel
+			// Since there are borders usable space can go negative -- prevent detection of this
+			if (pH < 1.0) pH = 1.0;
+			if (pW < 1.0) pW = 1.0;
+			float S = 0.0;	// scaling factor
+			float G = this->AIPrivate->aiGap;
+			float H = this->AIPrivate->aiHeight;
+			float W = this->AIPrivate->aiWidth;
+			// Want to peg the min scaling factor at 1 px for smallest dimension
+			// since scaling factor calc can go negative with fixed (not proportional) gaps
+			float minS = (1.0/G > 1.0/W) ? (1.0/G) : (1.0/W);
+			int nY = 0;		// n-up in Y direction
+			int nX = 0;		// n-up in X direction		
+			
+			if (this->AIPrivate->aiOrientation == vtkAxisImageItem::HORIZONTAL)
+				{
+				// For horizontal-flowing images, pixel height constrains scaling factor (S)
+				// and how many can be placed on each row (nX)
+				
+				float prevS = -1.0;
+				int prevNx = 0;
+				// Increment nY and see when we hit the max in S
+				while ((S-0.00001) > prevS)
+				 {
+				 nY++;
+				 prevS = S;
+				 prevNx = nX;
+				 S = (pH - float((nY-1)*G))/((float)nY*H);
+				 if (S < minS) S = minS;
+				 nX = floor( (pW + G)/(W*S + G) );
+				 // Now calculate whether all of the images will fit with that
+				 // scale and nY
+				 if (nX*nY < (this->NumImages+1))
+				 	{
+				 	// max number can fit in a row with this nY
+				 	// nX = this->NumImages/nY + 1;
+				 	nX = ceil(float(this->NumImages+1)/float(nY));
+				 	S = (pW - float((nX-1)*G))/((float)nX*W);
+				 	if (S < minS) S = minS;
+				 	}
+				 }
+				// Went one past, so reset S to max values
+				nY--;
+				S = prevS;
+				this->AIPrivate->aiScalingFactor = S;
+				
+				// Now figure out how many can fit in each row
+				// nX = floor( (pW + G)/(W*S + G) );
+				// nX = ceil(float(this->NumImages+1)/float(nY));
+				nX = prevNx;
+				}
+			else
+				{
+				// TODO: Fill in VERTICAL routine...
+				}
 		
 	// Create the vector of axisImage objects
 	this->AIPrivate->axisImages.clear();
