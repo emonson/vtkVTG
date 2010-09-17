@@ -167,6 +167,11 @@ protected:
  	// Used internally to check out chart table names and only use indices
  	// of columns whose names don't end in _ids
  	void SetColumnIndices();
+ 	
+ 	// Description
+ 	// Internal method to update which data are plotted on the linked chart after
+ 	// X or Y is changed
+ 	void UpdateChartAxes();
 
 private:
   vtkAxisImageItem(const vtkAxisImageItem &); // Not implemented.

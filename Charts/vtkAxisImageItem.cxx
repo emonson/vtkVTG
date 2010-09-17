@@ -570,71 +570,7 @@ bool vtkAxisImageItem::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
 				  }
 				if (modify_data)
 				  {
-					// Direct chart control method of chaning plotted data
-					
-					// Looking for first visible vtkMyPlotPoints
-					for (vtkIdType p = 0; p < this->ChartXY->GetNumberOfPlots(); ++p)
-						{
-						vtkMyPlotPoints* plot = vtkMyPlotPoints::SafeDownCast(this->ChartXY->GetPlot(p));
-						if (plot && plot->GetVisible())
-							{
-							vtkTable* table = plot->GetData()->GetInput();
-							int yI = this->AIPrivate->axisImages[this->AIPrivate->currentYai]->ColumnIndex;
-							int xI = this->AIPrivate->axisImages[this->AIPrivate->currentXai]->ColumnIndex;
-							// plot->SetInputArray(0,table->GetColumnName(xI));
-							// plot->SetInputArray(1,table->GetColumnName(yI));
-							// printf("Setting input %d, %d\n", xI, yI);
-							// printf("Names %s, %s\n", table->GetColumnName(xI), table->GetColumnName(yI));
-							plot->SetInput(table,xI,yI);
-							this->ChartXY->GetAxis(0)->SetTitle(table->GetColumnName(yI));
-							this->ChartXY->GetAxis(0)->Modified();
-							this->ChartXY->GetAxis(1)->SetTitle(table->GetColumnName(xI));
-							this->ChartXY->GetAxis(1)->Modified();
-							this->ChartXY->Modified();
-							plot->Modified();
-							plot->Update();
-							this->ChartXY->RecalculateBounds();
-							this->ChartXY->Update();
-    					this->Scene->SetDirty(true);
-    					if (this->ChartXYView)
-    						{
-    						// this->ChartXYView->Update();
-    						this->ChartXYView->Render();
-    						}
-							break;
-							}
-						}
-						
-						// Annotation link method of updating chart plotted data
-						// NOTE: Sort of works, but does not force painting of the chart scene...
-						// AND: When plotted data is changed from here, tooltip hover is still over
-						//   old data points...
-						
-// 						vtkSelection* selection = vtkSelection::New();
-// 						vtkSelectionNode* node = vtkSelectionNode::New();
-// 						selection->AddNode(node);
-// 						node->SetContentType(vtkSelectionNode::INDICES);
-// 						node->SetFieldType(vtkSelectionNode::POINT);
-// 						
-// 						vtkIdTypeArray* list = vtkIdTypeArray::New();
-// 						list->SetNumberOfComponents(1);
-// 						list->SetNumberOfValues(2);
-// 						list->SetValue(0,static_cast<vtkIdType>(this->AIPrivate->axisImages[this->AIPrivate->currentXai]->ColumnIndex));
-// 						list->SetValue(1,static_cast<vtkIdType>(this->AIPrivate->axisImages[this->AIPrivate->currentYai]->ColumnIndex));
-// 						
-// 						node->SetSelectionList(list);
-// 						this->DataColumnsLink->SetCurrentSelection(selection);
-// 						this->DataColumnsLink->InvokeEvent(vtkCommand::AnnotationChangedEvent);
-// 						this->Scene->SetDirty(true);
-// 						
-// 						// Hoping these would force a paint, but they don't...
-// 						this->ChartXY->GetScene()->SetDirty(true);
-// 						this->ChartXY->GetScene()->Modified();
-// 						this->ChartXY->Modified();
-// 						
-// 						list->Delete();
-// 						node->Delete();
-// 						selection->Delete();
+				  this->UpdateChartAxes();
 				  }
 				// Not sure why return true or false
 				return false;
@@ -682,6 +618,45 @@ void vtkAxisImageItem::SetChartXY(vtkMyChartXY* chart)
 {
 	this->ChartXY = chart;
 	this->SetColumnIndices();
+}
+
+//-----------------------------------------------------------------------------
+void vtkAxisImageItem::UpdateChartAxes()
+{
+	// Direct chart control method of chaning plotted data
+	
+	// Looking for first visible vtkMyPlotPoints
+	for (vtkIdType p = 0; p < this->ChartXY->GetNumberOfPlots(); ++p)
+		{
+		vtkMyPlotPoints* plot = vtkMyPlotPoints::SafeDownCast(this->ChartXY->GetPlot(p));
+		if (plot && plot->GetVisible())
+			{
+			vtkTable* table = plot->GetData()->GetInput();
+			int yI = this->AIPrivate->axisImages[this->AIPrivate->currentYai]->ColumnIndex;
+			int xI = this->AIPrivate->axisImages[this->AIPrivate->currentXai]->ColumnIndex;
+			// plot->SetInputArray(0,table->GetColumnName(xI));
+			// plot->SetInputArray(1,table->GetColumnName(yI));
+			// printf("Setting input %d, %d\n", xI, yI);
+			// printf("Names %s, %s\n", table->GetColumnName(xI), table->GetColumnName(yI));
+			plot->SetInput(table,xI,yI);
+			this->ChartXY->GetAxis(0)->SetTitle(table->GetColumnName(yI));
+			this->ChartXY->GetAxis(0)->Modified();
+			this->ChartXY->GetAxis(1)->SetTitle(table->GetColumnName(xI));
+			this->ChartXY->GetAxis(1)->Modified();
+			this->ChartXY->Modified();
+			plot->Modified();
+			plot->Update();
+			this->ChartXY->RecalculateBounds();
+			this->ChartXY->Update();
+			this->Scene->SetDirty(true);
+			if (this->ChartXYView)
+				{
+				// this->ChartXYView->Update();
+				this->ChartXYView->Render();
+				}
+			break;
+			}
+		}
 }
 
 //-----------------------------------------------------------------------------
