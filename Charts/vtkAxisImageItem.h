@@ -214,6 +214,11 @@ private:
   vtkSmartPointer<vtkLookupTable> lutBW;
   vtkSmartPointer<vtkImageMapToColors> colorBW;
   
+  // Description
+  // Variables for keeping track of whether X or Y indices are being modified
+  bool MovingX;
+  bool MovingY;
+  
 };
 
 #endif //__vtkAxisImageItem_h

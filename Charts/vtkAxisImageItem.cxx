@@ -141,6 +141,9 @@ vtkCxxSetObjectMacro(vtkAxisImageItem, ChartXYView, vtkContextView);
 //-----------------------------------------------------------------------------
 vtkAxisImageItem::vtkAxisImageItem()
 {
+  this->MovingX = false;
+  this->MovingY = false;
+  
   this->Geometry[0] = 0;
   this->Geometry[1] = 0;
   this->Point1[0] = 0;
@@ -517,6 +520,44 @@ bool vtkAxisImageItem::MouseMoveEvent(const vtkContextMouseEvent &mouse)
     }
   else if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
     {
+		if (this->MovingX)
+			{
+			// Iterate over the axis images, see if we are inside of one
+			for (size_t i = 0; i < this->AIPrivate->axisImages.size(); ++i)
+				{
+				vtkAxisImagePrivate* image = this->AIPrivate->axisImages[i];
+				if (mouse.ScreenPos[0] > image->Point1[0] && mouse.ScreenPos[0] < image->Point2[0] &&
+						mouse.ScreenPos[1] > image->Point1[1] && mouse.ScreenPos[1] < image->Point2[1])
+					{
+					// Don't let X and Y be on the same axis image for now
+					if (i != this->AIPrivate->currentYai)
+						{
+						this->AIPrivate->currentXai = i;
+						this->UpdateChartAxes();
+						}
+					}
+				}
+			return true;
+			}
+		if (this->MovingY)
+			{
+			// Iterate over the axis images, see if we are inside of one
+			for (size_t i = 0; i < this->AIPrivate->axisImages.size(); ++i)
+				{
+				vtkAxisImagePrivate* image = this->AIPrivate->axisImages[i];
+				if (mouse.ScreenPos[0] > image->Point1[0] && mouse.ScreenPos[0] < image->Point2[0] &&
+						mouse.ScreenPos[1] > image->Point1[1] && mouse.ScreenPos[1] < image->Point2[1])
+					{
+					// Don't let X and Y be on the same axis image for now
+					if (i != this->AIPrivate->currentXai)
+						{
+						this->AIPrivate->currentYai = i;
+						this->UpdateChartAxes();
+						}
+					}
+				}
+			return true;
+			}
     }
   else if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
     {
@@ -551,29 +592,20 @@ bool vtkAxisImageItem::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
 			if (mouse.ScreenPos[0] > image->Point1[0] && mouse.ScreenPos[0] < image->Point2[0] &&
 					mouse.ScreenPos[1] > image->Point1[1] && mouse.ScreenPos[1] < image->Point2[1])
 				{
-				bool modify_data;
-				if (i > this->AIPrivate->currentYai)
+				if (i == this->AIPrivate->currentYai)
 				  {
-						this->AIPrivate->currentYai = i;
-						this->AIPrivate->currentXai = i-1;
-						modify_data = true;
+						this->MovingY = true;
 				  }
-				else if (i < this->AIPrivate->currentXai)
+				else if (i == this->AIPrivate->currentXai)
 				  {
-						this->AIPrivate->currentYai = i+1;
-						this->AIPrivate->currentXai = i;
-						modify_data = true;
+						this->MovingX = true;
 					}
 				else
 				  {
-				  modify_data = false;
-				  }
-				if (modify_data)
-				  {
-				  this->UpdateChartAxes();
+				  // Do nothing for now...
 				  }
 				// Not sure why return true or false
-				return false;
+				return true;
 				}
 			}
 		return true;
@@ -592,6 +624,8 @@ bool vtkAxisImageItem::MouseButtonPressEvent(const vtkContextMouseEvent &mouse)
 //-----------------------------------------------------------------------------
 bool vtkAxisImageItem::MouseButtonReleaseEvent(const vtkContextMouseEvent &mouse)
 {
+	this->MovingX = false;
+	this->MovingY = false;
   if (mouse.Button == vtkContextMouseEvent::RIGHT_BUTTON)
     {
     return true;
