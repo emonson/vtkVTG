@@ -335,7 +335,7 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
 				float prevS = -1.0;
 				int prevNx = 0;
 				// Increment nY and see when we hit the max in S
-				while ((S-0.00001) > prevS)
+				while (S >= prevS && nY < (this->NumImages+1))
 				 {
 				 nY++;
 				 prevS = S;
@@ -826,7 +826,7 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 				float prevS = -1.0;
 				int prevNx = 0;
 				// Increment nY and see when we hit the max in S
-				while ((S-0.00001) > prevS)
+				while (S >= prevS && nY < (this->NumImages+1))
 				 {
 				 nY++;
 				 prevS = S;
