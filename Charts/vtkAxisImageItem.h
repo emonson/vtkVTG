@@ -85,14 +85,6 @@ public:
   virtual void SetDataColumnsLink(vtkAnnotationLink *link);
   vtkGetObjectMacro(DataColumnsLink, vtkAnnotationLink);
 
-  // Description
-  // Alternatively to setting an Annotation Link to control any XY chart,
-  // you can just register the vtkChartXY with the vtkAxisImageItem and
-  // it will look for _ids table columns to avoid and can control the 
-  // chart plotting directly
-  virtual void SetChartXY(vtkMyChartXY *chart);
-  virtual void SetChartXYView(vtkContextView*);
-
   // Description:
   // Return true if the supplied x, y coordinate is inside the item.
   virtual bool Hit(const vtkContextMouseEvent &mouse);
@@ -202,14 +194,6 @@ private:
   // a selection list of two indices which will be the X and Y axis columns.
   vtkAnnotationLink *DataColumnsLink;
   
-  // Description
-  // Alternatively to setting an Annotation Link to control any XY chart,
-  // you can just register the vtkChartXY with the vtkAxisImageItem and
-  // it will look for _ids table columns to avoid and can control the 
-  // chart plotting directly
-  vtkMyChartXY *ChartXY;
-  vtkContextView *ChartXYView;
-
   // Pipeline for displaying axis images
   vtkSmartPointer<vtkMatrix4x4> resliceAxes;
   vtkSmartPointer<vtkImageReslice> reslice;

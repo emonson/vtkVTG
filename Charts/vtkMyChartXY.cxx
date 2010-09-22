@@ -26,7 +26,6 @@
 #include "vtkContextTransform.h"
 #include "vtkContextClip.h"
 #include "vtkPoints2D.h"
-#include "vtkVector.h"
 
 #include "vtkPlot.h"
 #include "vtkPlotBar.h"
@@ -205,6 +204,33 @@ void vtkMyChartXY::Update()
 			}
 		}
 
+	// Set the mapping for (axis image) index to data columns to avoid plotting _ids columns
+	// Look through data table column names to gather valid data column indices
+	// NOTE: Looking for first visible vtkMyPlotPoints and using that table
+	// Find first MyPlotPoints to know where to grab the input table
+	for (vtkIdType i = 0; i < this->GetNumberOfPlots(); ++i)
+		{
+		vtkMyPlotPoints* plot = vtkMyPlotPoints::SafeDownCast(this->GetPlot(i));
+		if (plot && plot->GetVisible())
+			{
+			vtkTable* table = plot->GetData()->GetInput();
+			this->col_idxs.clear();
+			// Build up a vector of table column indices which do not contain _ids in their name
+			for (vtkIdType ii = 0; ii < table->GetNumberOfColumns(); ii++)
+				{
+				const char *col_name = table->GetColumnName(ii);
+				if (strstr(col_name, "_ids"))
+					{
+					continue;
+					}
+				else
+					{
+					this->col_idxs.push_back(ii);
+					}
+				}
+			break;
+			}
+		}
 }
 
 void vtkMyChartXY::SetTooltipInfo(const vtkContextMouseEvent& mouse, vtkVector2f plotPos, 
@@ -237,6 +263,39 @@ void vtkMyChartXY::SetTooltipImageTargetSize(int pixels)
 void vtkMyChartXY::SetTooltipImageStack(vtkImageData* stack)
 {
   vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetImageStack(stack);
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartXY::SetPlotColumnIndices(int xI, int yI)
+{
+	// Direct chart control method of changing plotted data
+	
+	// Do mapping to "valid" non_ids columns
+	int X = this->col_idxs.at(xI);
+	int Y = this->col_idxs.at(yI);
+	
+	// Looking for first visible vtkMyPlotPoints
+	for (vtkIdType p = 0; p < this->GetNumberOfPlots(); ++p)
+		{
+		vtkMyPlotPoints* plot = vtkMyPlotPoints::SafeDownCast(this->GetPlot(p));
+		if (plot && plot->GetVisible())
+			{
+			vtkTable* table = plot->GetData()->GetInput();
+			plot->SetInput(table,X,Y);
+			this->GetAxis(0)->SetTitle(table->GetColumnName(Y));
+			this->GetAxis(0)->Modified();
+			this->GetAxis(1)->SetTitle(table->GetColumnName(X));
+			this->GetAxis(1)->Modified();
+			this->Modified();
+			plot->Modified();
+			plot->Update();
+			this->RecalculateBounds();
+			this->Update();
+			// Not sure how to get this to Render()...?
+			// May have to do that externally after calling this routine...
+			break;
+			}
+		}
 }
 
 //-----------------------------------------------------------------------------

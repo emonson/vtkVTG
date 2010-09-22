@@ -23,7 +23,9 @@
 
 #include "vtkChartXY.h"
 #include "vtkSmartPointer.h"
+// #include "vtkVector.h"
 #include <math.h>
+#include <vtkstd/vector>
 
 class vtkPlot;
 class vtkAxis;
@@ -94,7 +96,7 @@ public:
   // Description
   // Externally set which data columns will be the X and Y axis data
   // Will look for the first vtkMyPlotPoints and set that
-  virtual void SetPlotColumnIndices(int X, int Y);
+  virtual void SetPlotColumnIndices(int xI, int yI);
 
 protected:
   vtkMyChartXY();
@@ -122,6 +124,10 @@ private:
   // each other. If being used, should contain a selection node with
   // a selection list of two indices which will be the X and Y axis columns.
   vtkAnnotationLink *DataColumnsLink;
+  
+  // Description:
+  // Contains the map between indices (axis images) and "valid", non_ids data
+  vtkstd::vector<vtkIdType> col_idxs;
 
 };
 

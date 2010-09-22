@@ -90,13 +90,11 @@ public:
     this->Point2[0] = 0;
     this->Point2[1] = 0;
     this->Image = vtkSmartPointer<vtkImageData>::New();
-    this->ColumnIndex = -1;
     }
 
   int Point1[2];
   int Point2[2];
   vtkSmartPointer<vtkImageData> Image;
-  vtkIdType ColumnIndex;
 };
 
 //-----------------------------------------------------------------------------
@@ -128,7 +126,6 @@ public:
   int aiWidth, aiHeight, aiGap, aiXSpace, aiYSpace;
   int currentXai, currentYai;
   int aiOrientation;
-  vtkstd::vector<vtkIdType> col_idxs;
 };
 
 //-----------------------------------------------------------------------------
@@ -136,7 +133,6 @@ vtkStandardNewMacro(vtkAxisImageItem);
 
 //-----------------------------------------------------------------------------
 vtkCxxSetObjectMacro(vtkAxisImageItem, DataColumnsLink, vtkAnnotationLink);
-vtkCxxSetObjectMacro(vtkAxisImageItem, ChartXYView, vtkContextView);
 
 //-----------------------------------------------------------------------------
 vtkAxisImageItem::vtkAxisImageItem()
@@ -158,10 +154,6 @@ vtkAxisImageItem::vtkAxisImageItem()
 
   // Link into chart to externally control which columns are plotted
   this->DataColumnsLink = NULL;
-
-  // Link into chart to externally control which columns are plotted
-  this->ChartXY = NULL;
-  this->ChartXYView = NULL;
 
   // ImageSlicing for TooltipImageItem
   // Always slicing in the Z direction
@@ -474,7 +466,6 @@ void vtkAxisImageItem::ClearAxisImages()
     delete this->AIPrivate->axisImages[i];
     }
   this->AIPrivate->axisImages.clear();
-	this->AIPrivate->col_idxs.clear();
 	
 	this->AxisImageStack = NULL;
 
@@ -534,8 +525,8 @@ bool vtkAxisImageItem::MouseMoveEvent(const vtkContextMouseEvent &mouse)
 					if (i != this->AIPrivate->currentYai && i != this->AIPrivate->currentXai)
 						{
 						this->AIPrivate->currentXai = i;
+						this->Scene->SetDirty(true);
 						this->InvokeEvent(vtkCommand::PropertyModifiedEvent);
-						this->UpdateChartAxes();
 						}
 					}
 				}
@@ -554,8 +545,8 @@ bool vtkAxisImageItem::MouseMoveEvent(const vtkContextMouseEvent &mouse)
 					if (i != this->AIPrivate->currentXai && i != this->AIPrivate->currentYai)
 						{
 						this->AIPrivate->currentYai = i;
+						this->Scene->SetDirty(true);
 						this->InvokeEvent(vtkCommand::PropertyModifiedEvent);
-						this->UpdateChartAxes();
 						}
 					}
 				}
@@ -651,127 +642,6 @@ bool vtkAxisImageItem::MouseWheelEvent(const vtkContextMouseEvent &, int delta)
 }
 
 //-----------------------------------------------------------------------------
-void vtkAxisImageItem::SetChartXY(vtkMyChartXY* chart)
-{
-	this->ChartXY = chart;
-	this->SetColumnIndices();
-}
-
-//-----------------------------------------------------------------------------
-void vtkAxisImageItem::UpdateChartAxes()
-{
-	// Direct chart control method of chaning plotted data
-	
-	// Looking for first visible vtkMyPlotPoints
-	for (vtkIdType p = 0; p < this->ChartXY->GetNumberOfPlots(); ++p)
-		{
-		vtkMyPlotPoints* plot = vtkMyPlotPoints::SafeDownCast(this->ChartXY->GetPlot(p));
-		if (plot && plot->GetVisible())
-			{
-			vtkTable* table = plot->GetData()->GetInput();
-			int yI = this->AIPrivate->axisImages[this->AIPrivate->currentYai]->ColumnIndex;
-			int xI = this->AIPrivate->axisImages[this->AIPrivate->currentXai]->ColumnIndex;
-			// plot->SetInputArray(0,table->GetColumnName(xI));
-			// plot->SetInputArray(1,table->GetColumnName(yI));
-			// printf("Setting input %d, %d\n", xI, yI);
-			// printf("Names %s, %s\n", table->GetColumnName(xI), table->GetColumnName(yI));
-			plot->SetInput(table,xI,yI);
-			this->ChartXY->GetAxis(0)->SetTitle(table->GetColumnName(yI));
-			this->ChartXY->GetAxis(0)->Modified();
-			this->ChartXY->GetAxis(1)->SetTitle(table->GetColumnName(xI));
-			this->ChartXY->GetAxis(1)->Modified();
-			this->ChartXY->Modified();
-			plot->Modified();
-			plot->Update();
-			this->ChartXY->RecalculateBounds();
-			this->ChartXY->Update();
-			this->Scene->SetDirty(true);
-			if (this->ChartXYView)
-				{
-				// this->ChartXYView->Update();
-				this->ChartXYView->Render();
-				}
-			break;
-			}
-		}
-}
-
-//-----------------------------------------------------------------------------
-void vtkAxisImageItem::SetColumnIndices()
-{
-	if (!this->ChartXY)
-		{
-		return;
-		}
-	else
-		{
-		// Look through data table column names to gather valid data column indices
-		// NOTE: Looking for first visible vtkMyPlotPoints and using that table
-		
-		// TODO: Either part of this check needs to move into vtkMyChartXY so
-		//   when it's sent indices from the axis images, it maps them properly
-		//   into non-_ids column indices, or I need to register the chart with 
-		//   this class so I can do this check here and send the proper indices
-		//   to the chart...
-		vtkIdType n = this->ChartXY->GetNumberOfPlots();
-		vtkMyPlotPoints* plot;
-		vtkTable* table;
-		// Find first MyPlotPoints to know where to grab the input table
-		for (vtkIdType i = 0; i < n; ++i)
-			{
-			plot = vtkMyPlotPoints::SafeDownCast(this->ChartXY->GetPlot(i));
-			if (plot && plot->GetVisible())
-				{
-				table = plot->GetData()->GetInput();
-				break;
-				}
-			}
-		// Check whether the table has columns
-		if (!plot || !(table->GetNumberOfColumns()>0))
-			{
-			printf("No viable plot found in SetChartXY\n");
-			return;
-			}
-		// Grab current X and Y plotted column names
-		const char* xName = plot->GetData()->GetInputArrayToProcess(0, table)->GetName();
-		const char* yName = plot->GetData()->GetInputArrayToProcess(1, table)->GetName();
-	
-		// Build up a vector of table column indices which do not contain _ids in their name
-		this->AIPrivate->col_idxs.clear();
-		for (vtkIdType ii = 0; ii < table->GetNumberOfColumns(); ii++)
-			{
-			const char *col_name = table->GetColumnName(ii);
-			if (strcmp(col_name, xName) == 0) 
-				{
-				this->AIPrivate->currentXai = ii;
-				}
-			if (strcmp(col_name, yName) == 0)
-				{
-				this->AIPrivate->currentYai = ii;
-				}
-			if (strstr(col_name, "_ids"))
-				{
-				continue;
-				}
-			else
-				{
-				this->AIPrivate->col_idxs.push_back(ii);
-				}
-			}
-		// Check whether the vector of indices has the same length as the number of axis images
-		if (this->AIPrivate->col_idxs.size() != this->NumImages &&
-				this->AIPrivate->axisImages.size() > 0)
-			{
-			printf("Number of viable columns doesn't equal the number of images!\n");
-			printf("Columns: %d, Images: %d\n", (int)this->AIPrivate->col_idxs.size(), this->NumImages);
-			}
-		
-		// TODO: if (this->AIPrivate->axis_images.size() > 0), iterate through axis
-		// images and set column index values
-	}
-}
-
-//-----------------------------------------------------------------------------
 void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 {
   this->AxisImageStack = stack;
@@ -794,12 +664,6 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
   // Storing actual number of pixels in width and height
   this->AIPrivate->aiWidth = extent[1]+1;		// extent is largest 0-based index
   this->AIPrivate->aiHeight = extent[3]+1;
-
-	// If we've kept the same chart, but switched AxisImageStack, need to recompute	
-	if (this->ChartXY)
-		{
-		SetColumnIndices();
-		}
 
 	// NOTE: Leaving space here for center image (placed below axis images for now)
 	//   which should always be the same size as axis images
@@ -893,18 +757,15 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 		
 		ai->Point2[0] = ai->Point1[0] + scW;
 		ai->Point2[1] = ai->Point1[1] + scH;
-		
-		// If chart has been registered, record the actual column index
-		if (this->AIPrivate->col_idxs.size() > 0)
-			{
-			ai->ColumnIndex = this->AIPrivate->col_idxs.at(ii);
-			}
-		else
-			{
-			ai->ColumnIndex = ii;
-			}
 		this->AIPrivate->axisImages.push_back(ai);
 		}
+		
+	// Set defaults to 0 and 1 for X and Y
+	this->AIPrivate->currentXai = 0;
+	this->AIPrivate->currentYai = 1;
+	// and send out event that plot data has changed so ChartXY gets updated...?
+	this->InvokeEvent(vtkCommand::PropertyModifiedEvent);
+	
 }
 
 //-----------------------------------------------------------------------------
