@@ -530,9 +530,11 @@ bool vtkAxisImageItem::MouseMoveEvent(const vtkContextMouseEvent &mouse)
 						mouse.ScreenPos[1] > image->Point1[1] && mouse.ScreenPos[1] < image->Point2[1])
 					{
 					// Don't let X and Y be on the same axis image for now
-					if (i != this->AIPrivate->currentYai)
+					// and only update if something has really changed
+					if (i != this->AIPrivate->currentYai && i != this->AIPrivate->currentXai)
 						{
 						this->AIPrivate->currentXai = i;
+						this->InvokeEvent(vtkCommand::PropertyModifiedEvent);
 						this->UpdateChartAxes();
 						}
 					}
@@ -549,9 +551,10 @@ bool vtkAxisImageItem::MouseMoveEvent(const vtkContextMouseEvent &mouse)
 						mouse.ScreenPos[1] > image->Point1[1] && mouse.ScreenPos[1] < image->Point2[1])
 					{
 					// Don't let X and Y be on the same axis image for now
-					if (i != this->AIPrivate->currentXai)
+					if (i != this->AIPrivate->currentXai && i != this->AIPrivate->currentYai)
 						{
 						this->AIPrivate->currentYai = i;
+						this->InvokeEvent(vtkCommand::PropertyModifiedEvent);
 						this->UpdateChartAxes();
 						}
 					}
@@ -1019,6 +1022,18 @@ void vtkAxisImageItem::SetBorders(int left, int bottom, int right, int top)
   this->SetRightBorder(right);
   this->SetTopBorder(top);
   this->SetBottomBorder(bottom);
+}
+
+//-----------------------------------------------------------------------------
+int vtkAxisImageItem::GetXAxisIndex()
+{
+  return this->AIPrivate->currentXai;
+}
+
+//-----------------------------------------------------------------------------
+int vtkAxisImageItem::GetYAxisIndex()
+{
+  return this->AIPrivate->currentYai;
 }
 
 //-----------------------------------------------------------------------------

@@ -73,6 +73,11 @@ public:
   virtual void SetAxisImagesHorizontal();
   
   // Description:
+  // Get the current X and Y axis indices
+  int GetXAxisIndex();
+  int GetYAxisIndex();
+  
+  // Description:
   // Get/Set the DataColumnsLink for the chart.
   // Link used to externally control which columns are plotted against
   // each other. If being used, should contain a selection node with

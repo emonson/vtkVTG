@@ -91,6 +91,11 @@ public:
   // a slice of to display when hovering over points (needs to be just 2d)
   virtual void SetTooltipImageStack(vtkImageData*);
 
+  // Description
+  // Externally set which data columns will be the X and Y axis data
+  // Will look for the first vtkMyPlotPoints and set that
+  virtual void SetPlotColumnIndices(int X, int Y);
+
 protected:
   vtkMyChartXY();
   ~vtkMyChartXY();
