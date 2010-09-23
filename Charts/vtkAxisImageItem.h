@@ -73,9 +73,12 @@ public:
   virtual void SetAxisImagesHorizontal();
   
   // Description:
-  // Get the current X and Y axis indices
-  int GetXAxisIndex();
-  int GetYAxisIndex();
+  // Set/Get the current X and Y axis indices
+  virtual int GetXAxisIndex();
+  virtual int GetYAxisIndex();
+  virtual void SetXAxisIndex(int xI);
+  virtual void SetYAxisIndex(int yI);
+  virtual void SetAxisIndices(int xI, int yI);
   
   // Description:
   // Get/Set the DataColumnsLink for the chart.

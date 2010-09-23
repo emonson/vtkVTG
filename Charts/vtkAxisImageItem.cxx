@@ -764,7 +764,7 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 	this->AIPrivate->currentXai = 0;
 	this->AIPrivate->currentYai = 1;
 	// and send out event that plot data has changed so ChartXY gets updated...?
-	this->InvokeEvent(vtkCommand::PropertyModifiedEvent);
+	// this->InvokeEvent(vtkCommand::PropertyModifiedEvent);
 	
 }
 
@@ -895,6 +895,37 @@ int vtkAxisImageItem::GetXAxisIndex()
 int vtkAxisImageItem::GetYAxisIndex()
 {
   return this->AIPrivate->currentYai;
+}
+
+//-----------------------------------------------------------------------------
+void vtkAxisImageItem::SetXAxisIndex(int xI)
+{
+  if (this->AIPrivate->currentYai != xI && xI < this->NumImages)
+    {
+    this->AIPrivate->currentXai = xI;
+		this->Scene->SetDirty(true);
+    }
+}
+
+//-----------------------------------------------------------------------------
+void vtkAxisImageItem::SetYAxisIndex(int yI)
+{
+  if (this->AIPrivate->currentXai != yI && yI < this->NumImages)
+    {
+    this->AIPrivate->currentYai = yI;
+		this->Scene->SetDirty(true);
+    }
+}
+
+//-----------------------------------------------------------------------------
+void vtkAxisImageItem::SetAxisIndices(int xI, int yI)
+{
+  if (xI != yI && xI < this->NumImages && yI < this->NumImages)
+    {
+    this->AIPrivate->currentXai = xI;
+    this->AIPrivate->currentYai = yI;
+		this->Scene->SetDirty(true);
+    }
 }
 
 //-----------------------------------------------------------------------------
