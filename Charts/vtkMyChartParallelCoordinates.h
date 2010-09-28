@@ -113,6 +113,21 @@ public:
   // Get the vtkHighlightLink for the chart.
   vtkGetObjectMacro(HighlightLink, vtkAnnotationLink);
 
+  // Description:
+  // Set the number of scales which will be represented by boxes in the
+  // chart. This needs to be set before calling SetScaleDim(index, dim_size)
+  virtual void SetNumberOfScales(int num_scales);
+
+  // Description:
+  // Set the number of dimensions for each individual scale so the decorations
+  // can be drawn properly. Call SetNumberOfScales(int num) before this.
+  virtual void SetScaleDim(vtkIdType index, int dim_size);
+
+  // Description:
+  // Set all columns to invisible in one shot so don't have to run through
+  // all of them when totally switching data
+  virtual void SetAllColumnsInvisible();
+
 
 //BTX
   // Description:

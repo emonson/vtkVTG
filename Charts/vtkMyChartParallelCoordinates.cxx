@@ -62,6 +62,7 @@ public:
   vtkSmartPointer<vtkTransform2D> Transform;
   vtkstd::vector<vtkAxis *> Axes;
   vtkstd::vector<vtkVector<float, 2> > AxesSelections;
+  vtkstd::vector<int> ScaleDims;
   int CurrentAxis;
   int AxisResize;
 };
@@ -90,6 +91,7 @@ vtkMyChartParallelCoordinates::vtkMyChartParallelCoordinates()
   this->HighlightLink = NULL;
   this->HighlightSelection = vtkIdTypeArray::New();
   this->Storage->Plot->SetHighlightSelection(this->HighlightSelection);
+  this->Storage->ScaleDims.clear();
 }
 
 //-----------------------------------------------------------------------------
@@ -131,6 +133,7 @@ void vtkMyChartParallelCoordinates::Update()
       (*it)->Delete();
       }
     this->Storage->Axes.clear();
+    this->Storage->AxesSelections.clear();
 
     for (int i = 0; i < this->VisibleColumns->GetNumberOfTuples(); ++i)
       {
@@ -138,6 +141,7 @@ void vtkMyChartParallelCoordinates::Update()
       axis->SetPosition(vtkAxis::PARALLEL);
       this->Storage->Axes.push_back(axis);
       }
+      this->Storage->AxesSelections.resize(this->Storage->Axes.size());
     }
 
   // Now set up their ranges and locations
@@ -158,9 +162,7 @@ void vtkMyChartParallelCoordinates::Update()
       axis->SetTitle(this->VisibleColumns->GetValue(i));
       }
     }
-  this->Storage->AxesSelections.clear();
 
-  this->Storage->AxesSelections.resize(this->Storage->Axes.size());
   this->GeometryValid = false;
   this->BuildTime.Modified();
 }
@@ -217,44 +219,51 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     vtkDebugMacro("No highlight annotation link set.");
     }
 
+  // Prepare information on axis indices for drawing boxes (bounds)
+  int num_groups = this->Storage->ScaleDims.size();
+  vtkstd::vector<int> group_starts(num_groups);
+  vtkstd::vector<int> group_ends(num_groups);
+
+  if (num_groups > 0)
+    {
+    group_starts[0] = 0;
+    group_ends[0] = this->Storage->ScaleDims[0] - 1;
+    for (int ii=1; ii < num_groups; ++ii)
+      {
+      group_starts[ii] = group_starts[ii-1] + this->Storage->ScaleDims[ii-1];
+      group_ends[ii] = group_ends[ii-1] + this->Storage->ScaleDims[ii];
+      }
+    }
+
   // Draw set rectangles if desired
   if (this->DrawSets)
     {
     int oldLineType = painter->GetPen()->GetLineType();
     
     // Main sets boxes
-    painter->GetBrush()->SetColor(254, 209, 0, 40);
-    painter->GetPen()->SetLineType(0);
-    for (int i = 0; i < this->VisibleColumns->GetNumberOfTuples(); i+=this->NumPerSet)
+    painter->GetPen()->SetLineType(1);
+    // painter->GetPen()->SetOpacity(1.0);
+    for (int i = 0; i < this->Storage->ScaleDims.size(); ++i)
       {
-      if ((i+this->NumPerSet-1) <= static_cast<int>(this->Storage->Axes.size()))
+      int idx0 = group_starts.at(i);
+      int idx1 = group_ends.at(i);
+      vtkAxis* axis0 = this->Storage->Axes.at(idx0);
+      vtkAxis* axis1 = this->Storage->Axes.at(idx1);
+      painter->GetBrush()->SetColor(254, 209, 0, 40);
+      painter->DrawRect(axis0->GetPoint1()[0],
+                        this->Point1[1],
+                        axis1->GetPoint1()[0]-axis0->GetPoint1()[0],
+                        this->Point2[1]-this->Point1[1]);
+      // Extra set box for current scale
+      if (i == this->CurrentScale)
         {
-        vtkAxis* axis0 = this->Storage->Axes[i];
-        vtkAxis* axis1 = this->Storage->Axes[i+this->NumPerSet-1];
+        painter->GetBrush()->SetColor(254, 209, 0, 100);
         painter->DrawRect(axis0->GetPoint1()[0], 
                           this->Point1[1],
                           axis1->GetPoint1()[0]-axis0->GetPoint1()[0], 
                           this->Point2[1]-this->Point1[1]);
         }
       }
-    
-    // Extra set box for current scale
-    painter->GetBrush()->SetColor(254, 209, 0, 100);
-    painter->GetPen()->SetLineType(0);
-    for (int i = 0; i < this->VisibleColumns->GetNumberOfTuples(); i+=this->NumPerSet)
-      {
-      if ((i+this->NumPerSet-1) <= static_cast<int>(this->Storage->Axes.size()) &&
-          (i/this->NumPerSet == this->CurrentScale))
-        {
-        vtkAxis* axis0 = this->Storage->Axes[i];
-        vtkAxis* axis1 = this->Storage->Axes[i+this->NumPerSet-1];
-        painter->DrawRect(axis0->GetPoint1()[0], 
-                          this->Point1[1],
-                          axis1->GetPoint1()[0]-axis0->GetPoint1()[0], 
-                          this->Point2[1]-this->Point1[1]);
-        }
-      }
-        
     painter->GetPen()->SetLineType(oldLineType);
     }
     
@@ -275,9 +284,10 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
   if (this->Storage->CurrentAxis >= 0)
     {
     painter->GetBrush()->SetColor(200, 200, 200, 150);
+    painter->GetPen()->SetLineType(0);
     vtkAxis* axis = this->Storage->Axes[this->Storage->CurrentAxis];
-    painter->DrawRect(axis->GetPoint1()[0]-5, this->Point1[1],
-                      10, this->Point2[1]-this->Point1[1]);
+    painter->DrawRect(axis->GetPoint1()[0]-3, this->Point1[1],
+                      6, this->Point2[1]-this->Point1[1]);
     }
 
   // Now draw our active selections
@@ -299,32 +309,40 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     }
 
   // Semi-transparent box over non-valid scales
-  if (this->DrawSets)
+  if (this->DrawSets && this->CurrentScale < (num_groups-1))
     {
     int oldLineType = painter->GetPen()->GetLineType();
 
     painter->GetBrush()->SetColor(254, 254, 254, 150);
     painter->GetPen()->SetLineType(0);
-    int opaquePadding = 4; 	// extra padding so axes and points themselves are covered
-    for (int i = 0; i < this->VisibleColumns->GetNumberOfTuples(); i+=this->NumPerSet)
-      {
-      if ((i+this->NumPerSet-1) <= static_cast<int>(this->Storage->Axes.size()) &&
-          (i/this->NumPerSet == this->CurrentScale+1))	// opaque on next scale
-          // (i/this->NumPerSet == this->CurrentScale+2))	// keep next scale visible
-        {
-        vtkAxis* axis0 = this->Storage->Axes[i];
-        vtkAxis* axis1 = this->Storage->Axes[this->Storage->Axes.size()-1];
-        painter->DrawRect(axis0->GetPoint1()[0]-opaquePadding, 
-                          this->Point1[1]-opaquePadding,
-                          axis1->GetPoint1()[0]-axis0->GetPoint1()[0]+(2*opaquePadding),
-                          this->Point2[1]-this->Point1[1]+(2*opaquePadding));
-        }
-      }
+    // painter->GetPen()->SetOpacity(0.0);
+    int opaquePadding = 4;  // extra padding so axes and points themselves are covered
+    int idx0 = group_starts.at(this->CurrentScale+1);
+    int idx1 = group_ends.back();
+    vtkAxis* axis0 = this->Storage->Axes.at(idx0);
+    vtkAxis* axis1 = this->Storage->Axes.at(idx1);
+    painter->DrawRect(axis0->GetPoint1()[0]-opaquePadding,
+                      this->Point1[1]-opaquePadding,
+                      axis1->GetPoint1()[0]-axis0->GetPoint1()[0]+(2*opaquePadding),
+                      this->Point2[1]-this->Point1[1]+(2*opaquePadding));
     
     painter->GetPen()->SetLineType(oldLineType);
     }
     
   return true;
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartParallelCoordinates::SetNumberOfScales(int num_scales)
+{
+  this->Storage->ScaleDims.clear();
+  this->Storage->ScaleDims.resize(num_scales);
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartParallelCoordinates::SetScaleDim(vtkIdType index, int dim_size)
+{
+  this->Storage->ScaleDims.at(index) = dim_size;
 }
 
 //-----------------------------------------------------------------------------
@@ -367,6 +385,20 @@ void vtkMyChartParallelCoordinates::SetColumnVisibility(const char* name,
         }
       }
     }
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyChartParallelCoordinates::SetAllColumnsInvisible()
+{
+  // Setting all columns invisible so paint won't spit up if it gets new
+  // data that has less columns than chart visible columns
+  this->VisibleColumns->SetNumberOfTuples(0);
+  // Also need to reset CurrentAxis so it won't be greater than
+  // number of axes
+  this->Storage->CurrentAxis = -1;
+  this->Modified();
+  this->Update();
+  return;
 }
 
 //-----------------------------------------------------------------------------
