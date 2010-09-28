@@ -190,11 +190,11 @@ void vtkMyChartXY::Update()
     vtkDebugMacro("No annotation link set.");
     }
 	
-	// Make sure the axis labels have been set to column names (for vtkMyPlotPoints)
+	// Make sure the axis labels have been set to the correct column names (for vtkMyPlotPoints)
 	for (int ii=0; ii < this->GetNumberOfPlots(); ++ii)
 		{
 		vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(this->GetPlot(ii));
-		if (myPlot && strcmp(this->GetAxis(0)->GetTitle(),"Y Axis") == 0)
+		if (myPlot) // && strcmp(this->GetAxis(0)->GetTitle(),"Y Axis") == 0)
 			{
 			vtkTable* table = myPlot->GetData()->GetInput();
 			const char* xName = myPlot->GetData()->GetInputArrayToProcess(0, table)->GetName();

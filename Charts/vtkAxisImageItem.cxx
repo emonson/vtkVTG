@@ -761,8 +761,16 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 		}
 		
 	// Set defaults to 0 and 1 for X and Y
-	this->AIPrivate->currentXai = 0;
-	this->AIPrivate->currentYai = 1;
+	if (this->NumImages > 1)
+	  {
+	  this->AIPrivate->currentXai = 0;
+	  this->AIPrivate->currentYai = 1;
+	  }
+	else
+	  {
+	  this->AIPrivate->currentXai = 0;
+	  this->AIPrivate->currentYai = 0;
+	  }
 	// and send out event that plot data has changed so ChartXY gets updated...?
 	// this->InvokeEvent(vtkCommand::PropertyModifiedEvent);
 	
