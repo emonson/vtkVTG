@@ -23,6 +23,7 @@
 #include "vtkContextMouseEvent.h"
 #include "vtkTextProperty.h"
 #include "vtkAxis.h"
+#include "vtkPCAxis.h"
 #include "vtkContextMapper2D.h"
 #include "vtkSmartPointer.h"
 #include "vtkTable.h"
@@ -52,7 +53,7 @@ public:
     }
   ~Private()
     {
-    for (vtkstd::vector<vtkAxis *>::iterator it = this->Axes.begin();
+    for (vtkstd::vector<vtkPCAxis *>::iterator it = this->Axes.begin();
          it != this->Axes.end(); ++it)
       {
       (*it)->Delete();
@@ -60,7 +61,7 @@ public:
     }
   vtkSmartPointer<vtkMyPlotParallelCoordinates> Plot;
   vtkSmartPointer<vtkTransform2D> Transform;
-  vtkstd::vector<vtkAxis *> Axes;
+  vtkstd::vector<vtkPCAxis *> Axes;
   vtkstd::vector<vtkVector<float, 2> > AxesSelections;
   vtkstd::vector<int> ScaleDims;
   int CurrentAxis;
@@ -127,7 +128,7 @@ void vtkMyChartParallelCoordinates::Update()
   if (static_cast<int>(this->Storage->Axes.size()) !=
       this->VisibleColumns->GetNumberOfTuples())
     {
-    for (vtkstd::vector<vtkAxis *>::iterator it = this->Storage->Axes.begin();
+    for (vtkstd::vector<vtkPCAxis *>::iterator it = this->Storage->Axes.begin();
          it != this->Storage->Axes.end(); ++it)
       {
       (*it)->Delete();
@@ -137,8 +138,8 @@ void vtkMyChartParallelCoordinates::Update()
 
     for (int i = 0; i < this->VisibleColumns->GetNumberOfTuples(); ++i)
       {
-      vtkAxis* axis = vtkAxis::New();
-      axis->SetPosition(vtkAxis::PARALLEL);
+      vtkPCAxis* axis = vtkPCAxis::New();
+      axis->SetPosition(vtkPCAxis::PARALLEL);
       this->Storage->Axes.push_back(axis);
       }
       this->Storage->AxesSelections.resize(this->Storage->Axes.size());
@@ -154,7 +155,7 @@ void vtkMyChartParallelCoordinates::Update()
       {
       array->GetRange(range);
       }
-    vtkAxis* axis = this->Storage->Axes[i];
+    vtkPCAxis* axis = this->Storage->Axes[i];
     if (axis->GetBehavior() == 0)
       {
       axis->SetMinimum(range[0]);
@@ -242,13 +243,14 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     
     // Main sets boxes
     painter->GetPen()->SetLineType(1);
-    // painter->GetPen()->SetOpacity(1.0);
+    painter->GetPen()->SetColor(0,0,0);
+    painter->GetPen()->SetWidth(1.0);
     for (int i = 0; i < this->Storage->ScaleDims.size(); ++i)
       {
       int idx0 = group_starts.at(i);
       int idx1 = group_ends.at(i);
-      vtkAxis* axis0 = this->Storage->Axes.at(idx0);
-      vtkAxis* axis1 = this->Storage->Axes.at(idx1);
+      vtkPCAxis* axis0 = this->Storage->Axes.at(idx0);
+      vtkPCAxis* axis1 = this->Storage->Axes.at(idx1);
       painter->GetBrush()->SetColor(254, 209, 0, 40);
       painter->DrawRect(axis0->GetPoint1()[0],
                         this->Point1[1],
@@ -267,25 +269,36 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     painter->GetPen()->SetLineType(oldLineType);
     }
     
+	// Paint axes, but only if there are not too many of them
+	if (this->Storage->Axes.size() < 60)
+	  {
+	  for (vtkstd::vector<vtkPCAxis *>::iterator it = this->Storage->Axes.begin();
+				 it != this->Storage->Axes.end(); ++it)
+			{
+			(*it)->Paint(painter);
+			}
+    }
+	else
+	  {
+	  for (vtkstd::vector<vtkPCAxis *>::iterator it = this->Storage->Axes.begin();
+				 it != this->Storage->Axes.end(); ++it)
+			{
+			(*it)->PaintNoLines(painter);
+			}
+    }
+
   // Paint the actual lines of the plot
   painter->PushMatrix();
   painter->SetTransform(this->Storage->Transform);
   this->Storage->Plot->Paint(painter);
   painter->PopMatrix();
 
-  // Now we have a table, set up the axes accordingly, clear and build.
-  for (vtkstd::vector<vtkAxis *>::iterator it = this->Storage->Axes.begin();
-       it != this->Storage->Axes.end(); ++it)
-    {
-    (*it)->Paint(painter);
-    }
-
   // If there is a selected axis, draw the highlight
   if (this->Storage->CurrentAxis >= 0)
     {
     painter->GetBrush()->SetColor(200, 200, 200, 150);
     painter->GetPen()->SetLineType(0);
-    vtkAxis* axis = this->Storage->Axes[this->Storage->CurrentAxis];
+    vtkPCAxis* axis = this->Storage->Axes[this->Storage->CurrentAxis];
     painter->DrawRect(axis->GetPoint1()[0]-3, this->Point1[1],
                       6, this->Point2[1]-this->Point1[1]);
     }
@@ -319,8 +332,8 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     int opaquePadding = 4;  // extra padding so axes and points themselves are covered
     int idx0 = group_starts.at(this->CurrentScale+1);
     int idx1 = group_ends.back();
-    vtkAxis* axis0 = this->Storage->Axes.at(idx0);
-    vtkAxis* axis1 = this->Storage->Axes.at(idx1);
+    vtkPCAxis* axis0 = this->Storage->Axes.at(idx0);
+    vtkPCAxis* axis1 = this->Storage->Axes.at(idx1);
     painter->DrawRect(axis0->GetPoint1()[0]-opaquePadding,
                       this->Point1[1]-opaquePadding,
                       axis1->GetPoint1()[0]-axis0->GetPoint1()[0]+(2*opaquePadding),
@@ -415,6 +428,15 @@ bool vtkMyChartParallelCoordinates::GetColumnVisibility(const char* name)
 }
 
 //-----------------------------------------------------------------------------
+void vtkMyChartParallelCoordinates::ClearAxesSelections()
+{
+  this->Storage->AxesSelections.clear();
+  this->Storage->AxesSelections.resize(this->Storage->Axes.size());
+  this->Storage->CurrentAxis = -1;
+  this->Scene->SetDirty(true);
+}
+
+//-----------------------------------------------------------------------------
 vtkPlot * vtkMyChartParallelCoordinates::AddPlot(int)
 {
   return NULL;
@@ -448,7 +470,7 @@ vtkAxis* vtkMyChartParallelCoordinates::GetAxis(int index)
 {
   if (index < this->GetNumberOfAxes())
     {
-    return this->Storage->Axes[index];
+    return vtkAxis::SafeDownCast(this->Storage->Axes[index]);
     }
   else
     {
@@ -484,7 +506,7 @@ void vtkMyChartParallelCoordinates::UpdateGeometry()
 
     for (size_t i = 0; i < this->Storage->Axes.size(); ++i)
       {
-      vtkAxis* axis = this->Storage->Axes[i];
+      vtkPCAxis* axis = this->Storage->Axes[i];
       axis->SetPoint1(x, this->Point1[1]);
       axis->SetPoint2(x, this->Point2[1]);
       if (axis->GetBehavior() == 0)
@@ -513,7 +535,7 @@ void vtkMyChartParallelCoordinates::CalculatePlotTransform()
     return;
     }
 
-  vtkAxis* axis = this->Storage->Axes[0];
+  vtkPCAxis* axis = this->Storage->Axes[0];
   float *min = axis->GetPoint1();
   float *max = axis->GetPoint2();
   float yScale = 1.0f / (max[1] - min[1]);
@@ -585,7 +607,7 @@ bool vtkMyChartParallelCoordinates::MouseMoveEvent(const vtkContextMouseEvent &m
     }
   else if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
     {
-    vtkAxis* axis = this->Storage->Axes[this->Storage->CurrentAxis];
+    vtkPCAxis* axis = this->Storage->Axes[this->Storage->CurrentAxis];
     if (this->Storage->AxisResize == 0)
       {
       // Move the axis in x
@@ -659,7 +681,7 @@ bool vtkMyChartParallelCoordinates::MouseButtonPressEvent(
       // Iterate over the axes, see if we are within 10 pixels of an axis
       for (size_t i = 0; i < this->Storage->Axes.size(); ++i)
         {
-        vtkAxis* axis = this->Storage->Axes[i];
+        vtkPCAxis* axis = this->Storage->Axes[i];
         if (axis->GetPoint1()[0]-5 < mouse.ScenePos[0] &&
             axis->GetPoint1()[0]+5 > mouse.ScenePos[0])
           {
@@ -692,7 +714,7 @@ bool vtkMyChartParallelCoordinates::MouseButtonPressEvent(
     // Iterate over the axes, see if we are within 10 pixels of an axis
     for (size_t i = 0; i < this->Storage->Axes.size(); ++i)
       {
-      vtkAxis* axis = this->Storage->Axes[i];
+      vtkPCAxis* axis = this->Storage->Axes[i];
       if (axis->GetPoint1()[0]-10 < mouse.ScenePos[0] &&
           axis->GetPoint1()[0]+10 > mouse.ScenePos[0])
         {

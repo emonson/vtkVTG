@@ -68,6 +68,10 @@ public:
   virtual bool RemovePlot(vtkIdType index);
 
   // Description:
+  // Clear selection bars
+  virtual void ClearAxesSelections();
+
+  // Description:
   // Remove all plots from the chart.
   virtual void ClearPlots();
 
