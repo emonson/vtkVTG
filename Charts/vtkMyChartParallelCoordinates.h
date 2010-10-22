@@ -109,6 +109,12 @@ public:
   // a semi-transparent box over "non-valid" scales
   vtkSetMacro(CurrentScale, int);
 
+  // Description
+  // This controls annotations for which axes are being plotted in a separate XY
+  // plot. References indices within "current scale".
+  vtkSetMacro(XYcurrentX, int);
+  vtkSetMacro(XYcurrentY, int);
+
   // Description:
   // Set the vtkHighlightLink for the chart.
   virtual void SetHighlightLink(vtkAnnotationLink *link);
@@ -201,6 +207,8 @@ protected:
   bool DrawSets;
   int NumPerSet;
   int CurrentScale;
+  int XYcurrentX;
+  int XYcurrentY;
   
   // Description:
   // Link back into chart to highlight selections made in other plots

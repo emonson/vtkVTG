@@ -88,6 +88,8 @@ vtkMyChartParallelCoordinates::vtkMyChartParallelCoordinates()
   this->DrawSets = false;
   this->NumPerSet = 1;
   this->CurrentScale = 0;
+  this->XYcurrentX = 0;
+  this->XYcurrentY = 1;
   // Link back into chart to highlight selections made in other plots
   this->HighlightLink = NULL;
   this->HighlightSelection = vtkIdTypeArray::New();
@@ -264,6 +266,29 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
                           this->Point1[1],
                           axis1->GetPoint1()[0]-axis0->GetPoint1()[0], 
                           this->Point2[1]-this->Point1[1]);
+        // And annotation for externally plotted X and Y axes
+        if ((this->XYcurrentX >= 0) && (this->XYcurrentY >= 0))
+					{
+					vtkPCAxis* axisX = this->Storage->Axes.at(idx0+this->XYcurrentX);
+					vtkPCAxis* axisY = this->Storage->Axes.at(idx0+this->XYcurrentY);
+					painter->GetBrush()->SetColor(200, 200, 200, 100);
+					
+					painter->DrawLine(axisX->GetPoint1()[0]-3, 
+														this->Point2[1]+6,
+														axisX->GetPoint1()[0]+3,
+														this->Point2[1]+6);
+					painter->DrawEllipse(axisX->GetPoint1()[0], 
+														this->Point2[1]+6,
+														3,3);
+					
+					painter->DrawLine(axisY->GetPoint1()[0], 
+														this->Point2[1]+3,
+														axisY->GetPoint1()[0],
+														this->Point2[1]+9);
+					painter->DrawEllipse(axisY->GetPoint1()[0], 
+														this->Point2[1]+6,
+														3,3);
+          }
         }
       }
     painter->GetPen()->SetLineType(oldLineType);
@@ -310,6 +335,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     if (range[0] != range[1])
       {
       painter->GetBrush()->SetColor(200, 20, 20, 220);
+      painter->GetPen()->SetLineType(0);
       float x = this->Storage->Axes[i]->GetPoint1()[0] - 3;
       float y = range[0];
       y *= this->Storage->Transform->GetMatrix()->GetElement(1, 1);
