@@ -42,7 +42,7 @@ vtk_has_configuration_types = @VTKVTG_PYTHON_HAS_CONFIG_TYPES@
 vtk_build_type = @VTKVTG_PYTHON_BUILD_TYPE@
 
 # Construct the list of kit names to be installed.
-vtk_kit_names = ['Charts', 'Common', 'Filtering', 'Graphics',
+vtk_kit_names = ['Charts', 'Common', 'Filtering', 'Graphics', 'Hybrid',
                  'Infovis', 'Rendering', 'Widgets']
 
 def get_libs():

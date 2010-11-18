@@ -37,6 +37,7 @@ IF(1)
     vtkvtg/common
     vtkvtg/filtering
     vtkvtg/graphics
+    vtkvtg/hybrid
     vtkvtg/infovis
     vtkvtg/rendering
     vtkvtg/widgets

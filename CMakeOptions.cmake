@@ -81,6 +81,8 @@ ENDIF (VTK_WRAP_TCL)
 
 IF (VTK_WRAP_PYTHON)
 
+  SET(VTKVTG_PYTHON_INCLUDE_DIRS ${PYTHON_INCLUDE_DIRS})
+  
   OPTION(VTKVTG_WRAP_PYTHON
          "Wrap classes into the Python interpreted language."
          ON)
