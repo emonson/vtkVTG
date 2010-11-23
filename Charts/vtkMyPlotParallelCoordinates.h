@@ -23,12 +23,15 @@
 #define __vtkMyPlotParallelCoordinates_h
 
 #include "vtkPlot.h"
+#include "vtkScalarsToColors.h" // For VTK_COLOR_MODE_DEFAULT and _MAP_SCALARS
 
 class vtkMyChartParallelCoordinates;
 class vtkTable;
 class vtkPoints2D;
 class vtkStdString;
 class vtkImageData;
+class vtkScalarsToColors;
+class vtkUnsignedCharArray;
 
 class VTK_CHARTS_EXPORT vtkMyPlotParallelCoordinates : public vtkPlot
 {
@@ -94,6 +97,29 @@ public:
     this->SetInput(table);
   }
 
+  // Description:
+  // Specify a lookup table for the mapper to use.
+  void SetLookupTable(vtkScalarsToColors *lut);
+  vtkScalarsToColors *GetLookupTable();
+
+  // Description:
+  // Create default lookup table. Generally used to create one when none
+  // is available with the scalar data.
+  virtual void CreateDefaultLookupTable();
+
+  // Description:
+  // Turn on/off flag to control whether scalar data is used to color objects.
+  vtkSetMacro(ScalarVisibility,int);
+  vtkGetMacro(ScalarVisibility,int);
+  vtkBooleanMacro(ScalarVisibility,int);
+
+  // Description:
+  // When ScalarMode is set to UsePointFieldData or UseCellFieldData,
+  // you can specify which array to use for coloring using these methods.
+  // The lookup table will decide how to convert vectors to colors.
+  void SelectColorArray(vtkIdType arrayNum);
+  void SelectColorArray(const char* arrayName);
+
 //BTX
   // Description:
   // Enum containing various marker styles that can be used in a plot.
@@ -147,6 +173,13 @@ protected:
   // Description:
   // Selected indices coming back from outside the chart this plot is associated with.
   vtkIdTypeArray *HighlightSelection;
+
+  // Description:
+  // Lookup Table for coloring points by scalar value
+  vtkScalarsToColors *LookupTable;
+  vtkUnsignedCharArray *Colors;
+  int ScalarVisibility;
+  char ColorArrayName[256];
 
 private:
   vtkMyPlotParallelCoordinates(const vtkMyPlotParallelCoordinates &); // Not implemented.

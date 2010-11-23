@@ -34,6 +34,8 @@
 #include "vtkTimeStamp.h"
 #include "vtkInformation.h"
 #include "vtkSmartPointer.h"
+#include "vtkUnsignedCharArray.h"
+#include "vtkLookupTable.h"
 
 // Need to turn some arrays of strings into categories
 #include "vtkStringToCategory.h"
@@ -74,6 +76,11 @@ vtkMyPlotParallelCoordinates::vtkMyPlotParallelCoordinates()
   this->Marker = NULL;
   this->HighlightMarker = NULL;
   this->HighlightSelection = NULL;
+
+  this->LookupTable = 0;
+  this->Colors = 0;
+  this->ScalarVisibility = 0;
+  strcpy(this->ColorArrayName, "");
 }
 
 //-----------------------------------------------------------------------------
@@ -97,6 +104,14 @@ vtkMyPlotParallelCoordinates::~vtkMyPlotParallelCoordinates()
     {
     this->HighlightSelection->Delete();
     this->HighlightSelection = NULL;
+    }
+  if (this->LookupTable)
+    {
+    this->LookupTable->UnRegister(this);
+    }
+  if ( this->Colors != 0 )
+    {
+    this->Colors->UnRegister(this);
     }
 }
 
@@ -184,6 +199,7 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
     }
 
   // Draw all of the points
+  // TODO: This needs to be updated for colored markers
   this->GeneraterMarker(static_cast<int>(width));
   painter->ApplyBrush(this->Brush);
   painter->GetPen()->SetWidth(width);
@@ -199,13 +215,33 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
 
   // Draw all of the lines
   painter->ApplyPen(this->Pen);
-  for (size_t i = 0; i < rows; ++i)
+  int nc_comps;
+  if (this->ScalarVisibility && this->Colors)
     {
-    for (size_t j = 0; j < cols; ++j)
+    nc_comps = static_cast<int>(this->Colors->GetNumberOfComponents());
+    }
+  if (this->ScalarVisibility && this->Colors && (nc_comps == 4))
+    {
+    for (size_t i = 0, nc = 0; i < rows; ++i, nc += nc_comps)
       {
-      line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][i]);
+      for (size_t j = 0; j < cols; ++j)
+        {
+        line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][i]);
+        }
+      painter->DrawPoly(line[0].GetData(), static_cast<int>(cols),
+                        this->Colors->GetPointer(nc), nc_comps);
       }
-    painter->DrawPoly(line[0].GetData(), static_cast<int>(cols));
+    }
+  else
+    {
+    for (size_t i = 0; i < rows; ++i)
+      {
+      for (size_t j = 0; j < cols; ++j)
+        {
+        line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][i]);
+        }
+      painter->DrawPoly(line[0].GetData(), static_cast<int>(cols));
+      }
     }
 
   // Now draw the selected lines
@@ -623,8 +659,133 @@ bool vtkMyPlotParallelCoordinates::UpdateTableCache(vtkTable *table)
       }
     }
 
+  // Additions for color mapping
+  if (this->ScalarVisibility && (this->ColorArrayName[0] != 0))
+    {
+    vtkDataArray* c =
+      vtkDataArray::SafeDownCast(table->GetColumnByName(this->ColorArrayName));
+    // TODO: Should add support for categorical coloring & try enum lookup
+    if (c)
+      {
+      if (!this->LookupTable)
+        {
+        this->CreateDefaultLookupTable();
+        }
+      this->Colors = this->LookupTable->MapScalars(c, VTK_COLOR_MODE_MAP_SCALARS, -1);
+      // Consistent register and unregisters
+      this->Colors->Register(this);
+      this->Colors->Delete();
+      }
+    else
+      {
+      this->Colors->UnRegister(this);
+      this->Colors = 0;
+      }
+    }
+
   this->BuildTime.Modified();
   return true;
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyPlotParallelCoordinates::SetLookupTable(vtkScalarsToColors *lut)
+{
+  if ( this->LookupTable != lut )
+    {
+    if ( this->LookupTable)
+      {
+      this->LookupTable->UnRegister(this);
+      }
+    this->LookupTable = lut;
+    if (lut)
+      {
+      lut->Register(this);
+      }
+    this->Modified();
+    }
+}
+
+//-----------------------------------------------------------------------------
+vtkScalarsToColors *vtkMyPlotParallelCoordinates::GetLookupTable()
+{
+  if ( this->LookupTable == 0 )
+    {
+    this->CreateDefaultLookupTable();
+    }
+  return this->LookupTable;
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyPlotParallelCoordinates::CreateDefaultLookupTable()
+{
+  if ( this->LookupTable)
+    {
+    this->LookupTable->UnRegister(this);
+    }
+  this->LookupTable = vtkLookupTable::New();
+  // Consistent Register/UnRegisters.
+  this->LookupTable->Register(this);
+  this->LookupTable->Delete();
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyPlotParallelCoordinates::SelectColorArray(const char *arrayName)
+{
+  vtkTable *table = this->Data->GetInput();
+  if (!table)
+    {
+    vtkDebugMacro(<< "SelectColorArray called with no input table set.");
+    return;
+    }
+  if (strcmp(this->ColorArrayName, arrayName) == 0)
+    {
+    return;
+    }
+  for (vtkIdType c = 0; c < table->GetNumberOfColumns(); ++c)
+    {
+    const char *name = table->GetColumnName(c);
+    if (strcmp(name, arrayName) == 0)
+      {
+      strcpy(this->ColorArrayName, arrayName);
+      this->Modified();
+      return;
+      }
+    }
+  vtkDebugMacro(<< "SelectColorArray called with invalid column name.");
+  strcpy(this->ColorArrayName, "");
+  this->Modified();
+  return;
+}
+
+//-----------------------------------------------------------------------------
+void vtkMyPlotParallelCoordinates::SelectColorArray(vtkIdType arrayNum)
+{
+  vtkTable *table = this->Data->GetInput();
+  if (!table)
+    {
+    vtkDebugMacro(<< "SelectColorArray called with no input table set.");
+    return;
+    }
+  vtkDataArray *col = vtkDataArray::SafeDownCast(table->GetColumn(arrayNum));
+  // TODO: Should add support for categorical coloring & try enum lookup
+  if (!col)
+    {
+    vtkDebugMacro(<< "SelectColorArray called with invalid column index");
+    return;
+    }
+  else
+    {
+    const char *arrayName = table->GetColumnName(arrayNum);
+    if (strcmp(this->ColorArrayName, arrayName) == 0)
+      {
+      return;
+      }
+    else
+      {
+      strcpy(this->ColorArrayName, arrayName);
+      this->Modified();
+      }
+    }
 }
 
 //-----------------------------------------------------------------------------
