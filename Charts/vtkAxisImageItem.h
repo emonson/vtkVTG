@@ -153,6 +153,11 @@ public:
   // Set/get the borders of the chart (space in pixels around the chart).
   void SetBorders(int left, int bottom, int right, int top);
 
+  // Description
+  // Set lookup table for the center image and axis images
+  virtual void SetCenterImageLookupTable(vtkLookupTable *lutBW);
+  virtual void SetAxisImagesLookupTable(vtkLookupTable *lut);
+  
 protected:
   vtkAxisImageItem();
   ~vtkAxisImageItem();

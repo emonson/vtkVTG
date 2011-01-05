@@ -315,7 +315,8 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
 			float W = this->AIPrivate->aiWidth;
 			// Want to peg the min scaling factor at 1 px for smallest dimension
 			// since scaling factor calc can go negative with fixed (not proportional) gaps
-			float minS = (1.0/G > 1.0/W) ? (1.0/G) : (1.0/W);
+			// float minS = (1.0/G > 1.0/W) ? (1.0/G) : (1.0/W);
+			float minS = 5.0/W;
 			int nY = 0;		// n-up in Y direction
 			int nX = 0;		// n-up in X direction		
 			
@@ -681,7 +682,8 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
 			float W = this->AIPrivate->aiWidth;
 			// Want to peg the min scaling factor at 1 px for smallest dimension
 			// since scaling factor calc can go negative with fixed (not proportional) gaps
-			float minS = (1.0/G > 1.0/W) ? (1.0/G) : (1.0/W);
+			// float minS = (1.0/G > 1.0/W) ? (1.0/G) : (1.0/W);
+			float minS = 5.0/W;
 			int nY = 0;		// n-up in Y direction
 			int nX = 0;		// n-up in X direction		
 			
@@ -933,6 +935,28 @@ void vtkAxisImageItem::SetAxisIndices(int xI, int yI)
     this->AIPrivate->currentXai = xI;
     this->AIPrivate->currentYai = yI;
 		this->Scene->SetDirty(true);
+    }
+}
+
+//-----------------------------------------------------------------------------
+void vtkAxisImageItem::SetCenterImageLookupTable(vtkLookupTable *lutBW)
+{
+  if ( this->lutBW != lutBW )
+    {
+    this->lutBW = lutBW;
+    this->colorBW->SetLookupTable(this->lutBW);
+    this->colorBW->Update();
+    }
+}
+
+//-----------------------------------------------------------------------------
+void vtkAxisImageItem::SetAxisImagesLookupTable(vtkLookupTable *lut)
+{
+  if ( this->lut != lut )
+    {
+    this->lut = lut;
+    this->color->SetLookupTable(this->lut);
+    this->color->Update();
     }
 }
 

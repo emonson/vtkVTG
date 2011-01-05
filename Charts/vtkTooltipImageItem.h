@@ -66,6 +66,10 @@ public:
   virtual void SetImageIndex(int imageId);
   virtual vtkImageData* GetImageAtIndex(int imageId);
   
+  // Description
+  // Set lookup table for the tooltip images
+  virtual void SetLookupTable(vtkLookupTable *lut);
+  
 //BTX
 protected:
   vtkTooltipImageItem();

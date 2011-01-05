@@ -17,6 +17,7 @@
 #include "vtkMyChartParallelCoordinates.h"
 
 #include "vtkContext2D.h"
+#include "vtkColor.h"
 #include "vtkAxis.h"
 #include "vtkPen.h"
 #include "vtkFloatArray.h"
@@ -177,6 +178,7 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
   size_t cols = this->Storage->size();
   size_t rows = this->Storage->at(0).size();
   vtkVector2f* line = new vtkVector2f[cols];
+  vtkColor4ub* colors = new vtkColor4ub[cols];
 
   // Update the axis positions
   for (size_t i = 0; i < cols; ++i)
@@ -227,9 +229,11 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
       for (size_t j = 0; j < cols; ++j)
         {
         line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][i]);
+        colors[j].Set(*this->Colors->GetPointer(nc), *this->Colors->GetPointer(nc+1),
+                      *this->Colors->GetPointer(nc+2), *this->Colors->GetPointer(nc+3));
         }
       painter->DrawPoly(line[0].GetData(), static_cast<int>(cols),
-                        this->Colors->GetPointer(nc), nc_comps);
+                        colors[0].GetData(), nc_comps);
       }
     }
   else
@@ -276,6 +280,7 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
     }
 
   delete[] line;
+  delete[] colors;
 
   return true;
 }

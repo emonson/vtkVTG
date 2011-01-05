@@ -25,6 +25,7 @@
 #include "vtkImageReslice.h"
 #include "vtkLookupTable.h"
 #include "vtkImageMapToColors.h"
+#include "vtkScalarsToColors.h"
 #include "vtkPointData.h"
 
 #include "vtkStdString.h"
@@ -275,6 +276,17 @@ int vtkTooltipImageItem::GetNumberOfImages()
   else
     {
     return 0;
+    }
+}
+
+//-----------------------------------------------------------------------------
+void vtkTooltipImageItem::SetLookupTable(vtkLookupTable *lut)
+{
+  if ( this->lut != lut )
+    {
+    this->lut = lut;
+    this->color->SetLookupTable(this->lut);
+    this->color->Update();
     }
 }
 

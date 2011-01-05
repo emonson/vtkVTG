@@ -109,7 +109,9 @@ protected:
   
   // Description:
   // Set the information passed to the tooltip
-  virtual void SetTooltipInfo(const vtkContextMouseEvent&, vtkVector2f, int, vtkPlot*);
+  virtual void SetTooltipInfo(const vtkContextMouseEvent &,
+                              const vtkVector2f &,
+                              int, vtkPlot*);
 
 private:
   vtkMyChartXY(const vtkMyChartXY &); // Not implemented.

@@ -89,7 +89,7 @@ vtkMyChartParallelCoordinates::vtkMyChartParallelCoordinates()
   this->NumPerSet = 1;
   this->CurrentScale = 0;
   this->XYcurrentX = 0;
-  this->XYcurrentY = 1;
+  this->XYcurrentY = 0;
   // Link back into chart to highlight selections made in other plots
   this->HighlightLink = NULL;
   this->HighlightSelection = vtkIdTypeArray::New();
@@ -253,7 +253,16 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
       int idx1 = group_ends.at(i);
       vtkPCAxis* axis0 = this->Storage->Axes.at(idx0);
       vtkPCAxis* axis1 = this->Storage->Axes.at(idx1);
-      painter->GetBrush()->SetColor(254, 209, 0, 40);
+      if (this->Storage->Plot->GetScalarVisibility())
+        {
+        // Use gray box background for colored lines
+        painter->GetBrush()->SetColor(150, 150, 150, 20);
+        }
+      else
+        {
+        // yellow-gold otherwise
+        painter->GetBrush()->SetColor(254, 209, 0, 20);
+        }
       painter->DrawRect(axis0->GetPoint1()[0],
                         this->Point1[1],
                         axis1->GetPoint1()[0]-axis0->GetPoint1()[0],
@@ -261,7 +270,16 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
       // Extra set box for current scale
       if (i == this->CurrentScale)
         {
-        painter->GetBrush()->SetColor(254, 209, 0, 100);
+        if (this->Storage->Plot->GetScalarVisibility())
+          {
+          // Use gray box background for colored lines
+          painter->GetBrush()->SetColor(150, 150, 150, 60);
+          }
+        else
+          {
+          // yellow-gold otherwise
+          painter->GetBrush()->SetColor(254, 209, 0, 60);
+          }
         painter->DrawRect(axis0->GetPoint1()[0], 
                           this->Point1[1],
                           axis1->GetPoint1()[0]-axis0->GetPoint1()[0], 
