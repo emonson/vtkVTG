@@ -20,7 +20,12 @@ ENDIF(UNIX)
 # SET(VTKVTG_SOURCE_DIR ${CMAKE_SOURCE_DIR})
 SET(VTKVTG_LIBRARY_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
 SET(VTKVTG_EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/bin")
-SET(PYTHON_EXECUTABLE "/System/Library/Frameworks/Python.framework/Versions/2.6/bin/python2.6")
+if(APPLE)
+  SET(PYTHON_EXECUTABLE "/System/Library/Frameworks/Python.framework/Versions/2.6/bin/python2.6")
+endif(APPLE)
+if(UNIX AND NOT APPLE)
+  SET(PYTHON_EXECUTABLE "/usr/bin/python2.6")
+endif(UNIX AND NOT APPLE)
 
 IF(1)
 # Make the necessary directories.

@@ -69,5 +69,12 @@ CONFIGURE_FILE(
 )
 
 INCLUDE_DIRECTORIES(${VTKVTG_BINARY_DIR})
-INCLUDE_DIRECTORIES(/System/Library/Frameworks/Python.framework/Headers)
+if(APPLE)
+  INCLUDE_DIRECTORIES(/System/Library/Frameworks/Python.framework/Headers)
+endif(APPLE)
+
+if(UNIX AND NOT APPLE)
+  INCLUDE_DIRECTORIES(/usr/include/python2.6)
+endif(UNIX AND NOT APPLE)
+
 # INCLUDE_DIRECTORIES(${VTKVTG_PYTHON_INCLUDE_DIRS})
