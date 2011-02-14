@@ -499,7 +499,7 @@ void vtkQtWordleView::DoLayout()
 	for (int ii=0; ii < word_count; ++ii)
 	  {
 	  WordObject word = this->sortedWordObjectList[ii];
-		printf("%d\t%s\t%d\n", ii, word.text.c_str(), word.font_size);
+		// printf("%d\t%s\t%d\n", ii, word.text.c_str(), word.font_size);
 		this->collision_scene->addItem(word.rect_item);
 		if (ii == 0)
 			overlap = false;
@@ -520,18 +520,32 @@ void vtkQtWordleView::DoLayout()
 				}
 			else
 				{
-				QList<QGraphicsItem*> itemsList = word.rect_item->collidingItems();
-				// printf("\t%d possible colliding items\n", itemsList.length());
-				for (int jj=0; jj < itemsList.length(); ++jj)
+				// Found that "collidingItems" was taking most of the time, so just checking all..
+				for (int jj=0; jj < ii; ++jj)
 					{
-					QGraphicsRectItem* item = static_cast<QGraphicsRectItem*>(itemsList[jj]);
-					this->rectB = item;
-					if (this->HierarchicalRectCollision_B())
-						{
-						overlap = true;
-						this->lastRect = item;
-						break;
-						}
+						this->rectB = this->sortedWordObjectList[jj].rect_item;
+						if (this->HierarchicalRectCollision_B())
+							{
+							overlap = true;
+							this->lastRect = this->rectB;
+							break;
+							}
+				
+// 				QList<QGraphicsItem*> itemsList = word.rect_item->collidingItems();
+// 				// printf("\t%d possible colliding items\n", itemsList.length());
+// 				for (int jj=0; jj < itemsList.length(); ++jj)
+// 					{
+// 					QGraphicsRectItem* item = static_cast<QGraphicsRectItem*>(itemsList[jj]);
+// 					if (item->childItems().length() > 0)
+// 						{
+// 						this->rectB = item;
+// 						if (this->HierarchicalRectCollision_B())
+// 							{
+// 							overlap = true;
+// 							this->lastRect = item;
+// 							break;
+// 							}
+// 						}
 					}
 				}
 
