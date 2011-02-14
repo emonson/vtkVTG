@@ -143,6 +143,11 @@ public:
   bool GetColorByArray();
   vtkBooleanMacro(ColorByArray, bool);
 
+  // Description:
+  // Set the (max) number of words to include in the wordle
+  vtkGetMacro(num_words, int);
+  vtkSetMacro(num_words, int);
+
   void ClearGraphicsView();
   
   vtkVector2f CartesianToPolar(vtkVector2f posArr);
@@ -151,6 +156,7 @@ public:
 	
 	void BuildWordObjectsList();
 	bool HierarchicalRectCollision_B();
+	bool HierarchicalRectCollision_C();
 	void DoLayout();
 
   virtual void ApplyViewTheme(vtkViewTheme* theme);

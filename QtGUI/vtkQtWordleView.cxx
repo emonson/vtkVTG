@@ -383,9 +383,6 @@ void vtkQtWordleView::BuildWordObjectsList()
 		pathItem->setBrush(*word.color);
 		word.path_item = pathItem;
 		
-		// DEBUG
-		this->scene->addItem(word.path_item);
-		
 		// Manually build two-deep tree right here for now...
 		QGraphicsRectItem* rect = new QGraphicsRectItem(pathItem->boundingRect().adjusted(-this->xbuffer, -this->ybuffer, this->xbuffer, this->ybuffer));
 		rect->setPen(QPen(Qt::NoPen));
@@ -398,12 +395,15 @@ void vtkQtWordleView::BuildWordObjectsList()
 			}
 		word.rect_item = rect;
 
+		word.rect_item->setPos(word.pos.X(),word.pos.Y());
+		word.path_item->setPos(word.pos.X(),word.pos.Y());	
+
     (this->sortedWordObjectList).push_back(word);
     }
   
   std::sort((this->sortedWordObjectList).begin(), (this->sortedWordObjectList).end(), compWordObject);
   
-  // DEBUG: Dump the vector to check the result
+  // DEBUG: Dump some vector contents to check the result
 //   for (std::vector<WordObject>::iterator citer = (this->sortedWordObjectList).begin();
 //   		 citer != (this->sortedWordObjectList).end(); ++citer)
 //   	{
@@ -417,99 +417,148 @@ void vtkQtWordleView::BuildWordObjectsList()
 bool vtkQtWordleView::HierarchicalRectCollision_B()
 {
 // 	def hierarchicalRectCollision_B(self):
-// 		rA = self.rectA.mapRectToScene(self.rectA.rect())
-// 		rB = self.rectB.mapRectToScene(self.rectB.rect())
-// 		ax1,ay1 = rA.x(), rA.y()
-// 		ax2,ay2 = ax1+rA.width(), ay1+rA.height()
-// 		bx1,by1 = rB.x(), rB.y()
-// 		bx2,by2 = bx1+rB.width(), by1+rB.height()
-// 		
-// 		if ((ax2<bx1) or (ax1>bx2) or (ay2<by1) or (ay1>by2)):
-// 			# print 'first stage false'
-// 			return False
-// 		else:
-// 			rBchildren = self.rectB.childItems()
-// 			overList = [True]*len(rBchildren)
-// 			for ii,item in enumerate(rBchildren):
-// 				rB = self.rectB.mapRectToScene(item.rect())
-// 				bx1,by1 = rB.x(), rB.y()
-// 				bx2,by2 = bx1+rB.width(), by1+rB.height()
-// 				if ((ax2<bx1) or (ax1>bx2) or (ay2<by1) or (ay1>by2)):
-// 					overList[ii] = False
-// 				else:
-// 					overList[ii] = True
-// 					break
-// 			return any(overList)
+	QRectF rA = this->rectA->mapRectToScene(this->rectA->rect());
+	QRectF rB = this->rectB->mapRectToScene(this->rectB->rect());
+	double ax1 = rA.x();
+	double ay1 = rA.y();
+	double ax2 = ax1 + rA.width();
+	double ay2 = ay1 + rA.height();
+	double bx1 = rB.x();
+	double by1 = rB.y();
+	double bx2 = bx1 + rB.width();
+	double by2 = by1 + rB.height();
 
-	return false;
+	// This sequence only true for non-overlap
+	if ((ax2<bx1) || (ax1>bx2) || (ay2<by1) || (ay1>by2))
+	  {
+		// printf("\t\tfirst stage false\n");
+		// short-circuit if not overlapping with outer rect
+		return false;
+		}
+	else
+	  {
+	  // but if overlap with outer rect, check to make sure overlap with a sub-rect
+		QList<QGraphicsItem *> rBchildren = this->rectB->childItems();
+		const QGraphicsRectItem* gitem;
+		foreach (const QGraphicsItem* item, rBchildren)
+		  {
+		  gitem = static_cast<const QGraphicsRectItem*>(item);
+			QRectF rB = this->rectB->mapRectToScene(gitem->rect());
+			bx1 = rB.x();
+			by1 = rB.y();
+			bx2 = bx1 + rB.width();
+			by2 = by1 + rB.height();
+			if (!((ax2<bx1) or (ax1>bx2) or (ay2<by1) or (ay1>by2)))
+				{
+				// short-circuit if find overlap with any sub-rect
+				// printf("\t\tShort-circuited with subrect\n");
+				return true;
+				}
+			}
+		// return no overlaps if didn't hit any sub-rects
+		// printf("\t\tDidn't hit any subrects\n");
+		return false;
+		}
+}
+
+//----------------------------------------------------------------------------
+bool vtkQtWordleView::HierarchicalRectCollision_C()
+{
+	QRectF rA = this->rectA->mapRectToScene(this->rectA->rect());
+	QRectF rB = this->rectB->mapRectToScene(this->rectB->rect());
+	double ax1 = rA.x();
+	double ay1 = rA.y();
+	double ax2 = ax1 + rA.width();
+	double ay2 = ay1 + rA.height();
+	double bx1 = rB.x();
+	double by1 = rB.y();
+	double bx2 = bx1 + rB.width();
+	double by2 = by1 + rB.height();
+
+	// This sequence only true for non-overlap
+	if ((ax2<bx1) || (ax1>bx2) || (ay2<by1) || (ay1>by2))
+	  {
+		return false;
+		}
+	else
+	  {
+		return true;
+		}
 }
 
 //----------------------------------------------------------------------------
 void vtkQtWordleView::DoLayout()
 {
-// 	def doLayout(self):
-// 		self.ui.progressBar.reset()
-// 		self.ui.progressBar.setMinimum(0)
-// 		self.ui.progressBar.setMaximum(self.num_words)
-// 		self.lastRect = self.sortedWordObjectList[0].rect_item
-// 		self.scene.setSceneRect(-300, -400, 900, 800)
-// 		print "Placing words in image"
-// 		
-// 		self.num_words = self.ui.spinBox_numWords.value()
-// 		tmpRect = self.sortedWordObjectList[0].path_item.boundingRect()
-// 		for ii,word in enumerate(self.sortedWordObjectList[:self.num_words]):
-// 			print ii, word.text, word.font_size
-// 			self.collision_scene.addItem(word.rect_item)
-// 			if ii == 0:
-// 				overlap = False
-// 			else:
-// 				overlap = True
-// 				
-// 			while overlap:
-// 				# First test for overlap with last one intersected
-// 				# if word.rect_item.collidesWithItem(lastWord.rect_item):
-// 				self.rectA = word.rect_item
-// 				self.rectB = self.lastRect
-// 				if self.hierarchicalRectCollision_B():
-// 					overlap = True
-// 					# print "Last word overlap"
-// 				else:
-// 					itemsList = word.rect_item.collidingItems()
-// 					# print itemsList
-// 					overlapList = [True]*len(itemsList)
-// 					for jj,item in enumerate(itemsList):
-// 						self.rectB = item
-// 						if self.hierarchicalRectCollision_B():
-// 							overlapList[jj] = True
-// 							self.lastRect = item
-// 							break
-// 						else:
-// 							overlapList[jj] = False
-// 					overlap = any(overlapList)
-// 					
-// 				if overlap:
-// 					word.pos = self.UpdatePositionSpirals(word.initial_pos,word.theda,word.R0,word.delta,word.rdelta)
-// 					word.rect_item.setPos(word.pos[0],word.pos[1])
-// 					# TEST
-// 					# if ii in [1, 2, 10, 20, 40, 80, 100, 140]:
-// 					#	isz = N.array([2,2])
-// 					#	trackDraw.ellipse(N.concatenate((word.pos-isz, word.pos+isz)).tolist(),fill=(0,200,5*ii))
-// 			
-// 			word.rect_item.setPos(word.pos[0],word.pos[1])
-// 			word.path_item.setPos(word.pos[0],word.pos[1])		
-// 			self.scene.addItem(word.path_item)
-// 			tmpRect = tmpRect.united(word.path_item.mapRectToScene(word.path_item.boundingRect()))
-// 			self.ui.progressBar.setValue(ii)
-// 			# Can't get the view to update after each word is added...
-// 			# self.ui.graphicsView.repaint()
-// 			# self.scene.update(self.scene.sceneRect())
-// 		
+	this->lastRect = this->sortedWordObjectList[0].rect_item;
+	this->scene->setSceneRect(-300, -400, 900, 800);
+	printf("Placing words in image\n");
+
+	QRectF tmpRect = this->sortedWordObjectList[0].path_item->boundingRect();
+	int word_count = std::min((int)this->sortedWordObjectList.size(), this->num_words);
+	bool overlap;
+	for (int ii=0; ii < word_count; ++ii)
+	  {
+	  WordObject word = this->sortedWordObjectList[ii];
+		printf("%d\t%s\t%d\n", ii, word.text.c_str(), word.font_size);
+		this->collision_scene->addItem(word.rect_item);
+		if (ii == 0)
+			overlap = false;
+		else
+			overlap = true;
+
+		while (overlap)
+			{
+			// Assume no overlap and collision detection turns to true if there is overlap
+			overlap = false;
+			// First test for overlap with last one intersected
+			this->rectA = word.rect_item;
+			this->rectB = this->lastRect;
+			if (this->HierarchicalRectCollision_B())
+				{
+				overlap = true;
+				// printf("\tLast word overlap\n");
+				}
+			else
+				{
+				QList<QGraphicsItem*> itemsList = word.rect_item->collidingItems();
+				// printf("\t%d possible colliding items\n", itemsList.length());
+				for (int jj=0; jj < itemsList.length(); ++jj)
+					{
+					QGraphicsRectItem* item = static_cast<QGraphicsRectItem*>(itemsList[jj]);
+					this->rectB = item;
+					if (this->HierarchicalRectCollision_B())
+						{
+						overlap = true;
+						this->lastRect = item;
+						break;
+						}
+					}
+				}
+
+			if (overlap)
+				{
+				// printf("\tUpdating position from: %3.2f, %3.2f, ", word.pos.X(),word.pos.Y());
+				this->UpdatePositionSpirals(&word);
+				// printf("to: %3.2f, %3.2f\n", word.pos.X(),word.pos.Y());
+				word.rect_item->setPos(word.pos.X(),word.pos.Y());
+				}
+			}
+			
+		word.rect_item->setPos(word.pos.X(),word.pos.Y());
+		word.path_item->setPos(word.pos.X(),word.pos.Y());	
+		this->scene->addItem(word.path_item);
+		tmpRect = tmpRect.united(word.path_item->mapRectToScene(word.path_item->boundingRect()));
+		// Can't get the view to update after each word is added...
+		// this->ui.graphicsView.repaint()
+		// this->scene.update(this->scene.sceneRect())
+		}
+
 // 		adjX = (tmpRect.width()*0.05)/2.0
 // 		adjY = (tmpRect.height()*0.05)/2.0
-// 		self.boundingRect = tmpRect.adjusted(-adjX,-adjY,adjX,adjY)
-// 		self.scene.setSceneRect(self.boundingRect)
-// 		self.ui.graphicsView.fitInView(self.boundingRect,QtCore.Qt.KeepAspectRatio)
-// 		self.ui.progressBar.reset()
+// 		this->boundingRect = tmpRect.adjusted(-adjX,-adjY,adjX,adjY)
+// 		this->scene.setSceneRect(this->boundingRect)
+// 		this->ui.graphicsView.fitInView(this->boundingRect,QtCore.Qt.KeepAspectRatio)
+// 		this->ui.progressBar.reset()
 // 
 // 			# TEST
 // 			# isz = N.array([2,2])
@@ -546,6 +595,7 @@ void vtkQtWordleView::Update()
     
   // DEBUG
   this->BuildWordObjectsList();
+  this->DoLayout();
 
   this->View->update();
 }
