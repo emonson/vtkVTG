@@ -42,11 +42,12 @@ from filtering import *
 from graphics import *
 from hybrid import *
 from infovis import *
+from qvtk import *
 from rendering import *
 from widgets import *
 
 # the vtkvtg.kits variable tells us which kits we actually have
-kits = ['charts', 'common', 'filtering', 'graphics', 'hybrid', 'infovis', 'rendering', 'widgets']
+kits = ['charts', 'common', 'filtering', 'graphics', 'hybrid', 'infovis', 'qvtk', 'rendering', 'widgets']
 
 
 # import useful VTK related constants.

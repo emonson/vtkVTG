@@ -39,6 +39,7 @@ IF(1)
     vtkvtg/graphics
     vtkvtg/hybrid
     vtkvtg/infovis
+    vtkvtg/qvtk
     vtkvtg/rendering
     vtkvtg/widgets
     )
