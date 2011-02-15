@@ -21,12 +21,14 @@
 #include "vtkQtWordleView.h"
 
 #include <QFont>
+#include <QFontDatabase>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QList>
 #include <QPolygonF>
 #include <QRectF>
 #include <QString>
+#include <QStringList>
 #include <QTransform>
 
 // DEBUG
@@ -62,14 +64,8 @@ vtkQtWordleView::vtkQtWordleView()
 	// Scene which will actually be viewed with text
   this->scene = new QGraphicsScene();
 	this->scene->setSceneRect(-300, -400, 900, 800);
-	this->scene->setItemIndexMethod(QGraphicsScene::BspTreeIndex);
+	this->scene->setItemIndexMethod(QGraphicsScene::NoIndex);
 			
-	// Keep non-viewed scene for rectangle collision detection
-  this->collision_scene = new QGraphicsScene();
-	this->collision_scene->setSceneRect(this->scene->sceneRect());
-	this->collision_scene->setItemIndexMethod(QGraphicsScene::BspTreeIndex);
-	// this->collision_scene->setItemIndexMethod(QGraphicsScene::NoIndex);
-	
   this->View = new QGraphicsView();
 	this->View->setScene(this->scene);
 	this->View->setRenderHint(QPainter::Antialiasing);
@@ -96,10 +92,9 @@ vtkQtWordleView::vtkQtWordleView()
   this->lastRect = new QGraphicsRectItem();
   
   this->bigFontSize = 100;
-  this->num_words = 150;
-  this->maxSize = 0;
+  this->MaxNumberOfWords = 150;
+  this->orientation = vtkQtWordleView::HORIZONTAL;
   
-	this->max_words = 150;
 	this->xbuffer = 2.0;
 	this->ybuffer = 1.5;
 	this->randSpread = 0.2;
@@ -113,7 +108,7 @@ vtkQtWordleView::vtkQtWordleView()
   this->font->setStyle(QFont::StyleNormal);
   this->font->setWeight(QFont::Bold);
   
-//   QFontDatabase database;
+	this->FontDatabase = new QFontDatabase();
 // 	foreach (QString family, database.families()) {
 // 		 cout << family.toStdString() << endl;
 // 	
@@ -194,6 +189,109 @@ bool vtkQtWordleView::GetColorByArray()
 }
 
 //----------------------------------------------------------------------------
+void vtkQtWordleView::SetFontFamily(const char* name)
+{
+  QStringList families = this->FontDatabase->families();
+  if (families.contains(QString(name)))
+		{
+		this->font->setFamily(QString(name));
+		}
+	else
+		{
+		vtkDebugMacro(<< "Font family does not match a known entry in Qt database.");
+		}
+}
+
+//----------------------------------------------------------------------------
+const char* vtkQtWordleView::GetFontFamily()
+{
+  return this->font->family().toStdString().c_str();
+}
+
+//----------------------------------------------------------------------------
+bool vtkQtWordleView::FontFamilyExists(const char* name)
+{
+  QStringList families = this->FontDatabase->families();
+  if (families.contains(QString(name)))
+		{
+		return true;
+		}
+	else
+		{
+		return false;
+		}
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::SetFontStyle(int style)
+{
+  // Convert from int to QFont::Style
+  QFont::Style val;
+  switch (style)
+    {
+    case 0:
+    	val = QFont::StyleNormal;
+    	break;
+    case 1:
+    	val = QFont::StyleItalic;
+    	break;
+    case 2:
+    	val = QFont::StyleOblique;
+    	break;
+    default:
+    	vtkDebugMacro(<< "Font style not in correct range.");
+    }
+	if (style <= 2 && style >= 0)
+		{
+		this->font->setStyle(val);
+		}
+}
+
+//----------------------------------------------------------------------------
+int vtkQtWordleView::GetFontStyle()
+{
+  return this->font->style();
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::SetFontWeight(int weight)
+{
+  if (weight <= 99 && weight >= 0)
+		{
+		this->font->setWeight(weight);
+		}
+	else
+		{
+		vtkDebugMacro(<< "Font weight not in correct range.");
+		}
+}
+
+//----------------------------------------------------------------------------
+int vtkQtWordleView::GetFontWeight()
+{
+  return this->font->weight();
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::SetOrientation(int orientation)
+{
+  if (orientation <= 4 && orientation >= 0)
+		{
+		this->orientation = orientation;
+		}
+	else
+		{
+		vtkDebugMacro(<< "Orientation not in correct range.");
+		}
+}
+
+//----------------------------------------------------------------------------
+int vtkQtWordleView::GetOrientation()
+{
+  return this->orientation;
+}
+
+//----------------------------------------------------------------------------
 void vtkQtWordleView::SetColorArrayName(const char* name)
 {
   this->SetColorArrayNameInternal(name);
@@ -234,8 +332,18 @@ const char* vtkQtWordleView::GetSizeArrayName()
 //----------------------------------------------------------------------------
 void vtkQtWordleView::ClearGraphicsView()
 {
+	QList<QGraphicsItem*> sceneItems = this->scene->items();
+	for (int ii=0; ii < sceneItems.length(); ++ii)
+		{
+		this->scene->removeItem(sceneItems[ii]);
+		}
 	this->scene->clear();
-	this->collision_scene->clear();
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::ZoomToBounds()
+{
+		this->View->fitInView(this->scene->sceneRect(), Qt::KeepAspectRatio);
 }
 
 //----------------------------------------------------------------------------
@@ -267,12 +375,9 @@ vtkVector2f vtkQtWordleView::PolarToCartesian(vtkVector2f posArr)
 //----------------------------------------------------------------------------
 vtkVector2f vtkQtWordleView::MakeInitialPosition()
 {
-	// return (self.scene.sceneRect().width()*randSpread)*N.random.randn(2)
-	
-	// TODO: Check that this range is reasonable since used to be randn call...
-	float x = (float)(this->scene->sceneRect().width())*this->randSpread*((float)rand()/(float)RAND_MAX);
-	float y = (float)(this->scene->sceneRect().height())*this->randSpread*((float)rand()/(float)RAND_MAX);
-	vtkVector2f result(x, y);
+	double x = (double)(this->scene->sceneRect().width())*this->randSpread*((double)rand()/(double)RAND_MAX);
+	double y = (double)(this->scene->sceneRect().height())*this->randSpread*((double)rand()/(double)RAND_MAX);
+	vtkVector2f result((float)x, (float)y);
 	
 	return result;
 }
@@ -350,17 +455,18 @@ void vtkQtWordleView::BuildWordObjectsList()
 	
 	double sizeRange[2];
 	sizes->GetRange(sizeRange);
-	this->maxSize = sizeRange[1];
+	double maxSize = sizeRange[1];
 
   WordObject word;
   unsigned char cc[4];
   for (vtkIdType ii=0; ii < terms->GetNumberOfValues(); ++ii)
     {
     word.text = terms->GetValue(ii);
+    word.original_index = ii;
     word.size = fabs(sizes->GetValue(ii));
     colors->GetTupleValue(ii, cc);
     word.color = new QColor(cc[0],cc[1],cc[2],cc[3]);
-		word.font_size = (int)((float)this->bigFontSize*(float)word.size/(float)this->maxSize);
+		word.font_size = (int)((float)this->bigFontSize*(float)word.size/(float)maxSize);
 		word.pos = this->MakeInitialPosition();
 		word.initial_pos = word.pos;
 		word.delta = this->thedaMult*pow((float)word.font_size, this->thedaPow);
@@ -370,12 +476,12 @@ void vtkQtWordleView::BuildWordObjectsList()
 		QPainterPath pathOrig;
 		pathOrig.addText(0.0f, 0.0f, *this->font, QString(word.text.c_str()));
 		QTransform trans;
-		// TODO: This is where the orientation needs to be set...
-		// index values can take on [0,4] inclusive
-		// orient = self.ui.comboBox_orientation.currentIndex()
-		// if (QtCore.qrand() % 4) in (N.arange(orient+1)-1):
-		//	trans.rotate(90)
-		trans.rotate(0);
+		// Orientation values can take on [0,4] inclusive
+		int flip = rand() % 4;
+		if (flip <= (this->orientation-1))
+			{
+			trans.rotate(90);
+			}
 		word.painter_path = trans.map(pathOrig);
  	
 		QGraphicsPathItem* pathItem = new QGraphicsPathItem(word.painter_path);
@@ -402,23 +508,134 @@ void vtkQtWordleView::BuildWordObjectsList()
     }
   
   std::sort((this->sortedWordObjectList).begin(), (this->sortedWordObjectList).end(), compWordObject);
-  
-  // DEBUG: Dump some vector contents to check the result
-//   for (std::vector<WordObject>::iterator citer = (this->sortedWordObjectList).begin();
-//   		 citer != (this->sortedWordObjectList).end(); ++citer)
-//   	{
-//   	cout << "Text: " << (*citer).text << endl;
-//   	cout << "Size: " << std::fixed << (*citer).size << endl;
-//   	cout << endl;
-//   	}
+}
+
+// TODO: Crashes when try to do this and then redo layout
+//----------------------------------------------------------------------------
+// void vtkQtWordleView::ResetWordObjectsPositions()
+// {
+//   if (this->sortedWordObjectList.size() == 0)
+//     {
+//     printf("Tried to reset word objects list but EMPTY.\n");
+//     return;
+//     }
+// 
+//   for (int ii=0; ii < this->sortedWordObjectList.size(); ++ii)
+//     {
+//     WordObject word = this->sortedWordObjectList[ii];
+// 		word.pos = this->MakeInitialPosition();
+// 		word.initial_pos = word.pos;
+// 		
+// 		// Resetting all the rest of this also since want random orientations to change
+// 		this->font->setPointSize(word.font_size);
+// 		QPainterPath pathOrig;
+// 		pathOrig.addText(0.0f, 0.0f, *this->font, QString(word.text.c_str()));
+// 		QTransform trans;
+// 		// Orientation values can take on [0,4] inclusive
+// 		int flip = rand() % 4;
+// 		if (flip <= (this->orientation-1))
+// 			{
+// 			trans.rotate(90);
+// 			}
+// 		word.painter_path = trans.map(pathOrig);
+//  	
+// 		QGraphicsPathItem* pathItem = new QGraphicsPathItem(word.painter_path);
+// 		pathItem->setPen(QPen(Qt::NoPen));
+// 		pathItem->setBrush(*word.color);
+// 		delete word.path_item;
+// 		word.path_item = pathItem;
+// 		
+// 		// Manually build two-deep tree right here for now...
+// 		QGraphicsRectItem* rect = new QGraphicsRectItem(pathItem->boundingRect().adjusted(-this->xbuffer, -this->ybuffer, this->xbuffer, this->ybuffer));
+// 		rect->setPen(QPen(Qt::NoPen));
+// 		QList<QPolygonF> shapes = word.painter_path.toSubpathPolygons();
+// 		for (int jj=0; jj < shapes.size(); ++jj)
+// 		  {
+// 			QGraphicsRectItem* subRect = new QGraphicsRectItem(shapes.at(jj).boundingRect().adjusted(-this->xbuffer,-this->ybuffer,this->xbuffer,this->ybuffer));
+// 			subRect->setParentItem(rect);
+// 			subRect->setPen(QPen(Qt::NoPen));
+// 			}
+// 		QList<QGraphicsItem *> rBchildren = word.rect_item->childItems();
+// 		foreach (QGraphicsItem* item, rBchildren)
+// 		  {
+// 		  delete item;
+// 		  }
+// 		delete word.rect_item;
+// 		word.rect_item = rect;
+// 
+// 		word.rect_item->setPos(word.pos.X(),word.pos.Y());
+// 		word.path_item->setPos(word.pos.X(),word.pos.Y());	
+//     }
+// }
+
+// TODO: Basically works when you redo this and then re-layout, but some
+// overlaps occur that don't seem to be there on the first pass...
+//----------------------------------------------------------------------------
+void vtkQtWordleView::ResetWordObjectsPositions()
+{
+  if (this->sortedWordObjectList.size() == 0)
+    {
+    printf("Tried to reset word objects list but EMPTY.\n");
+    return;
+    }
+
+  for (int ii=0; ii < this->sortedWordObjectList.size(); ++ii)
+    {
+    WordObject word = this->sortedWordObjectList[ii];
+		word.pos = this->MakeInitialPosition();
+		word.initial_pos = word.pos;
+		
+		// Resetting only positions
+		word.rect_item->setPos(word.pos.X(),word.pos.Y());
+		word.path_item->setPos(word.pos.X(),word.pos.Y());	
+    }
+}
+
+// TODO: Need a routine that just redraws the scene with new colors
+// and doesn't redo positions
+//----------------------------------------------------------------------------
+void vtkQtWordleView::ResetWordObjectsColors()
+{
+  if (this->sortedWordObjectList.size() == 0)
+    {
+    printf("Tried to reset word objects list but EMPTY.\n");
+    return;
+    }
+	vtkDataRepresentation* rep = this->GetRepresentation();
+  if (!rep)
+    {
+    return;
+    }
+  this->ApplyColors->Update();
+  vtkTable* table = vtkTable::SafeDownCast(this->ApplyColors->GetOutput());
+  if (!table)
+    {
+    return;
+    }
+  vtkUnsignedCharArray* colors = vtkUnsignedCharArray::SafeDownCast(table->GetColumnByName("vtkApplyColors color"));
+  if (!colors)
+    {
+    printf("Colors array not vtkUnsignedCharArray\n");
+    return;
+    }
+
+  unsigned char cc[4];
+  for (int ii=0; ii < this->sortedWordObjectList.size(); ++ii)
+    {
+    WordObject word = this->sortedWordObjectList[ii];
+    colors->GetTupleValue(word.original_index, cc);
+    delete word.color;
+    word.color = new QColor(cc[0],cc[1],cc[2],cc[3]);
+    }
 }
 
 //----------------------------------------------------------------------------
 bool vtkQtWordleView::HierarchicalRectCollision_B()
 {
-// 	def hierarchicalRectCollision_B(self):
-	QRectF rA = this->rectA->mapRectToScene(this->rectA->rect());
-	QRectF rB = this->rectB->mapRectToScene(this->rectB->rect());
+	QRectF rA = this->rectA->rect();
+	QRectF rB = this->rectB->rect();
+	rA.translate(this->rectA->pos());
+	rB.translate(this->rectB->pos());
 	double ax1 = rA.x();
 	double ay1 = rA.y();
 	double ax2 = ax1 + rA.width();
@@ -431,7 +648,6 @@ bool vtkQtWordleView::HierarchicalRectCollision_B()
 	// This sequence only true for non-overlap
 	if ((ax2<bx1) || (ax1>bx2) || (ay2<by1) || (ay1>by2))
 	  {
-		// printf("\t\tfirst stage false\n");
 		// short-circuit if not overlapping with outer rect
 		return false;
 		}
@@ -443,7 +659,8 @@ bool vtkQtWordleView::HierarchicalRectCollision_B()
 		foreach (const QGraphicsItem* item, rBchildren)
 		  {
 		  gitem = static_cast<const QGraphicsRectItem*>(item);
-			QRectF rB = this->rectB->mapRectToScene(gitem->rect());
+			rB = gitem->rect();
+			rB.translate(this->rectB->pos());
 			bx1 = rB.x();
 			by1 = rB.y();
 			bx2 = bx1 + rB.width();
@@ -451,38 +668,11 @@ bool vtkQtWordleView::HierarchicalRectCollision_B()
 			if (!((ax2<bx1) or (ax1>bx2) or (ay2<by1) or (ay1>by2)))
 				{
 				// short-circuit if find overlap with any sub-rect
-				// printf("\t\tShort-circuited with subrect\n");
 				return true;
 				}
 			}
 		// return no overlaps if didn't hit any sub-rects
-		// printf("\t\tDidn't hit any subrects\n");
 		return false;
-		}
-}
-
-//----------------------------------------------------------------------------
-bool vtkQtWordleView::HierarchicalRectCollision_C()
-{
-	QRectF rA = this->rectA->mapRectToScene(this->rectA->rect());
-	QRectF rB = this->rectB->mapRectToScene(this->rectB->rect());
-	double ax1 = rA.x();
-	double ay1 = rA.y();
-	double ax2 = ax1 + rA.width();
-	double ay2 = ay1 + rA.height();
-	double bx1 = rB.x();
-	double by1 = rB.y();
-	double bx2 = bx1 + rB.width();
-	double by2 = by1 + rB.height();
-
-	// This sequence only true for non-overlap
-	if ((ax2<bx1) || (ax1>bx2) || (ay2<by1) || (ay1>by2))
-	  {
-		return false;
-		}
-	else
-	  {
-		return true;
 		}
 }
 
@@ -491,16 +681,14 @@ void vtkQtWordleView::DoLayout()
 {
 	this->lastRect = this->sortedWordObjectList[0].rect_item;
 	this->scene->setSceneRect(-300, -400, 900, 800);
-	printf("Placing words in image\n");
 
 	QRectF tmpRect = this->sortedWordObjectList[0].path_item->boundingRect();
-	int word_count = std::min((int)this->sortedWordObjectList.size(), this->num_words);
+	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
 	bool overlap;
 	for (int ii=0; ii < word_count; ++ii)
 	  {
 	  WordObject word = this->sortedWordObjectList[ii];
 		// printf("%d\t%s\t%d\n", ii, word.text.c_str(), word.font_size);
-		this->collision_scene->addItem(word.rect_item);
 		if (ii == 0)
 			overlap = false;
 		else
@@ -516,44 +704,25 @@ void vtkQtWordleView::DoLayout()
 			if (this->HierarchicalRectCollision_B())
 				{
 				overlap = true;
-				// printf("\tLast word overlap\n");
 				}
 			else
 				{
 				// Found that "collidingItems" was taking most of the time, so just checking all..
 				for (int jj=0; jj < ii; ++jj)
 					{
-						this->rectB = this->sortedWordObjectList[jj].rect_item;
-						if (this->HierarchicalRectCollision_B())
-							{
-							overlap = true;
-							this->lastRect = this->rectB;
-							break;
-							}
-				
-// 				QList<QGraphicsItem*> itemsList = word.rect_item->collidingItems();
-// 				// printf("\t%d possible colliding items\n", itemsList.length());
-// 				for (int jj=0; jj < itemsList.length(); ++jj)
-// 					{
-// 					QGraphicsRectItem* item = static_cast<QGraphicsRectItem*>(itemsList[jj]);
-// 					if (item->childItems().length() > 0)
-// 						{
-// 						this->rectB = item;
-// 						if (this->HierarchicalRectCollision_B())
-// 							{
-// 							overlap = true;
-// 							this->lastRect = item;
-// 							break;
-// 							}
-// 						}
+					this->rectB = this->sortedWordObjectList[jj].rect_item;
+					if (this->HierarchicalRectCollision_B())
+						{
+						overlap = true;
+						this->lastRect = this->rectB;
+						break;
+						}
 					}
 				}
 
 			if (overlap)
 				{
-				// printf("\tUpdating position from: %3.2f, %3.2f, ", word.pos.X(),word.pos.Y());
 				this->UpdatePositionSpirals(&word);
-				// printf("to: %3.2f, %3.2f\n", word.pos.X(),word.pos.Y());
 				word.rect_item->setPos(word.pos.X(),word.pos.Y());
 				}
 			}
@@ -567,17 +736,12 @@ void vtkQtWordleView::DoLayout()
 		// this->scene.update(this->scene.sceneRect())
 		}
 
-// 		adjX = (tmpRect.width()*0.05)/2.0
-// 		adjY = (tmpRect.height()*0.05)/2.0
-// 		this->boundingRect = tmpRect.adjusted(-adjX,-adjY,adjX,adjY)
-// 		this->scene.setSceneRect(this->boundingRect)
-// 		this->ui.graphicsView.fitInView(this->boundingRect,QtCore.Qt.KeepAspectRatio)
-// 		this->ui.progressBar.reset()
-// 
-// 			# TEST
-// 			# isz = N.array([2,2])
-// 			# trackDraw.ellipse(N.concatenate((newPos-isz, newPos+isz)).tolist(),fill=(0,5*ii,200))
-
+		// Rescale to fit in view
+		double adjX = (tmpRect.width()*0.05)/2.0;
+		double adjY = (tmpRect.height()*0.05)/2.0;
+		QRectF boundingRect = tmpRect.adjusted(-adjX, -adjY, adjX, adjY);
+		this->scene->setSceneRect(boundingRect);
+		this->View->fitInView(boundingRect, Qt::KeepAspectRatio);
 }
 
 //----------------------------------------------------------------------------
@@ -586,7 +750,6 @@ void vtkQtWordleView::Update()
   vtkDataRepresentation* rep = this->GetRepresentation();
   if (!rep)
     {
-    // Remove VTK data from the adapter
     this->View->update();
     return;
     }
@@ -598,18 +761,36 @@ void vtkQtWordleView::Update()
 
   vtkDataObject *d = conn->GetProducer()->GetOutputDataObject(0);
   if (d->GetMTime() > this->LastInputMTime ||
-      this->GetMTime() > this->LastMTime)
+  		this->GetMTime() > this->LastMTime)
     {
     this->DataObjectToTable->Update();
     this->ApplyColors->Update();
+
+		this->BuildWordObjectsList();
+		this->ClearGraphicsView();
+		this->DoLayout();
 
     this->LastInputMTime = d->GetMTime();
     this->LastMTime = this->GetMTime();
     }
     
-  // DEBUG
-  this->BuildWordObjectsList();
-  this->DoLayout();
+// TODO: Basically works when you redo this and then re-layout, but some
+// overlaps occur that don't seem to be there on the first pass...
+//   if (this->GetMTime() > this->LastMTime)
+//     {
+//     printf("This time changed\n");
+// 		this->ClearGraphicsView();
+// 		printf("Cleared scene\n");
+// 		this->ResetWordObjectsPositions();
+// 		printf("Reset positions\n");
+// 		this->DoLayout();
+// 		printf("Finished Layout\n");
+// 
+//     this->LastMTime = this->GetMTime();
+//     }
+    
+// TODO: Need a routine that just redraws the scene with new colors
+// and doesn't redo positions (keep track of ApplyColors Modified time)...
 
   this->View->update();
 }

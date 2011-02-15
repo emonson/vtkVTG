@@ -46,6 +46,7 @@
 
 class vtkApplyColors;
 class vtkDataObjectToTable;
+class QFontDatabase;
 class QGraphicsScene;
 class QGraphicsView;
 class QRectF;
@@ -74,6 +75,7 @@ public:
 	const int getsize() const { return size; }
 	
   std::string text;
+  vtkIdType original_index;
   double size;
   int font_size;
   
@@ -106,6 +108,8 @@ public:
   // this->ui->box->layout()->addWidget(this->View->GetWidget());
   virtual QWidget* GetWidget();
 
+  // Description:
+  // Enum containing type of data (from vtkQtListView)
   enum
     {
     FIELD_DATA = 0,
@@ -113,10 +117,40 @@ public:
     CELL_DATA = 2,
     VERTEX_DATA = 3,
     EDGE_DATA = 4,
-    ROW_DATA = 5,
+    ROW_DATA = 5
     };
-  
+
   // Description:
+  // Enum containing predefined values for font "weight" from QFont::Weight
+  enum 
+  	{
+		Light	= 25,
+		Normal = 50,
+		DemiBold = 63,
+		Bold = 75,
+		Black = 87
+		};
+
+  // Description:
+  // Enum containing predefined values for font "style" from QFont::Style
+  enum 
+  	{
+		StyleNormal	= 0,
+		StyleItalic = 1,
+		StyleOblique = 2
+		};
+
+  // Description:
+  // Enum containing predefined values layout orientations
+  enum 
+  	{
+    HORIZONTAL = 0,
+    MOSTLY_HORIZONTAL = 1,
+    HALF_AND_HALF = 2,
+    MOSTLY_VERTICAL = 3,
+    VERTICAL = 4
+		};
+
   // The field type to copy into the output table.
   // Should be one of FIELD_DATA, POINT_DATA, CELL_DATA, VERTEX_DATA, EDGE_DATA.
   vtkGetMacro(FieldType, int);
@@ -144,9 +178,35 @@ public:
   vtkBooleanMacro(ColorByArray, bool);
 
   // Description:
+  // Set/Get the font family name to be used in the Wordle. FontFamilyExists
+  // is used to probe whether the Qt font database includes a given font family.
+  // Examples include "Adobe Caslon Pro", "Palatino", "Rockwell"
+  void SetFontFamily(const char* name);
+  const char* GetFontFamily();
+  bool FontFamilyExists(const char* name);
+
+  // Description:
+  // Set/Get the font style name to be used in the Wordle.
+  // See enum from QFont::Style (0,1,2)
+  void SetFontStyle(int style);
+  int GetFontStyle();
+
+  // Description:
+  // Set/Get the font weight to be used in the Wordle.
+  // See enum from QFont::Weight (0-99)
+  void SetFontWeight(int weight);
+  int GetFontWeight();
+
+  // Description:
+  // Set/Get the layout orientations
+  // See enum (0,1,2,3,4)
+  void SetOrientation(int orientation);
+  int GetOrientation();
+
+  // Description:
   // Set the (max) number of words to include in the wordle
-  vtkGetMacro(num_words, int);
-  vtkSetMacro(num_words, int);
+  vtkGetMacro(MaxNumberOfWords, int);
+  vtkSetMacro(MaxNumberOfWords, int);
 
   void ClearGraphicsView();
   
@@ -154,12 +214,11 @@ public:
 	vtkVector2f PolarToCartesian(vtkVector2f posArr);	
 	vtkVector2f MakeInitialPosition();
 	
-	void BuildWordObjectsList();
-	bool HierarchicalRectCollision_B();
-	bool HierarchicalRectCollision_C();
 	void DoLayout();
 
   virtual void ApplyViewTheme(vtkViewTheme* theme);
+  
+  void ZoomToBounds();
 
   // Description:
   // Updates the view.
@@ -172,6 +231,11 @@ protected:
   virtual void AddRepresentationInternal(vtkDataRepresentation* rep);
   virtual void RemoveRepresentationInternal(vtkDataRepresentation* rep);
 
+	void BuildWordObjectsList();
+	void ResetWordObjectsPositions();
+	void ResetWordObjectsColors();
+	bool HierarchicalRectCollision_B();
+
 private:
   unsigned long LastInputMTime;
   unsigned long LastMTime;
@@ -180,20 +244,20 @@ private:
 	void UpdatePositionSpirals(WordObject* word);
   
   QPointer<QGraphicsView> View;
-  QPointer<QGraphicsScene> scene, collision_scene;
+  QPointer<QGraphicsScene> scene;
   
   QGraphicsRectItem* rectA;
   QGraphicsRectItem* rectB;
   QGraphicsRectItem* lastRect;
   QRectF* boundingRect;
   QFont* font;
+  QFontDatabase* FontDatabase;
   
   int bigFontSize;
-  int num_words;
-  int maxSize;
+  int MaxNumberOfWords;
   int FieldType;
+  int orientation;
   
-	int max_words;
 	float xbuffer;
 	float ybuffer;
 	float randSpread;
