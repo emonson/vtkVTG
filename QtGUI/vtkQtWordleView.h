@@ -219,6 +219,7 @@ public:
   virtual void ApplyViewTheme(vtkViewTheme* theme);
   
   void ZoomToBounds();
+  QGraphicsScene* GetScene();
 
   // Description:
   // Updates the view.

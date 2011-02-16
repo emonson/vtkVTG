@@ -13,6 +13,8 @@ import vtk
 import vtkvtg
 import sys
 import numpy as N
+from vtk.util import numpy_support as VN
+import scipy.io
 
 from QtSimpleView import Ui_MainWindow
 
@@ -29,341 +31,57 @@ class SimpleView(QtGui.QMainWindow):
 		# Set widget for the wordle view
 		self.ui.centralWidget.layout().addWidget(self.WordleView.GetWidget())
 		
-		term_list = [
-			"straw",
-			"gold",
-			"name",
-			"miller",
-			"manikin",
-			"daughter",
-			"little",
-			"queen",
-			"man",
-			"came",
-			"girl",
-			"give",
-			"spin",
-			"full",
-			"whirr",
-			"spun",
-			"night",
-			"one",
-			"child",
-			"king",
-			"room",
-			"answered",
-			"morning",
-			"names",
-			"took",
-			"began",
-			"thought",
-			"time",
-			"find",
-			"world",
-			"day",
-			"leg",
-			"whole",
-			"another",
-			"three",
-			"rumpelstiltskin",
-			"knew",
-			"left",
-			"help",
-			"still",
-			"crying",
-			"gave",
-			"good",
-			"round",
-			"wheel",
-			"second",
-			"opened",
-			"messenger",
-			"ever",
-			"told",
-			"quite",
-			"alone",
-			"mistress",
-			"larger",
-			"became",
-			"first",
-			"brought",
-			"put",
-			"ring",
-			"devil",
-			"next",
-			"house",
-			"taken",
-			"life",
-			"door",
-			"fire",
-			"reel",
-			"glad",
-			"must",
-			"beautiful",
-			"heard",
-			"promised",
-			"saw",
-			"perhaps",
-			"also",
-			"poor",
-			"shall",
-			"third",
-			"wife",
-			"necklace",
-			"bring",
-			"daybreak",
-			"earth",
-			"hopped",
-			"inquiries",
-			"cried",
-			"dearer",
-			"front",
-			"far",
-			"bid",
-			"early",
-			"every",
-			"hands",
-			"foot",
-			"course",
-			"always",
-			"cry",
-			"become",
-			"conrad",
-			"art",
-			"hare",
-			"hard",
-			"back",
-			"alive",
-			"die",
-			"curious",
-			"bake",
-			"even",
-			"appear",
-			"fox",
-			"enough",
-			"finger",
-			"harry",
-			"caspar",
-			"greedy",
-			"found",
-			"country",
-			"days",
-			"asked",
-			"already",
-			"afterwards",
-			"burning",
-			"imagine",
-			"delighted",
-			"frightened",
-			"appeared",
-			"idea",
-			"clever",
-			"else",
-			"alas",
-			"astonished",
-			"grew",
-			"happened",
-			"heart",
-			"deep",
-			"high",
-			"evening",
-			"anger",
-			"commanded",
-			"happen",
-			"beyond",
-			"end",
-			"able",
-			"forest",
-			"jumping",
-			"brew",
-			"important",
-			"balthazar",
-			"inquire",
-			"glittering"
-			]
+		data_dir = '/Users/emonson/Data/Fodava/EMoGWDataSets/'
+		data_file = data_dir + 'sciNews_20110216.mat'
+			
+		print 'Trying to load data set from .mat file...'
 
-		size_list = [
-			12.0,
-			10.0,
-			10.0,
-			9.0,
-			9.0,
-			9.0,
-			9.0,
-			8.0,
-			8.0,
-			8.0,
-			7.0,
-			7.0,
-			6.0,
-			6.0,
-			6.0,
-			5.0,
-			5.0,
-			5.0,
-			5.0,
-			5.0,
-			5.0,
-			4.0,
-			4.0,
-			4.0,
-			4.0,
-			4.0,
-			4.0,
-			4.0,
-			3.0,
-			3.0,
-			3.0,
-			3.0,
-			3.0,
-			3.0,
-			3.0,
-			3.0,
-			3.0,
-			3.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			2.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			1.0,
-			]
+		try:
+			MatInput = scipy.io.loadmat(data_file, struct_as_record=True, chars_as_strings=True)
+		except:
+			raise IOError, "Can't load supplied matlab file"
+		
+		self.mat_terms = MatInput['terms'].T[0]
+		
+		self.WavBases = []	# Wavelet bases
+		self.Centers = []	# Center of each node
+		# NodeWavCoeffs = []
+		# NodeScalCoeffs = []
+		for ii in range(MatInput['PointsInNet'].shape[1]):
+			self.WavBases.append(N.mat(MatInput['WavBases'][0,ii]))			# matrix
+			self.Centers.append(N.mat(MatInput['Centers'][0,ii][0])) 		# matrix
 
 		terms = vtk.vtkStringArray()
 		terms.SetName('dictionary')
 		terms.SetNumberOfComponents(1)
-		for term in term_list:
-			terms.InsertNextValue(term)
+		for term in self.mat_terms:
+			terms.InsertNextValue(term[0])
 		
-		coeffs = vtk.vtkDoubleArray()
+		self.basis_idx = 0
+		
+		coeffs = VN.numpy_to_vtk(self.WavBases[self.basis_idx][:,0]*100, deep=True)
 		coeffs.SetName('coefficient')
-		coeffs.SetNumberOfComponents(1)
-		for size in size_list:
-			coeffs.InsertNextValue(size)
+		c_sign = VN.numpy_to_vtk(N.sign(self.WavBases[self.basis_idx][:,0]), deep=True)
+		c_sign.SetName('sign')
 		
 		# Create a table with some points in it...
 		self.table = vtk.vtkTable()
 		self.table.AddColumn(terms)
 		self.table.AddColumn(coeffs)
+		self.table.AddColumn(c_sign)
 		
 		vt = vtk.vtkViewTheme()
 		lut = vtk.vtkLookupTable()
-		lut.SetHueRange(0,0)
-		lut.SetValueRange(0,1)
-		lut.SetSaturationRange(1,1)
+		lut.SetHueRange(0, 0.66)
+		lut.SetValueRange(0.7, 0.7)
+		lut.SetSaturationRange(1, 1)
 		lut.Build()
 		vt.SetPointLookupTable(lut)
 
 		self.WordleView.AddRepresentationFromInput(self.table)
 		self.WordleView.SetFieldType(vtkvtg.vtkQtWordleView.ROW_DATA)
 		self.WordleView.SetColorByArray(True)
-		self.WordleView.SetColorArrayName('coefficient')
+		self.WordleView.SetColorArrayName('sign')
 		self.WordleView.SetTermsArrayName('dictionary')
 		self.WordleView.SetSizeArrayName('coefficient')
 		self.WordleView.ApplyViewTheme(vt)
@@ -385,6 +103,19 @@ class SimpleView(QtGui.QMainWindow):
 				
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:
+			self.basis_idx += 1
+			coeffs = VN.numpy_to_vtk(self.WavBases[self.basis_idx][:,0]*100, deep=True)
+			coeffs.SetName('coefficient')
+			c_sign = VN.numpy_to_vtk(N.sign(self.WavBases[self.basis_idx][:,0]), deep=True)
+			c_sign.SetName('sign')
+			
+			self.table.RemoveColumn(2)
+			self.table.RemoveColumn(1)
+			self.table.AddColumn(coeffs)
+			self.table.AddColumn(c_sign)
+			self.WordleView.RemoveAllRepresentations()
+			self.WordleView.AddRepresentationFromInput(self.table)
+
 			self.WordleView.Modified()
 			self.WordleView.Update()
 		

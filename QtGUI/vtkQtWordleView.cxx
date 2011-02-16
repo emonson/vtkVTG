@@ -347,6 +347,12 @@ void vtkQtWordleView::ZoomToBounds()
 }
 
 //----------------------------------------------------------------------------
+QGraphicsScene* vtkQtWordleView::GetScene()
+{
+		return this->scene;
+}
+
+//----------------------------------------------------------------------------
 vtkVector2f vtkQtWordleView::CartesianToPolar(vtkVector2f posArr)
 {
 // 	r = N.sqrt((posArr*posArr).sum())
@@ -467,6 +473,10 @@ void vtkQtWordleView::BuildWordObjectsList()
     colors->GetTupleValue(ii, cc);
     word.color = new QColor(cc[0],cc[1],cc[2],cc[3]);
 		word.font_size = (int)((float)this->bigFontSize*(float)word.size/(float)maxSize);
+		if (word.font_size < 1)
+			{
+			word.font_size = 1;
+			}
 		word.pos = this->MakeInitialPosition();
 		word.initial_pos = word.pos;
 		word.delta = this->thedaMult*pow((float)word.font_size, this->thedaPow);
