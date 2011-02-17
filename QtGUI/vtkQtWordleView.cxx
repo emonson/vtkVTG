@@ -29,6 +29,7 @@
 #include <QRectF>
 #include <QString>
 #include <QStringList>
+#include <QTime>
 #include <QTransform>
 
 // DEBUG
@@ -51,7 +52,6 @@
 #include "vtkViewTheme.h"
 
 #include <string>
-#include <iostream>	// for cout debug
 #include <time.h>
 // #include <cmath>
 
@@ -463,10 +463,14 @@ void vtkQtWordleView::BuildWordObjectsList()
 	sizes->GetRange(sizeRange);
 	double maxSize = sizeRange[1];
 
-  WordObject word;
   unsigned char cc[4];
+  
+  // Doing a two-stage load for the data so that the more expensive
+  // Qt path related work is only done for the needed number of words
+  // but for sorting it's necessary to load all of the external data first
   for (vtkIdType ii=0; ii < terms->GetNumberOfValues(); ++ii)
     {
+  	WordObject word;
     word.text = terms->GetValue(ii);
     word.original_index = ii;
     word.size = fabs(sizes->GetValue(ii));
@@ -477,14 +481,25 @@ void vtkQtWordleView::BuildWordObjectsList()
 			{
 			word.font_size = 1;
 			}
-		word.pos = this->MakeInitialPosition();
-		word.initial_pos = word.pos;
-		word.delta = this->thedaMult*pow((float)word.font_size, this->thedaPow);
-		word.rdelta = this->rMult*pow((float)word.font_size, this->rPow);
+			
+    (this->sortedWordObjectList).push_back(word);
+    }
+  
+  // Sort words according to size
+  std::sort((this->sortedWordObjectList).begin(), (this->sortedWordObjectList).end(), compWordObject);
+
+	// Second stage for more expensive operations
+	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+  for (int ii=0; ii < word_count; ++ii)
+    {
+		this->sortedWordObjectList[ii].pos = this->MakeInitialPosition();
+		this->sortedWordObjectList[ii].initial_pos = this->sortedWordObjectList[ii].pos;
+		this->sortedWordObjectList[ii].delta = this->thedaMult*pow((float)this->sortedWordObjectList[ii].font_size, this->thedaPow);
+		this->sortedWordObjectList[ii].rdelta = this->rMult*pow((float)this->sortedWordObjectList[ii].font_size, this->rPow);
 		
-		this->font->setPointSize(word.font_size);
+		this->font->setPointSize(this->sortedWordObjectList[ii].font_size);
 		QPainterPath pathOrig;
-		pathOrig.addText(0.0f, 0.0f, *this->font, QString(word.text.c_str()));
+		pathOrig.addText(0.0f, 0.0f, *this->font, QString(this->sortedWordObjectList[ii].text.c_str()));
 		QTransform trans;
 		// Orientation values can take on [0,4] inclusive
 		int flip = rand() % 4;
@@ -492,51 +507,94 @@ void vtkQtWordleView::BuildWordObjectsList()
 			{
 			trans.rotate(90);
 			}
-		word.painter_path = trans.map(pathOrig);
- 	
-		QGraphicsPathItem* pathItem = new QGraphicsPathItem(word.painter_path);
+		this->sortedWordObjectList[ii].painter_path = trans.map(pathOrig);
+	
+		QGraphicsPathItem* pathItem = new QGraphicsPathItem(this->sortedWordObjectList[ii].painter_path);
 		pathItem->setPen(QPen(Qt::NoPen));
-		pathItem->setBrush(*word.color);
-		word.path_item = pathItem;
+		pathItem->setBrush(*this->sortedWordObjectList[ii].color);
+		this->sortedWordObjectList[ii].path_item = pathItem;
 		
 		// Manually build two-deep tree right here for now...
 		QGraphicsRectItem* rect = new QGraphicsRectItem(pathItem->boundingRect().adjusted(-this->xbuffer, -this->ybuffer, this->xbuffer, this->ybuffer));
 		rect->setPen(QPen(Qt::NoPen));
-		QList<QPolygonF> shapes = word.painter_path.toSubpathPolygons();
+		QList<QPolygonF> shapes = this->sortedWordObjectList[ii].painter_path.toSubpathPolygons();
 		for (int jj=0; jj < shapes.size(); ++jj)
-		  {
+			{
 			QGraphicsRectItem* subRect = new QGraphicsRectItem(shapes.at(jj).boundingRect().adjusted(-this->xbuffer,-this->ybuffer,this->xbuffer,this->ybuffer));
 			subRect->setParentItem(rect);
 			subRect->setPen(QPen(Qt::NoPen));
 			}
-		word.rect_item = rect;
+		this->sortedWordObjectList[ii].rect_item = rect;
 
-		word.rect_item->setPos(word.pos.X(),word.pos.Y());
-		word.path_item->setPos(word.pos.X(),word.pos.Y());	
-
-    (this->sortedWordObjectList).push_back(word);
+		this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
+		this->sortedWordObjectList[ii].path_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
     }
-  
-  std::sort((this->sortedWordObjectList).begin(), (this->sortedWordObjectList).end(), compWordObject);
 }
 
-// TODO: Crashes when try to do this and then redo layout
+// Original Version
 //----------------------------------------------------------------------------
-// void vtkQtWordleView::ResetWordObjectsPositions()
+// void vtkQtWordleView::BuildWordObjectsList()
 // {
-//   if (this->sortedWordObjectList.size() == 0)
+// 	vtkDataRepresentation* rep = this->GetRepresentation();
+//   if (!rep)
 //     {
-//     printf("Tried to reset word objects list but EMPTY.\n");
 //     return;
 //     }
-// 
-//   for (int ii=0; ii < this->sortedWordObjectList.size(); ++ii)
+//   this->ApplyColors->Update();
+//   vtkTable* table = vtkTable::SafeDownCast(this->ApplyColors->GetOutput());
+//   if (!table)
 //     {
-//     WordObject word = this->sortedWordObjectList[ii];
+//     return;
+//     }
+//   vtkStringArray* terms = vtkStringArray::SafeDownCast(table->GetColumnByName(this->TermsArrayNameInternal));
+//   if (!terms)
+//     {
+//     printf("Terms array not vtkStringArray\n");
+//     return;
+//     }
+//   vtkUnsignedCharArray* colors = vtkUnsignedCharArray::SafeDownCast(table->GetColumnByName("vtkApplyColors color"));
+//   if (!colors)
+//     {
+//     printf("Colors array not vtkUnsignedCharArray\n");
+//     return;
+//     }
+//   vtkDoubleArray* sizes = vtkDoubleArray::SafeDownCast(table->GetColumnByName(this->SizeArrayNameInternal));
+//   if (!sizes)
+//     {
+//     printf("Size array not vtkDoubleArray\n");
+//     return;
+//     }
+//   
+// 	this->sortedWordObjectList.clear();
+// 	
+// 	double sizeRange[2];
+// 	sizes->GetRange(sizeRange);
+// 	double maxSize = sizeRange[1];
+// 
+//   unsigned char cc[4];
+//   
+//   // Doing a two-stage load for the data so that the more expensive
+//   // Qt path related work is only done for the needed number of words
+//   // but for sorting it's necessary to load all of the external data first
+//   for (vtkIdType ii=0; ii < terms->GetNumberOfValues(); ++ii)
+//     {
+//   	WordObject word;
+//     word.text = terms->GetValue(ii);
+//     word.original_index = ii;
+//     word.size = fabs(sizes->GetValue(ii));
+//     colors->GetTupleValue(ii, cc);
+//     word.color = new QColor(cc[0],cc[1],cc[2],cc[3]);
+// 		word.font_size = (int)((float)this->bigFontSize*(float)word.size/(float)maxSize);
+// 		if (word.font_size < 1)
+// 			{
+// 			word.font_size = 1;
+// 			}
+// 			
 // 		word.pos = this->MakeInitialPosition();
 // 		word.initial_pos = word.pos;
+// 		word.delta = this->thedaMult*pow((float)word.font_size, this->thedaPow);
+// 		word.rdelta = this->rMult*pow((float)word.font_size, this->rPow);
 // 		
-// 		// Resetting all the rest of this also since want random orientations to change
 // 		this->font->setPointSize(word.font_size);
 // 		QPainterPath pathOrig;
 // 		pathOrig.addText(0.0f, 0.0f, *this->font, QString(word.text.c_str()));
@@ -548,11 +606,10 @@ void vtkQtWordleView::BuildWordObjectsList()
 // 			trans.rotate(90);
 // 			}
 // 		word.painter_path = trans.map(pathOrig);
-//  	
+// 	
 // 		QGraphicsPathItem* pathItem = new QGraphicsPathItem(word.painter_path);
 // 		pathItem->setPen(QPen(Qt::NoPen));
 // 		pathItem->setBrush(*word.color);
-// 		delete word.path_item;
 // 		word.path_item = pathItem;
 // 		
 // 		// Manually build two-deep tree right here for now...
@@ -560,28 +617,26 @@ void vtkQtWordleView::BuildWordObjectsList()
 // 		rect->setPen(QPen(Qt::NoPen));
 // 		QList<QPolygonF> shapes = word.painter_path.toSubpathPolygons();
 // 		for (int jj=0; jj < shapes.size(); ++jj)
-// 		  {
+// 			{
 // 			QGraphicsRectItem* subRect = new QGraphicsRectItem(shapes.at(jj).boundingRect().adjusted(-this->xbuffer,-this->ybuffer,this->xbuffer,this->ybuffer));
 // 			subRect->setParentItem(rect);
 // 			subRect->setPen(QPen(Qt::NoPen));
 // 			}
-// 		QList<QGraphicsItem *> rBchildren = word.rect_item->childItems();
-// 		foreach (QGraphicsItem* item, rBchildren)
-// 		  {
-// 		  delete item;
-// 		  }
-// 		delete word.rect_item;
 // 		word.rect_item = rect;
 // 
 // 		word.rect_item->setPos(word.pos.X(),word.pos.Y());
-// 		word.path_item->setPos(word.pos.X(),word.pos.Y());	
+// 		word.path_item->setPos(word.pos.X(),word.pos.Y());
+// 
+//     (this->sortedWordObjectList).push_back(word);
 //     }
+//   
+//   // Sort words according to size
+//   std::sort((this->sortedWordObjectList).begin(), (this->sortedWordObjectList).end(), compWordObject);
+// 
 // }
 
-// TODO: Basically works when you redo this and then re-layout, but some
-// overlaps occur that don't seem to be there on the first pass...
 //----------------------------------------------------------------------------
-void vtkQtWordleView::ResetWordObjectsPositions()
+void vtkQtWordleView::ResetOnlyWordObjectsPositions()
 {
   if (this->sortedWordObjectList.size() == 0)
     {
@@ -589,53 +644,16 @@ void vtkQtWordleView::ResetWordObjectsPositions()
     return;
     }
 
-  for (int ii=0; ii < this->sortedWordObjectList.size(); ++ii)
+	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+  for (int ii=0; ii < word_count; ++ii)
     {
-    WordObject word = this->sortedWordObjectList[ii];
-		word.pos = this->MakeInitialPosition();
-		word.initial_pos = word.pos;
+		this->sortedWordObjectList[ii].pos = this->MakeInitialPosition();
+		this->sortedWordObjectList[ii].initial_pos = this->sortedWordObjectList[ii].pos;
+		this->sortedWordObjectList[ii].theda = 0.0;
 		
 		// Resetting only positions
-		word.rect_item->setPos(word.pos.X(),word.pos.Y());
-		word.path_item->setPos(word.pos.X(),word.pos.Y());	
-    }
-}
-
-// TODO: Need a routine that just redraws the scene with new colors
-// and doesn't redo positions
-//----------------------------------------------------------------------------
-void vtkQtWordleView::ResetWordObjectsColors()
-{
-  if (this->sortedWordObjectList.size() == 0)
-    {
-    printf("Tried to reset word objects list but EMPTY.\n");
-    return;
-    }
-	vtkDataRepresentation* rep = this->GetRepresentation();
-  if (!rep)
-    {
-    return;
-    }
-  this->ApplyColors->Update();
-  vtkTable* table = vtkTable::SafeDownCast(this->ApplyColors->GetOutput());
-  if (!table)
-    {
-    return;
-    }
-  vtkUnsignedCharArray* colors = vtkUnsignedCharArray::SafeDownCast(table->GetColumnByName("vtkApplyColors color"));
-  if (!colors)
-    {
-    printf("Colors array not vtkUnsignedCharArray\n");
-    return;
-    }
-
-  unsigned char cc[4];
-  for (int ii=0; ii < this->sortedWordObjectList.size(); ++ii)
-    {
-    WordObject word = this->sortedWordObjectList[ii];
-    colors->GetTupleValue(word.original_index, cc);
-    delete word.color;
-    word.color = new QColor(cc[0],cc[1],cc[2],cc[3]);
+		this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
+		this->sortedWordObjectList[ii].path_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());	
     }
 }
 
@@ -689,6 +707,10 @@ bool vtkQtWordleView::HierarchicalRectCollision_B()
 //----------------------------------------------------------------------------
 void vtkQtWordleView::DoLayout()
 {
+	// cout << this->sortedWordObjectList.at(0);
+	// cout << this->sortedWordObjectList.at(0).rect_item->rect().x() << endl;
+	// cout << this->sortedWordObjectList.at(0).path_item->boundingRect().x() << endl;
+	// return;
 	this->lastRect = this->sortedWordObjectList[0].rect_item;
 	this->scene->setSceneRect(-300, -400, 900, 800);
 
@@ -697,8 +719,7 @@ void vtkQtWordleView::DoLayout()
 	bool overlap;
 	for (int ii=0; ii < word_count; ++ii)
 	  {
-	  WordObject word = this->sortedWordObjectList[ii];
-		// printf("%d\t%s\t%d\n", ii, word.text.c_str(), word.font_size);
+		// printf("%d\t%s\t%d\n", ii, this->sortedWordObjectList[ii].text.c_str(), this->sortedWordObjectList[ii].font_size);
 		if (ii == 0)
 			overlap = false;
 		else
@@ -709,7 +730,7 @@ void vtkQtWordleView::DoLayout()
 			// Assume no overlap and collision detection turns to true if there is overlap
 			overlap = false;
 			// First test for overlap with last one intersected
-			this->rectA = word.rect_item;
+			this->rectA = this->sortedWordObjectList[ii].rect_item;
 			this->rectB = this->lastRect;
 			if (this->HierarchicalRectCollision_B())
 				{
@@ -720,7 +741,7 @@ void vtkQtWordleView::DoLayout()
 				// Found that "collidingItems" was taking most of the time, so just checking all..
 				for (int jj=0; jj < ii; ++jj)
 					{
-					this->rectB = this->sortedWordObjectList[jj].rect_item;
+					this->rectB = this->sortedWordObjectList.at(jj).rect_item;
 					if (this->HierarchicalRectCollision_B())
 						{
 						overlap = true;
@@ -732,15 +753,15 @@ void vtkQtWordleView::DoLayout()
 
 			if (overlap)
 				{
-				this->UpdatePositionSpirals(&word);
-				word.rect_item->setPos(word.pos.X(),word.pos.Y());
+				this->UpdatePositionSpirals(&this->sortedWordObjectList[ii]);
+				this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
 				}
 			}
 			
-		word.rect_item->setPos(word.pos.X(),word.pos.Y());
-		word.path_item->setPos(word.pos.X(),word.pos.Y());	
-		this->scene->addItem(word.path_item);
-		tmpRect = tmpRect.united(word.path_item->mapRectToScene(word.path_item->boundingRect()));
+		this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
+		this->sortedWordObjectList[ii].path_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());	
+		this->scene->addItem(this->sortedWordObjectList[ii].path_item);
+		tmpRect = tmpRect.united(this->sortedWordObjectList[ii].path_item->mapRectToScene(this->sortedWordObjectList[ii].path_item->boundingRect()));
 		// Can't get the view to update after each word is added...
 		// this->ui.graphicsView.repaint()
 		// this->scene.update(this->scene.sceneRect())
@@ -768,39 +789,42 @@ void vtkQtWordleView::Update()
   vtkAlgorithmOutput *conn;
   conn = rep->GetInputConnection();
   conn->GetProducer()->Update();
+  
+  // DEBUG
+  QTime timer;
+  timer.start();
 
   vtkDataObject *d = conn->GetProducer()->GetOutputDataObject(0);
-  if (d->GetMTime() > this->LastInputMTime ||
-  		this->GetMTime() > this->LastMTime)
+  
+  // If input has changed, rebuild word objects list
+  if (d->GetMTime() > this->LastInputMTime)
     {
     this->DataObjectToTable->Update();
     this->ApplyColors->Update();
 
-		this->BuildWordObjectsList();
 		this->ClearGraphicsView();
+		this->BuildWordObjectsList();
 		this->DoLayout();
 
     this->LastInputMTime = d->GetMTime();
     this->LastMTime = this->GetMTime();
     }
-    
-// TODO: Basically works when you redo this and then re-layout, but some
-// overlaps occur that don't seem to be there on the first pass...
-//   if (this->GetMTime() > this->LastMTime)
-//     {
-//     printf("This time changed\n");
-// 		this->ClearGraphicsView();
-// 		printf("Cleared scene\n");
-// 		this->ResetWordObjectsPositions();
-// 		printf("Reset positions\n");
-// 		this->DoLayout();
-// 		printf("Finished Layout\n");
-// 
-//     this->LastMTime = this->GetMTime();
-//     }
+  
+  // If only this->Modified, only reset positions (not orientation or color)
+  if (this->GetMTime() > this->LastMTime)
+    {
+		this->ClearGraphicsView();
+		this->ResetOnlyWordObjectsPositions();
+		this->DoLayout();
+
+    this->LastMTime = this->GetMTime();
+    }
     
 // TODO: Need a routine that just redraws the scene with new colors
 // and doesn't redo positions (keep track of ApplyColors Modified time)...
+
+	// DEBUG
+	cout << timer.elapsed() << endl;
 
   this->View->update();
 }

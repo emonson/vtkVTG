@@ -7,5 +7,6 @@ norpath/*
 .DS_Store
 
 # and all output from python tests
+Examples/Python/*.pyc
 Examples/Python/X_Output/*
 

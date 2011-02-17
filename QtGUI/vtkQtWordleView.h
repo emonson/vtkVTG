@@ -43,6 +43,7 @@
 #include <QGraphicsRectItem>
 
 #include <vector>
+#include <iostream>	// for cout debug
 
 class vtkApplyColors;
 class vtkDataObjectToTable;
@@ -72,7 +73,15 @@ public:
     {
     }
   
-	const int getsize() const { return size; }
+	const double getsize() const { return size; }
+	
+	friend std::ostream& operator <<(std::ostream &os, const WordObject &obj)
+		{
+    os.precision(2);
+    os << "Text: " << obj.text << "\t";
+    os << "Size: " << std::fixed << obj.size << std::endl;
+    return os;
+		}
 	
   std::string text;
   vtkIdType original_index;
@@ -156,6 +165,11 @@ public:
   vtkGetMacro(FieldType, int);
   void SetFieldType(int);
   
+  // ==============================================
+  // TODO: Need to change this so it sets a flag so Update knows
+  //   to rebuild word objects vector when any important properties
+  //   are updated!!!
+
   // Description:
   // The array to use for coloring items in view.  Default is "color".
   void SetColorArrayName(const char* name);
@@ -208,6 +222,13 @@ public:
   vtkGetMacro(MaxNumberOfWords, int);
   vtkSetMacro(MaxNumberOfWords, int);
 
+  // TODO: Should also add a routine where the colors are
+  //   changed and same positions redrawn if lookup table
+  //   or color array changes...
+  virtual void ApplyViewTheme(vtkViewTheme* theme);
+
+  // ==============================================
+
   void ClearGraphicsView();
   
   vtkVector2f CartesianToPolar(vtkVector2f posArr);
@@ -215,8 +236,6 @@ public:
 	vtkVector2f MakeInitialPosition();
 	
 	void DoLayout();
-
-  virtual void ApplyViewTheme(vtkViewTheme* theme);
   
   void ZoomToBounds();
   QGraphicsScene* GetScene();
@@ -233,8 +252,7 @@ protected:
   virtual void RemoveRepresentationInternal(vtkDataRepresentation* rep);
 
 	void BuildWordObjectsList();
-	void ResetWordObjectsPositions();
-	void ResetWordObjectsColors();
+	void ResetOnlyWordObjectsPositions();
 	bool HierarchicalRectCollision_B();
 
 private:
