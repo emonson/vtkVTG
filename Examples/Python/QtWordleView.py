@@ -385,7 +385,7 @@ class SimpleView(QtGui.QMainWindow):
 				
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:
-			self.WordleView.Modified()
+			self.table.Modified()
 			self.WordleView.Update()
 		
 		# Write PNG (n)

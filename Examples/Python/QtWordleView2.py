@@ -95,12 +95,18 @@ class SimpleView(QtGui.QMainWindow):
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_VERTICAL)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.VERTICAL)
 
+
 		QtCore.QObject.connect(self.ui.actionExit, QtCore.SIGNAL("triggered()"), self.fileExit)
 
-
+		# Do first update before changing to debug mode...
 		self.WordleView.Update()
 		self.WordleView.ZoomToBounds()
 				
+		# DEBUG
+		# self.WordleView.SetWatchLayout(True)
+		# self.WordleView.SetWatchCollision(True)
+		# self.WordleView.SetWatchDelay(50000)
+
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_L:
 			self.basis_idx += 1

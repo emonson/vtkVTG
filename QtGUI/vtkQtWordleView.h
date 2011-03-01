@@ -222,6 +222,20 @@ public:
   vtkGetMacro(MaxNumberOfWords, int);
   vtkSetMacro(MaxNumberOfWords, int);
 
+  // Description:
+  // Set watch layout to true for debugging. Slows it all way
+  // down and lets you watch the path each word is taking.
+  vtkSetMacro(WatchLayout, bool);
+
+  // Description:
+  // Set watch layout to true for debugging. Slows it all way
+  // down and lets you watch the path each word is taking.
+  vtkSetMacro(WatchCollision, bool);
+
+  // Description:
+  // Extra delay in µs to add to stepping when watching layout
+  vtkSetMacro(WatchDelay, int);
+
   // TODO: Should also add a routine where the colors are
   //   changed and same positions redrawn if lookup table
   //   or color array changes...
@@ -253,7 +267,7 @@ protected:
 
 	void BuildWordObjectsList();
 	void ResetOnlyWordObjectsPositions();
-	bool HierarchicalRectCollision_B();
+	bool HierarchicalRectCollision_B(QGraphicsRectItem* rectA, QGraphicsRectItem* rectB);
 
 private:
   unsigned long LastInputMTime;
@@ -265,9 +279,6 @@ private:
   QPointer<QGraphicsView> View;
   QPointer<QGraphicsScene> scene;
   
-  QGraphicsRectItem* rectA;
-  QGraphicsRectItem* rectB;
-  QGraphicsRectItem* lastRect;
   QRectF* boundingRect;
   QFont* font;
   QFontDatabase* FontDatabase;
@@ -276,6 +287,10 @@ private:
   int MaxNumberOfWords;
   int FieldType;
   int orientation;
+  
+  bool WatchLayout;
+  bool WatchCollision;
+  int WatchDelay;
   
 	float xbuffer;
 	float ybuffer;
