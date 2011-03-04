@@ -56,6 +56,7 @@ class QFont;
 // Storage class for word objects
 // Making this a separate public class because had trouble with
 // vector sort routine when it was private...
+//----------------------------------------------
 class WordObject
 {
 public:
@@ -100,6 +101,122 @@ public:
   QGraphicsPathItem* path_item;
   QGraphicsRectItem* rect_item;
 };
+
+//
+// Utility classes for QuadCIF tree
+//----------------------------------------------
+class IndexedRectItem
+{
+public:
+  IndexedRectItem()
+    {
+    rect_item = 0;
+    index = 0;
+    }
+  IndexedRectItem(int idx, QGraphicsRectItem* ri)
+    {
+    index = idx;
+    rect_item = ri;
+    }
+  ~IndexedRectItem()
+    {
+    }
+    
+	int index;
+	QGraphicsRectItem* rect_item;
+};
+
+//----------------------------------------------
+class Btree
+{
+public:
+  Btree()
+    {
+    left = 0;
+    right = 0;
+    ex_min = 0;
+    ex_max = 0;
+    ex_middle = 0;
+    }
+  Btree(double min, double max)
+    {
+    left = 0;
+    right = 0;
+    ex_min = min;
+    ex_max = max;
+    ex_middle = (min + max) / 2.0;
+    }
+  ~Btree()
+    {
+    if (left) delete left;
+    if (right) delete right;
+    }
+  
+  void AddRectItem(QGraphicsRectItem *rect_item, double min, double max, int index);
+    
+	QList<IndexedRectItem> ItemsList; // Any items which exist at this node
+	
+	double ex_min;	// spatial extents of this node (can be x or y)
+	double ex_max;
+	double ex_middle;
+	
+	Btree* left;
+	Btree* right;
+};
+
+//----------------------------------------------
+class QuadCIF
+{
+public:
+  QuadCIF()
+    {
+    UL = 0;
+    LL = 0;
+    UR = 0;
+    LR = 0;
+    xline = new Btree;
+    yline = new Btree;
+    }
+
+  QuadCIF(QRectF rect)
+    {
+    UL = 0;
+    LL = 0;
+    UR = 0;
+    LR = 0;
+    frame = rect;
+    xline = new Btree(rect.x(), rect.x() + rect.width());
+    xmiddle = rect.x() + (rect.width()/2.0);
+    yline = new Btree(rect.y(), rect.y() + rect.height());
+    ymiddle = rect.y() + (rect.height()/2.0);
+    }
+
+  ~QuadCIF()
+    {
+    if (UL) delete UL;
+    if (LL) delete LL;
+    if (UR) delete UR;
+    if (LR) delete LR;
+    if (xline) delete xline;
+    if (yline) delete yline;
+    }
+    
+	void AddRectItem(QGraphicsRectItem *rect_item, int index);
+    
+	QRectF frame;
+	double xmiddle;
+	double ymiddle;
+
+	Btree* xline;
+	Btree* yline;
+	
+	QuadCIF* UL;
+	QuadCIF* LL;
+	QuadCIF* UR;
+	QuadCIF* LR;
+};
+
+// ============================================================
 
 class VTK_VTG_QVTK_EXPORT vtkQtWordleView : public vtkQtView
 {
@@ -240,6 +357,14 @@ public:
   //   changed and same positions redrawn if lookup table
   //   or color array changes...
   virtual void ApplyViewTheme(vtkViewTheme* theme);
+  
+  // Description
+  // Routines for dealing with searching QuadCIF tree
+  QList<int> AllIntersections(QuadCIF* Tree, QRectF current_rect);
+	QList<int> IntersectLine(Btree *node, QRectF current_rect, double rect_min, double rect_max);
+	bool IsBoundsIntersecting(QRectF frame, QRectF current_rect);
+	bool IsFullIntersecting(QGraphicsRectItem* target_item, QRectF current_rect);
+
 
   // ==============================================
 

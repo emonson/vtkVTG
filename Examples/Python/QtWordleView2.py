@@ -101,11 +101,15 @@ class SimpleView(QtGui.QMainWindow):
 		# Do first update before changing to debug mode...
 		self.WordleView.Update()
 		self.WordleView.ZoomToBounds()
+		
+		while(True):
+			self.WordleView.Modified()
+			self.WordleView.Update()
 				
 		# DEBUG
-		# self.WordleView.SetWatchLayout(True)
-		# self.WordleView.SetWatchCollision(True)
-		# self.WordleView.SetWatchDelay(50000)
+# 		self.WordleView.SetWatchLayout(True)
+# 		self.WordleView.SetWatchCollision(True)
+# 		self.WordleView.SetWatchDelay(50000)
 
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_L:
