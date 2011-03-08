@@ -943,15 +943,17 @@ void vtkQtWordleView::DoLayout()
 			else
 				{
 				// New method using QuadCIF tree for intersection tests
-// 				QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
-// 				current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
-// 				QList<int> possible_collision_idxs = this->AllIntersections(root_node, current_rect);
-// 				// printf("Word %d, %d possibles\n\n", ii, possible_collision_idxs.length());
-// 				// TODO: Need to exclude lastRect
-// 				foreach( int jj, possible_collision_idxs )
+				QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
+				current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
+				QList<int> possible_collision_idxs = this->AllIntersections(root_node, current_rect);
+				// printf("Word %d, %d possibles\n\n", ii, possible_collision_idxs.length());
+				foreach( int jj, possible_collision_idxs )
+				
 				// Found that "collidingItems" was taking most of the time, so just checking all..
-				for (int jj=0; jj < ii; ++jj)
+				// for (int jj=0; jj < ii; ++jj)
 					{
+					if (jj == lastRectIndex)
+						continue;
 					if (this->WatchCollision && this->WatchLayout)
 						{
 						this->sortedWordObjectList[jj].path_item->setPen(QPen(QBrush(QColor(0,0,0)), 4.0));
@@ -1013,9 +1015,9 @@ void vtkQtWordleView::DoLayout()
 	this->View->fitInView(boundingRect, Qt::KeepAspectRatio);
 	
 	// DEBUG
-	QRectF firstRect = this->sortedWordObjectList[0].path_item->boundingRect();
-	cout << "first word x: " << firstRect.x() << " w: " << firstRect.width() << " y: " << firstRect.y() << " h: " << firstRect.height() << endl;
-	cout << "bounding   x: " << boundingRect.x() << " w: " << boundingRect.width() << " y: " << boundingRect.y() << " h: " << boundingRect.height() << endl;
+// 	QRectF firstRect = this->sortedWordObjectList[0].path_item->boundingRect();
+// 	cout << "first word x: " << firstRect.x() << " w: " << firstRect.width() << " y: " << firstRect.y() << " h: " << firstRect.height() << endl;
+// 	cout << "bounding   x: " << boundingRect.x() << " w: " << boundingRect.width() << " y: " << boundingRect.y() << " h: " << boundingRect.height() << endl;
 	
 	// delete root_node;
 }

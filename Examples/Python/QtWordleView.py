@@ -385,8 +385,12 @@ class SimpleView(QtGui.QMainWindow):
 				
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:
-			self.table.Modified()
-			self.WordleView.Update()
+			if event.modifiers() == QtCore.Qt.NoModifier:
+				self.WordleView.Modified()
+				self.WordleView.Update()
+			elif event.modifiers() == QtCore.Qt.ShiftModifier:
+				self.table.Modified()
+				self.WordleView.Update()
 		
 		# Write PNG (n)
 		# Trying to use a integer-based QImage
