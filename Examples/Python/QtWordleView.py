@@ -367,7 +367,7 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView.SetTermsArrayName('dictionary')
 		self.WordleView.SetSizeArrayName('coefficient')
 		self.WordleView.ApplyViewTheme(vt)
-		self.WordleView.SetMaxNumberOfWords(50);
+		self.WordleView.SetMaxNumberOfWords(150);
 		self.WordleView.SetFontFamily("Rockwell")
 		self.WordleView.SetFontStyle(vtkvtg.vtkQtWordleView.StyleNormal)
 		self.WordleView.SetFontWeight(99)
@@ -379,10 +379,16 @@ class SimpleView(QtGui.QMainWindow):
 
 		QtCore.QObject.connect(self.ui.actionExit, QtCore.SIGNAL("triggered()"), self.fileExit)
 
-
 		self.WordleView.Update()
 		self.WordleView.ZoomToBounds()
 				
+		# DEBUG
+# 		self.WordleView.SetWatchLayout(True)
+# 		self.WordleView.SetWatchCollision(True)
+		self.WordleView.SetWatchQuadTree(True)
+# 		self.WordleView.SetWatchDelay(50000)
+
+
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:
 			if event.modifiers() == QtCore.Qt.NoModifier:

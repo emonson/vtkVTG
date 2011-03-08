@@ -140,6 +140,17 @@ public:
     LR = 0;
     }
 
+  QuadCIFmin(QRectF rect)
+    {
+    UL = 0;
+    LL = 0;
+    UR = 0;
+    LR = 0;
+    frame = rect;
+    xmiddle = rect.x() + (rect.width()/2.0);
+    ymiddle = rect.y() + (rect.height()/2.0);
+    }
+
   QuadCIFmin(QRectF rect, QGraphicsScene* scene)
     {
     UL = 0;
@@ -162,6 +173,7 @@ public:
     
 	QList<IndexedRectItem> ItemsList; // Any items which exist at this node
 
+	void AddRectItemMin(QGraphicsRectItem *rect_item, int index);
 	void AddRectItemMin(QGraphicsRectItem *rect_item, int index, QGraphicsScene* scene);
     
 	QRectF frame;
@@ -310,6 +322,10 @@ public:
   // Description:
   // Extra delay in µs to add to stepping when watching layout
   vtkSetMacro(WatchDelay, int);
+  
+  // Description:
+  // View QuadCIF tree in scene for debugging
+  vtkSetMacro(WatchQuadTree, bool);
 
   // TODO: Should also add a routine where the colors are
   //   changed and same positions redrawn if lookup table
@@ -371,6 +387,7 @@ private:
   
   bool WatchLayout;
   bool WatchCollision;
+  bool WatchQuadTree;
   int WatchDelay;
   
 	float xbuffer;

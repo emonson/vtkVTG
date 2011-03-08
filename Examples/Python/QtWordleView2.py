@@ -109,6 +109,7 @@ class SimpleView(QtGui.QMainWindow):
 		# DEBUG
 # 		self.WordleView.SetWatchLayout(True)
 # 		self.WordleView.SetWatchCollision(True)
+		self.WordleView.SetWatchQuadTree(True)
 # 		self.WordleView.SetWatchDelay(50000)
 
 	def keyPressEvent(self, event):
@@ -130,8 +131,12 @@ class SimpleView(QtGui.QMainWindow):
 			self.WordleView.Update()
 		
 		if event.key() == QtCore.Qt.Key_Space:
-			self.WordleView.Modified()
-			self.WordleView.Update()
+			if event.modifiers() == QtCore.Qt.NoModifier:
+				self.WordleView.Modified()
+				self.WordleView.Update()
+			elif event.modifiers() == QtCore.Qt.ShiftModifier:
+				self.table.Modified()
+				self.WordleView.Update()
 
 		# Write PNG (n)
 		# Trying to use a integer-based QImage

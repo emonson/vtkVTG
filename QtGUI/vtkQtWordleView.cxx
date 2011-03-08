@@ -61,6 +61,81 @@
 
 //------------------------
 // Need to translate rect_item into proper QRectF before passing to this routine
+void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
+{
+	bool PRINT = false;
+	
+	if(PRINT) printf("Entering QuadCIF AddRectItem\n");
+	
+	QRectF rA = rect_item->rect();
+	rA.translate(rect_item->pos());
+	double ax1 = rA.x();
+	double ax2 = ax1 + rA.width();
+	double ay1 = rA.y();
+	double ay2 = ay1 + rA.height();
+	if(PRINT) printf("ThisQuad: x1: %3.2f xMid: %3.2f x2: %3.2f  y1: %3.2f  yMid: %3.2f y2: %3.2f\n", frame.x(), xmiddle, frame.x()+frame.height(), frame.y(), ymiddle, frame.y()+frame.height());
+	if(PRINT) printf("RI x1: %3.2f x2: %3.2f  y1: %3.2f  y2: %3.2f\n", ax1, ax2, ay1, ay2);
+	// Intersects xline
+	if ((xmiddle >= ax1 && xmiddle <= ax2) || (ymiddle >= ay1 && ymiddle <= ay2))
+		{
+		if(PRINT) printf("Calling AddRectItem to ItemsList\n");
+		ItemsList.append(IndexedRectItem(index, rect_item));
+		}
+	else
+		{
+		// TODO: Eventually test here to see whether this node is too small
+		// to subdivide, and if so, I guess add items directly to xline->ItemsList?
+		
+		// UL
+		if (ay1 > ymiddle && ax2 < xmiddle)
+			{
+			if (!UL)
+				{
+				if(PRINT) printf("Creating new QuadCIFmin UL quad\n");
+				UL = new QuadCIFmin(QRectF(frame.x(), ymiddle, frame.width()/2.0, frame.height()/2.0));
+				}
+			if(PRINT) printf("Calling AddRectItem UL quad\n");
+			UL->AddRectItemMin(rect_item, index);
+			}
+		// LL
+		if (ay2 < ymiddle && ax2 < xmiddle)
+			{
+			if (!LL)
+				{
+				if(PRINT) printf("Creating new QuadCIFmin LL quad\n");
+				LL = new QuadCIFmin(QRectF(frame.x(), frame.y(), frame.width()/2.0, frame.height()/2.0));
+				}
+			if(PRINT) printf("Calling AddRectItem LL quad\n");
+			LL->AddRectItemMin(rect_item, index);
+			}
+		// UR
+		if (ay1 > ymiddle && ax1 > xmiddle)
+			{
+			if (!UR)
+				{
+				if(PRINT) printf("Creating new QuadCIFmin UR quad\n");
+				UR = new QuadCIFmin(QRectF(xmiddle, ymiddle, frame.width()/2.0, frame.height()/2.0));
+				}
+			if(PRINT) printf("Calling AddRectItem UR quad\n");
+			UR->AddRectItemMin(rect_item, index);
+			}
+		// LR
+		if (ay2 < ymiddle && ax1 > xmiddle)
+			{
+			if (!LR)
+				{
+				if(PRINT) printf("Creating new QuadCIFmin LR quad\n");
+				LR = new QuadCIFmin(QRectF(xmiddle, frame.y(), frame.width()/2.0, frame.height()/2.0));
+				}
+			if(PRINT) printf("Calling AddRectItem LR quad\n");
+			LR->AddRectItemMin(rect_item, index);
+			}
+		}
+}
+
+//------------------------
+// Need to translate rect_item into proper QRectF before passing to this routine
+// DEBUG version which draws rectangles in the scene
 void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index, QGraphicsScene* scene)
 {
 	bool PRINT = false;
@@ -180,6 +255,7 @@ vtkQtWordleView::vtkQtWordleView()
 	
 	this->WatchLayout = false;
 	this->WatchCollision = false;
+	this->WatchQuadTree = false;
 	this->WatchDelay = 0;
 	
   this->boundingRect = new QRectF(0.0, 0.0, 0.0, 0.0);
@@ -422,7 +498,10 @@ void vtkQtWordleView::ClearGraphicsView()
 //----------------------------------------------------------------------------
 void vtkQtWordleView::ZoomToBounds()
 {
-		// this->View->fitInView(this->scene->sceneRect(), Qt::KeepAspectRatio);
+	if (!this->WatchQuadTree)
+		{
+		this->View->fitInView(this->scene->sceneRect(), Qt::KeepAspectRatio);
+		}
 }
 
 //----------------------------------------------------------------------------
@@ -815,6 +894,7 @@ void vtkQtWordleView::DoLayout()
 	int quad_minnum_cutoff = 8;
 	int quad_maxnum_cutoff = (int)((float)this->MaxNumberOfWords * 0.5);
 	bool quadtree_loaded = false;
+	double quad_inc_factor = 0.25;
 	
 	this->scene->setSceneRect(-300, -400, 900, 800);
 	
@@ -838,13 +918,27 @@ void vtkQtWordleView::DoLayout()
 	  		((this->sortedWordObjectList[ii].font_size < quad_fsize_cutoff && ii > quad_minnum_cutoff)
 	  		|| ii > quad_maxnum_cutoff))
 	  	{
-	  	double xAd = tmpRect.width()/2.0;
-	  	double yAd = tmpRect.height()/2.0;
+	  	double xAd = tmpRect.width() * quad_inc_factor;
+	  	double yAd = tmpRect.height() * quad_inc_factor;
 	  	QRectF quad_bounds = tmpRect.adjusted(-xAd, -yAd, xAd, yAd);
-	  	root_node = new QuadCIFmin(quad_bounds, this->scene);
+			if (this->WatchQuadTree)
+				{
+	  		root_node = new QuadCIFmin(quad_bounds, this->scene);
+				}
+			else
+				{
+	  		root_node = new QuadCIFmin(quad_bounds);
+				}
 	  	for (int jj=0; jj < ii; ++jj)
 	  		{
-	  		root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj, this->scene);
+	  		if (this->WatchQuadTree)
+	  			{
+	  			root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj, this->scene);
+	  			}
+	  		else
+	  			{
+	  			root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj);
+	  			}
 	  		}
 	  	mode = TEST_QUAD;
 	  	quadtree_loaded = true;
@@ -957,16 +1051,31 @@ void vtkQtWordleView::DoLayout()
 					tmpRect.y() + tmpRect.height() > root_node->frame.y() + root_node->frame.height())
 				{
 				printf("*** Had to increase QuadCIF size!!! ***\n");
-				double xAd = tmpRect.width()/2.0;
-				double yAd = tmpRect.height()/2.0;
+				double xAd = tmpRect.width() * quad_inc_factor;
+				double yAd = tmpRect.height() * quad_inc_factor;
 				QRectF quad_bounds = tmpRect.adjusted(-xAd, -yAd, xAd, yAd);
 				root_node = new QuadCIFmin(quad_bounds, this->scene);
 				for (int jj=0; jj < ii; ++jj)
 					{
-					root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj, this->scene);
+					if (this->WatchQuadTree)
+						{
+						root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj, this->scene);
+						}
+					else
+						{
+						root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj);
+						}
 					}
 				}
-			root_node->AddRectItemMin(this->sortedWordObjectList[ii].rect_item, ii, this->scene);
+			// Add current item to the QuadCIFmin tree
+			if (this->WatchQuadTree)
+				{
+				root_node->AddRectItemMin(this->sortedWordObjectList[ii].rect_item, ii, this->scene);
+				}
+			else
+				{
+				root_node->AddRectItemMin(this->sortedWordObjectList[ii].rect_item, ii);
+				}
 			}
 		tmpRect = tmpRect.united(this->sortedWordObjectList[ii].path_item->mapRectToScene(this->sortedWordObjectList[ii].path_item->boundingRect()));
 		// Can't get the view to update after each word is added...
