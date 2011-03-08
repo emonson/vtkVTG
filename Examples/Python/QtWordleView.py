@@ -367,7 +367,7 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView.SetTermsArrayName('dictionary')
 		self.WordleView.SetSizeArrayName('coefficient')
 		self.WordleView.ApplyViewTheme(vt)
-		self.WordleView.SetMaxNumberOfWords(150);
+		self.WordleView.SetMaxNumberOfWords(50);
 		self.WordleView.SetFontFamily("Rockwell")
 		self.WordleView.SetFontStyle(vtkvtg.vtkQtWordleView.StyleNormal)
 		self.WordleView.SetFontWeight(99)

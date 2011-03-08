@@ -1059,9 +1059,18 @@ void vtkQtWordleView::DoLayout()
 	// cout << this->sortedWordObjectList.at(0).rect_item->rect().x() << endl;
 	// cout << this->sortedWordObjectList.at(0).path_item->boundingRect().x() << endl;
 	// return;
+	
+	int TEST_ALL = 0;
+	int TEST_QUAD = 1;
+	int mode = TEST_ALL;
+	int quad_fsize_cutoff = 50;
+	int quad_minnum_cutoff = 8;
+	int quad_maxnum_cutoff = (int)((float)this->MaxNumberOfWords * 0.5);
+	bool quadtree_loaded = false;
+	
 	this->scene->setSceneRect(-300, -400, 900, 800);
 	
-	QuadCIFmin *root_node = new QuadCIFmin(QRect(-1000, -1000, 1000, 1000), this->scene);
+	QuadCIFmin *root_node;
 
 	QRectF tmpRect = this->sortedWordObjectList[0].path_item->boundingRect();
 	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
@@ -1070,15 +1079,29 @@ void vtkQtWordleView::DoLayout()
 	
 	int lastRectIndex = 0;
 	
-	// DEBUG
+	// MAIN LOOP
 	for (int ii=0; ii < word_count; ++ii)
 	  {
-		printf("%d\n", this->sortedWordObjectList[ii].font_size);
-		}
-	printf("\n");
-	
-	for (int ii=0; ii < word_count; ++ii)
-	  {
+	  // Check whether font size (normalized to 100) has dropped below threshold
+	  // or sufficient number of words have been positioned,
+	  // and if so, initialize and load up QuadCIF based on layout so far
+	  // and switch over to Quad mode collision detection
+	  if (quadtree_loaded == false && 
+	  		((this->sortedWordObjectList[ii].font_size < quad_fsize_cutoff && ii > quad_minnum_cutoff)
+	  		|| ii > quad_maxnum_cutoff))
+	  	{
+	  	double xAd = tmpRect.width()/2.0;
+	  	double yAd = tmpRect.height()/2.0;
+	  	QRectF quad_bounds = tmpRect.adjusted(-xAd, -yAd, xAd, yAd);
+	  	root_node = new QuadCIFmin(quad_bounds, this->scene);
+	  	for (int jj=0; jj < ii; ++jj)
+	  		{
+	  		root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj, this->scene);
+	  		}
+	  	mode = TEST_QUAD;
+	  	quadtree_loaded = true;
+	  	}
+	  
 		// printf("%d\t%s\t%d\n", ii, this->sortedWordObjectList[ii].text.c_str(), this->sortedWordObjectList[ii].font_size);
 		if (this->WatchLayout)
 			{
@@ -1111,20 +1134,51 @@ void vtkQtWordleView::DoLayout()
 				overlap = true;
 				}
 			else
-				{				
-				// New method using QuadCIF tree for intersection tests
-				QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
-				current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
-				idxCollided = this->AllIntersectionsMin(root_node, this->sortedWordObjectList[ii].rect_item, current_rect, lastRectIndex);
-				if (idxCollided >= 0)
+				{
+				if (mode == TEST_QUAD)
 					{
-					overlap = true;
-					lastRectIndex = idxCollided;
+					// New method using QuadCIF tree for intersection tests
+					QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
+					current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
+					idxCollided = this->AllIntersectionsMin(root_node, this->sortedWordObjectList[ii].rect_item, current_rect, lastRectIndex);
+					if (idxCollided >= 0)
+						{
+						overlap = true;
+						lastRectIndex = idxCollided;
+						}
+					}
+				if (mode == TEST_ALL)
+					{
+					// Found that "collidingItems" was taking most of the time, so just checking all..
+					for (int jj=0; jj < ii; ++jj)
+						{
+						if (jj == lastRectIndex)
+							continue;
+						if (this->WatchCollision && this->WatchLayout)
+							{
+							this->sortedWordObjectList[jj].path_item->setPen(QPen(QBrush(QColor(0,0,0)), 4.0));
+							QCoreApplication::instance()->processEvents();
+							usleep(this->WatchDelay);
+							}
+						itemCollided = this->HierarchicalRectCollision_B(this->sortedWordObjectList[ii].rect_item, this->sortedWordObjectList[jj].rect_item);
+						if (this->WatchCollision && this->WatchLayout)
+							{
+							this->sortedWordObjectList[jj].path_item->setPen(QPen(Qt::NoPen));
+							QCoreApplication::instance()->processEvents();
+							}
+						if (itemCollided)
+							{
+							overlap = true;
+							lastRectIndex = jj;
+							break;
+							}
+						}
 					}
 				}
 
 			if (overlap)
 				{
+				// Update position in place
 				this->UpdatePositionSpirals(&this->sortedWordObjectList[ii]);
 				this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
 				if (this->WatchLayout)
@@ -1145,7 +1199,27 @@ void vtkQtWordleView::DoLayout()
 		// printf("\n\n* * WORD: %s * *\n", this->sortedWordObjectList[ii].text.c_str());
 // 		QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
 // 		current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
-		root_node->AddRectItemMin(this->sortedWordObjectList[ii].rect_item, ii, this->scene);
+		
+		if (mode == TEST_QUAD)
+			{
+			// Increase QuadCIFmin size if placement will take new word out of bounds
+			if (tmpRect.x() < root_node->frame.x() ||
+					tmpRect.y() < root_node->frame.y() ||
+					tmpRect.x() + tmpRect.width() > root_node->frame.x() + root_node->frame.width() ||
+					tmpRect.y() + tmpRect.height() > root_node->frame.y() + root_node->frame.height())
+				{
+				printf("*** Had to increase QuadCIF size!!! ***\n");
+				double xAd = tmpRect.width()/2.0;
+				double yAd = tmpRect.height()/2.0;
+				QRectF quad_bounds = tmpRect.adjusted(-xAd, -yAd, xAd, yAd);
+				root_node = new QuadCIFmin(quad_bounds, this->scene);
+				for (int jj=0; jj < ii; ++jj)
+					{
+					root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj, this->scene);
+					}
+				}
+			root_node->AddRectItemMin(this->sortedWordObjectList[ii].rect_item, ii, this->scene);
+			}
 		tmpRect = tmpRect.united(this->sortedWordObjectList[ii].path_item->mapRectToScene(this->sortedWordObjectList[ii].path_item->boundingRect()));
 		// Can't get the view to update after each word is added...
 		// this->ui.graphicsView.repaint()
