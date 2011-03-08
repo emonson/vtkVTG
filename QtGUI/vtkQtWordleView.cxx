@@ -178,7 +178,7 @@ void QuadCIF::AddRectItem(QGraphicsRectItem *rect_item, int index)
 
 //------------------------
 // Need to translate rect_item into proper QRectF before passing to this routine
-void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
+void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index, QGraphicsScene* scene)
 {
 	bool PRINT = false;
 	
@@ -209,10 +209,10 @@ void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 			if (!UL)
 				{
 				if(PRINT) printf("Creating new QuadCIFmin UL quad\n");
-				UL = new QuadCIFmin(QRectF(frame.x(), ymiddle, frame.width()/2.0, frame.height()/2.0));
+				UL = new QuadCIFmin(QRectF(frame.x(), ymiddle, frame.width()/2.0, frame.height()/2.0), scene);
 				}
 			if(PRINT) printf("Calling AddRectItem UL quad\n");
-			UL->AddRectItemMin(rect_item, index);
+			UL->AddRectItemMin(rect_item, index, scene);
 			}
 		// LL
 		if (ay2 < ymiddle && ax2 < xmiddle)
@@ -220,10 +220,10 @@ void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 			if (!LL)
 				{
 				if(PRINT) printf("Creating new QuadCIFmin LL quad\n");
-				LL = new QuadCIFmin(QRectF(frame.x(), frame.y(), frame.width()/2.0, frame.height()/2.0));
+				LL = new QuadCIFmin(QRectF(frame.x(), frame.y(), frame.width()/2.0, frame.height()/2.0), scene);
 				}
 			if(PRINT) printf("Calling AddRectItem LL quad\n");
-			LL->AddRectItemMin(rect_item, index);
+			LL->AddRectItemMin(rect_item, index, scene);
 			}
 		// UR
 		if (ay1 > ymiddle && ax1 > xmiddle)
@@ -231,10 +231,10 @@ void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 			if (!UR)
 				{
 				if(PRINT) printf("Creating new QuadCIFmin UR quad\n");
-				UR = new QuadCIFmin(QRectF(xmiddle, ymiddle, frame.width()/2.0, frame.height()/2.0));
+				UR = new QuadCIFmin(QRectF(xmiddle, ymiddle, frame.width()/2.0, frame.height()/2.0), scene);
 				}
 			if(PRINT) printf("Calling AddRectItem UR quad\n");
-			UR->AddRectItemMin(rect_item, index);
+			UR->AddRectItemMin(rect_item, index, scene);
 			}
 		// LR
 		if (ay2 < ymiddle && ax1 > xmiddle)
@@ -242,10 +242,10 @@ void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 			if (!LR)
 				{
 				if(PRINT) printf("Creating new QuadCIFmin LR quad\n");
-				LR = new QuadCIFmin(QRectF(xmiddle, frame.y(), frame.width()/2.0, frame.height()/2.0));
+				LR = new QuadCIFmin(QRectF(xmiddle, frame.y(), frame.width()/2.0, frame.height()/2.0), scene);
 				}
 			if(PRINT) printf("Calling AddRectItem LR quad\n");
-			LR->AddRectItemMin(rect_item, index);
+			LR->AddRectItemMin(rect_item, index, scene);
 			}
 		}
 }
@@ -539,7 +539,7 @@ void vtkQtWordleView::ClearGraphicsView()
 //----------------------------------------------------------------------------
 void vtkQtWordleView::ZoomToBounds()
 {
-		this->View->fitInView(this->scene->sceneRect(), Qt::KeepAspectRatio);
+		// this->View->fitInView(this->scene->sceneRect(), Qt::KeepAspectRatio);
 }
 
 //----------------------------------------------------------------------------
@@ -657,8 +657,8 @@ void vtkQtWordleView::BuildWordObjectsList()
 	
 	double sizeRange[2];
 	sizes->GetRange(sizeRange);
-	double maxSize = sizeRange[1];
-
+	double maxSize = std::max(fabs(sizeRange[0]), fabs(sizeRange[1]));
+	
   unsigned char cc[4];
   
   // Doing a two-stage load for the data so that the more expensive
@@ -812,6 +812,7 @@ int vtkQtWordleView::AllIntersectionsMin(QuadCIFmin* Tree,
 																					int last_index) 
 {
 	bool PRINT = false;
+	bool itemCollided;
 	int idxCollided = -1;
 
 	if(PRINT) printf("Checking collisions with current ItemsList\n");
@@ -821,7 +822,20 @@ int vtkQtWordleView::AllIntersectionsMin(QuadCIFmin* Tree,
 			{
 			continue;
 			}
-		if (this->HierarchicalRectCollision_B(rect_item, Tree->ItemsList[ii].rect_item))
+
+		if (this->WatchCollision && this->WatchLayout)
+			{
+			this->sortedWordObjectList[Tree->ItemsList[ii].index].path_item->setPen(QPen(QBrush(QColor(0,0,0)), 4.0));
+			QCoreApplication::instance()->processEvents();
+			usleep(this->WatchDelay);
+			}
+		itemCollided = this->HierarchicalRectCollision_B(rect_item, Tree->ItemsList[ii].rect_item);
+		if (this->WatchCollision && this->WatchLayout)
+			{
+			this->sortedWordObjectList[Tree->ItemsList[ii].index].path_item->setPen(QPen(Qt::NoPen));
+			QCoreApplication::instance()->processEvents();
+			}
+		if (itemCollided)
 			{
 			// Short circuit on collision
 			return Tree->ItemsList[ii].index;
@@ -1047,7 +1061,7 @@ void vtkQtWordleView::DoLayout()
 	// return;
 	this->scene->setSceneRect(-300, -400, 900, 800);
 	
-	QuadCIFmin *root_node = new QuadCIFmin(QRect(-1000, -1000, 3000, 3000));
+	QuadCIFmin *root_node = new QuadCIFmin(QRect(-1000, -1000, 1000, 1000), this->scene);
 
 	QRectF tmpRect = this->sortedWordObjectList[0].path_item->boundingRect();
 	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
@@ -1055,6 +1069,13 @@ void vtkQtWordleView::DoLayout()
 	int idxCollided;
 	
 	int lastRectIndex = 0;
+	
+	// DEBUG
+	for (int ii=0; ii < word_count; ++ii)
+	  {
+		printf("%d\n", this->sortedWordObjectList[ii].font_size);
+		}
+	printf("\n");
 	
 	for (int ii=0; ii < word_count; ++ii)
 	  {
@@ -1124,7 +1145,7 @@ void vtkQtWordleView::DoLayout()
 		// printf("\n\n* * WORD: %s * *\n", this->sortedWordObjectList[ii].text.c_str());
 // 		QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
 // 		current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
-		root_node->AddRectItemMin(this->sortedWordObjectList[ii].rect_item, ii);
+		root_node->AddRectItemMin(this->sortedWordObjectList[ii].rect_item, ii, this->scene);
 		tmpRect = tmpRect.united(this->sortedWordObjectList[ii].path_item->mapRectToScene(this->sortedWordObjectList[ii].path_item->boundingRect()));
 		// Can't get the view to update after each word is added...
 		// this->ui.graphicsView.repaint()

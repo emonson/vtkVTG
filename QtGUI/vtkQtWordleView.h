@@ -41,6 +41,7 @@
 #include <QColor>
 #include <QGraphicsPathItem>
 #include <QGraphicsRectItem>
+#include <QGraphicsScene>
 
 #include <vector>
 #include <iostream>	// for cout debug
@@ -48,7 +49,7 @@
 class vtkApplyColors;
 class vtkDataObjectToTable;
 class QFontDatabase;
-class QGraphicsScene;
+// class QGraphicsScene;
 class QGraphicsView;
 class QRectF;
 class QFont;
@@ -229,7 +230,7 @@ public:
     LR = 0;
     }
 
-  QuadCIFmin(QRectF rect)
+  QuadCIFmin(QRectF rect, QGraphicsScene* scene)
     {
     UL = 0;
     LL = 0;
@@ -238,6 +239,7 @@ public:
     frame = rect;
     xmiddle = rect.x() + (rect.width()/2.0);
     ymiddle = rect.y() + (rect.height()/2.0);
+		scene->addRect(frame, QPen(QBrush(QColor(0,0,0)), 1.0));
     }
 
   ~QuadCIFmin()
@@ -250,7 +252,7 @@ public:
     
 	QList<IndexedRectItem> ItemsList; // Any items which exist at this node
 
-	void AddRectItemMin(QGraphicsRectItem *rect_item, int index);
+	void AddRectItemMin(QGraphicsRectItem *rect_item, int index, QGraphicsScene* scene);
     
 	QRectF frame;
 	double xmiddle;
