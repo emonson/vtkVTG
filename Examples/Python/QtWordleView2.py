@@ -102,9 +102,9 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView.Update()
 		self.WordleView.ZoomToBounds()
 		
-		while(True):
-			self.WordleView.Modified()
-			self.WordleView.Update()
+# 		while(True):
+# 			self.table.Modified()
+# 			self.WordleView.Update()
 				
 		# DEBUG
 # 		self.WordleView.SetWatchLayout(True)

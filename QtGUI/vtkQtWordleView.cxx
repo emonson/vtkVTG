@@ -98,6 +98,7 @@ void Btree::AddRectItem(QGraphicsRectItem *rect_item, double min, double max, in
 		}
 }
 
+//----------------------
 void QuadCIF::AddRectItem(QGraphicsRectItem *rect_item, int index)
 {
 	bool PRINT = false;
@@ -175,6 +176,81 @@ void QuadCIF::AddRectItem(QGraphicsRectItem *rect_item, int index)
 		}
 }
 
+//------------------------
+// Need to translate rect_item into proper QRectF before passing to this routine
+void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
+{
+	bool PRINT = false;
+	
+	if(PRINT) printf("Entering QuadCIF AddRectItem\n");
+	
+	QRectF rA = rect_item->rect();
+	rA.translate(rect_item->pos());
+	double ax1 = rA.x();
+	double ax2 = ax1 + rA.width();
+	double ay1 = rA.y();
+	double ay2 = ay1 + rA.height();
+	if(PRINT) printf("ThisQuad: x1: %3.2f xMid: %3.2f x2: %3.2f  y1: %3.2f  yMid: %3.2f y2: %3.2f\n", frame.x(), xmiddle, frame.x()+frame.height(), frame.y(), ymiddle, frame.y()+frame.height());
+	if(PRINT) printf("RI x1: %3.2f x2: %3.2f  y1: %3.2f  y2: %3.2f\n", ax1, ax2, ay1, ay2);
+	// Intersects xline
+	if ((xmiddle >= ax1 && xmiddle <= ax2) || (ymiddle >= ay1 && ymiddle <= ay2))
+		{
+		if(PRINT) printf("Calling AddRectItem to ItemsList\n");
+		ItemsList.append(IndexedRectItem(index, rect_item));
+		}
+	else
+		{
+		// TODO: Eventually test here to see whether this node is too small
+		// to subdivide, and if so, I guess add items directly to xline->ItemsList?
+		
+		// UL
+		if (ay1 > ymiddle && ax2 < xmiddle)
+			{
+			if (!UL)
+				{
+				if(PRINT) printf("Creating new QuadCIFmin UL quad\n");
+				UL = new QuadCIFmin(QRectF(frame.x(), ymiddle, frame.width()/2.0, frame.height()/2.0));
+				}
+			if(PRINT) printf("Calling AddRectItem UL quad\n");
+			UL->AddRectItemMin(rect_item, index);
+			}
+		// LL
+		if (ay2 < ymiddle && ax2 < xmiddle)
+			{
+			if (!LL)
+				{
+				if(PRINT) printf("Creating new QuadCIFmin LL quad\n");
+				LL = new QuadCIFmin(QRectF(frame.x(), frame.y(), frame.width()/2.0, frame.height()/2.0));
+				}
+			if(PRINT) printf("Calling AddRectItem LL quad\n");
+			LL->AddRectItemMin(rect_item, index);
+			}
+		// UR
+		if (ay1 > ymiddle && ax1 > xmiddle)
+			{
+			if (!UR)
+				{
+				if(PRINT) printf("Creating new QuadCIFmin UR quad\n");
+				UR = new QuadCIFmin(QRectF(xmiddle, ymiddle, frame.width()/2.0, frame.height()/2.0));
+				}
+			if(PRINT) printf("Calling AddRectItem UR quad\n");
+			UR->AddRectItemMin(rect_item, index);
+			}
+		// LR
+		if (ay2 < ymiddle && ax1 > xmiddle)
+			{
+			if (!LR)
+				{
+				if(PRINT) printf("Creating new QuadCIFmin LR quad\n");
+				LR = new QuadCIFmin(QRectF(xmiddle, frame.y(), frame.width()/2.0, frame.height()/2.0));
+				}
+			if(PRINT) printf("Calling AddRectItem LR quad\n");
+			LR->AddRectItemMin(rect_item, index);
+			}
+		}
+}
+
+//============================================================================
 //----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkQtWordleView);
 
@@ -730,6 +806,78 @@ bool vtkQtWordleView::HierarchicalRectCollision_B(QGraphicsRectItem* rectA, QGra
 	*/
 
 //----------------------------------------------------------------------------
+int vtkQtWordleView::AllIntersectionsMin(QuadCIFmin* Tree, 
+																					QGraphicsRectItem *rect_item, 
+																					QRectF current_rect,
+																					int last_index) 
+{
+	bool PRINT = false;
+	int idxCollided = -1;
+
+	if(PRINT) printf("Checking collisions with current ItemsList\n");
+	for (int ii=0; ii < Tree->ItemsList.length(); ++ii)
+		{
+		if (Tree->ItemsList[ii].index == last_index)
+			{
+			continue;
+			}
+		if (this->HierarchicalRectCollision_B(rect_item, Tree->ItemsList[ii].rect_item))
+			{
+			// Short circuit on collision
+			return Tree->ItemsList[ii].index;
+			}
+		}
+	
+	/* traverse the four children */
+	if (Tree->UL && IsBoundsIntersecting(Tree->UL->frame, current_rect)) 
+		{
+		if(PRINT) printf("Calling AllIntersectionsMin on UL\n");
+		idxCollided = this->AllIntersectionsMin(Tree->UL, rect_item, current_rect, last_index);
+		if (idxCollided >= 0)
+			{
+			// Short circuit on collision
+			return idxCollided;
+			}
+		}
+	
+	if (Tree->LL && IsBoundsIntersecting(Tree->LL->frame, current_rect)) 
+		{
+		if(PRINT) printf("Calling AllIntersectionsMin on LL\n");
+		idxCollided = this->AllIntersectionsMin(Tree->LL, rect_item, current_rect, last_index);
+		if (idxCollided >= 0)
+			{
+			// Short circuit on collision
+			return idxCollided;
+			}
+		}
+	
+	if (Tree->UR && IsBoundsIntersecting(Tree->UR->frame, current_rect))
+		{
+		if(PRINT) printf("Calling AllIntersectionsMin on UR\n");
+		idxCollided = this->AllIntersectionsMin(Tree->UR, rect_item, current_rect, last_index);
+		if (idxCollided >= 0)
+			{
+			// Short circuit on collision
+			return idxCollided;
+			}
+		}
+	
+	if (Tree->LR && IsBoundsIntersecting(Tree->LR->frame, current_rect)) 
+		{
+		if(PRINT) printf("Calling AllIntersectionsMin on LR\n");
+		idxCollided = this->AllIntersectionsMin(Tree->LR, rect_item, current_rect, last_index);
+		if (idxCollided >= 0)
+			{
+			// Short circuit on collision
+			return idxCollided;
+			}
+		}
+	
+	if(PRINT) printf("Returning -1 from AllIntersectionsMin\n");
+	return -1;
+}
+
+//----------------------------------------------------------------------------
 QList<int> vtkQtWordleView::AllIntersections(QuadCIF* Tree, QRectF current_rect) 
 {
 	bool PRINT = false;
@@ -899,11 +1047,12 @@ void vtkQtWordleView::DoLayout()
 	// return;
 	this->scene->setSceneRect(-300, -400, 900, 800);
 	
-	QuadCIF *root_node = new QuadCIF(QRect(-1000, -1000, 3000, 3000));
+	QuadCIFmin *root_node = new QuadCIFmin(QRect(-1000, -1000, 3000, 3000));
 
 	QRectF tmpRect = this->sortedWordObjectList[0].path_item->boundingRect();
 	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
 	bool overlap, itemCollided;
+	int idxCollided;
 	
 	int lastRectIndex = 0;
 	
@@ -941,37 +1090,15 @@ void vtkQtWordleView::DoLayout()
 				overlap = true;
 				}
 			else
-				{
+				{				
 				// New method using QuadCIF tree for intersection tests
 				QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
 				current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
-				QList<int> possible_collision_idxs = this->AllIntersections(root_node, current_rect);
-				// printf("Word %d, %d possibles\n\n", ii, possible_collision_idxs.length());
-				foreach( int jj, possible_collision_idxs )
-				
-				// Found that "collidingItems" was taking most of the time, so just checking all..
-				// for (int jj=0; jj < ii; ++jj)
+				idxCollided = this->AllIntersectionsMin(root_node, this->sortedWordObjectList[ii].rect_item, current_rect, lastRectIndex);
+				if (idxCollided >= 0)
 					{
-					if (jj == lastRectIndex)
-						continue;
-					if (this->WatchCollision && this->WatchLayout)
-						{
-						this->sortedWordObjectList[jj].path_item->setPen(QPen(QBrush(QColor(0,0,0)), 4.0));
-						QCoreApplication::instance()->processEvents();
-						usleep(this->WatchDelay);
-						}
-					itemCollided = this->HierarchicalRectCollision_B(this->sortedWordObjectList[ii].rect_item, this->sortedWordObjectList[jj].rect_item);
-					if (this->WatchCollision && this->WatchLayout)
-						{
-						this->sortedWordObjectList[jj].path_item->setPen(QPen(Qt::NoPen));
-						QCoreApplication::instance()->processEvents();
-						}
-					if (itemCollided)
-						{
-						overlap = true;
-						lastRectIndex = jj;
-						break;
-						}
+					overlap = true;
+					lastRectIndex = idxCollided;
 					}
 				}
 
@@ -995,7 +1122,9 @@ void vtkQtWordleView::DoLayout()
 			this->scene->addItem(this->sortedWordObjectList[ii].path_item);
 			}
 		// printf("\n\n* * WORD: %s * *\n", this->sortedWordObjectList[ii].text.c_str());
-		root_node->AddRectItem(this->sortedWordObjectList[ii].rect_item, ii);
+// 		QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
+// 		current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
+		root_node->AddRectItemMin(this->sortedWordObjectList[ii].rect_item, ii);
 		tmpRect = tmpRect.united(this->sortedWordObjectList[ii].path_item->mapRectToScene(this->sortedWordObjectList[ii].path_item->boundingRect()));
 		// Can't get the view to update after each word is added...
 		// this->ui.graphicsView.repaint()

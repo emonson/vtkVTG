@@ -216,6 +216,52 @@ public:
 	QuadCIF* LR;
 };
 
+//----------------------------------------------
+// This version tests QuadCIF without Btree
+class QuadCIFmin
+{
+public:
+  QuadCIFmin()
+    {
+    UL = 0;
+    LL = 0;
+    UR = 0;
+    LR = 0;
+    }
+
+  QuadCIFmin(QRectF rect)
+    {
+    UL = 0;
+    LL = 0;
+    UR = 0;
+    LR = 0;
+    frame = rect;
+    xmiddle = rect.x() + (rect.width()/2.0);
+    ymiddle = rect.y() + (rect.height()/2.0);
+    }
+
+  ~QuadCIFmin()
+    {
+    if (UL) delete UL;
+    if (LL) delete LL;
+    if (UR) delete UR;
+    if (LR) delete LR;
+    }
+    
+	QList<IndexedRectItem> ItemsList; // Any items which exist at this node
+
+	void AddRectItemMin(QGraphicsRectItem *rect_item, int index);
+    
+	QRectF frame;
+	double xmiddle;
+	double ymiddle;
+
+	QuadCIFmin* UL;
+	QuadCIFmin* LL;
+	QuadCIFmin* UR;
+	QuadCIFmin* LR;
+};
+
 // ============================================================
 
 class VTK_VTG_QVTK_EXPORT vtkQtWordleView : public vtkQtView
@@ -360,6 +406,7 @@ public:
   
   // Description
   // Routines for dealing with searching QuadCIF tree
+  int AllIntersectionsMin(QuadCIFmin* Tree, QGraphicsRectItem* rect_item, QRectF current_rect, int last_index);
   QList<int> AllIntersections(QuadCIF* Tree, QRectF current_rect);
 	QList<int> IntersectLine(Btree *node, QRectF current_rect, double rect_min, double rect_max);
 	bool IsBoundsIntersecting(QRectF frame, QRectF current_rect);
