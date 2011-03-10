@@ -253,6 +253,7 @@ vtkQtWordleView::vtkQtWordleView()
 	this->rMult = 2.0;
 	this->rPow = 0.5;
 	
+	// DEBUG
 	this->WatchLayout = false;
 	this->WatchCollision = false;
 	this->WatchQuadTree = false;
@@ -275,6 +276,7 @@ vtkQtWordleView::vtkQtWordleView()
   
   this->FieldType = vtkQtWordleView::ROW_DATA;
   this->LastInputMTime = 0;
+  this->LastColorMTime = 0;
   this->LastMTime = 0;
   
   srand( time(NULL) );
@@ -329,18 +331,6 @@ void vtkQtWordleView::RemoveRepresentationInternal(vtkDataRepresentation* rep)
 
   this->DataObjectToTable->RemoveInputConnection(0, conn);
   this->ApplyColors->RemoveInputConnection(1, annConn);
-}
-
-//----------------------------------------------------------------------------
-void vtkQtWordleView::SetColorByArray(bool b)
-{
-  this->ApplyColors->SetUsePointLookupTable(b);
-}
-
-//----------------------------------------------------------------------------
-bool vtkQtWordleView::GetColorByArray()
-{
-  return this->ApplyColors->GetUsePointLookupTable();
 }
 
 //----------------------------------------------------------------------------
@@ -447,6 +437,18 @@ int vtkQtWordleView::GetOrientation()
 }
 
 //----------------------------------------------------------------------------
+void vtkQtWordleView::SetColorByArray(bool b)
+{
+  this->ApplyColors->SetUsePointLookupTable(b);
+}
+
+//----------------------------------------------------------------------------
+bool vtkQtWordleView::GetColorByArray()
+{
+  return this->ApplyColors->GetUsePointLookupTable();
+}
+
+//----------------------------------------------------------------------------
 void vtkQtWordleView::SetColorArrayName(const char* name)
 {
   this->SetColorArrayNameInternal(name);
@@ -458,6 +460,23 @@ void vtkQtWordleView::SetColorArrayName(const char* name)
 const char* vtkQtWordleView::GetColorArrayName()
 {
   return this->GetColorArrayNameInternal();
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::ApplyViewTheme(vtkViewTheme* theme)
+{
+  this->Superclass::ApplyViewTheme(theme);
+
+  this->ApplyColors->SetPointLookupTable(theme->GetPointLookupTable());
+
+  this->ApplyColors->SetDefaultPointColor(theme->GetPointColor());
+  this->ApplyColors->SetDefaultPointOpacity(theme->GetPointOpacity());
+  this->ApplyColors->SetDefaultCellColor(theme->GetCellColor());
+  this->ApplyColors->SetDefaultCellOpacity(theme->GetCellOpacity());
+  this->ApplyColors->SetSelectedPointColor(theme->GetSelectedPointColor());
+  this->ApplyColors->SetSelectedPointOpacity(theme->GetSelectedPointOpacity());
+  this->ApplyColors->SetSelectedCellColor(theme->GetSelectedCellColor());
+  this->ApplyColors->SetSelectedCellOpacity(theme->GetSelectedCellOpacity());
 }
 
 //----------------------------------------------------------------------------
@@ -708,6 +727,46 @@ void vtkQtWordleView::ResetOnlyWordObjectsPositions()
 		// Resetting only positions
 		this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
 		this->sortedWordObjectList[ii].path_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());	
+    }
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::ResetOnlyWordObjectsColors()
+{
+  if (this->sortedWordObjectList.size() == 0)
+    {
+    printf("Tried to reset word objects list but EMPTY.\n");
+    return;
+    }
+	vtkDataRepresentation* rep = this->GetRepresentation();
+  if (!rep)
+    {
+    return;
+    }
+  this->ApplyColors->Update();
+  vtkTable* table = vtkTable::SafeDownCast(this->ApplyColors->GetOutput());
+  if (!table)
+    {
+    return;
+    }
+  vtkUnsignedCharArray* colors = vtkUnsignedCharArray::SafeDownCast(table->GetColumnByName("vtkApplyColors color"));
+  if (!colors)
+    {
+    printf("Colors array not vtkUnsignedCharArray\n");
+    return;
+    }
+
+  unsigned char cc[4];
+  int orig_idx;
+  
+	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+  for (int ii=0; ii < word_count; ++ii)
+    {
+    orig_idx = this->sortedWordObjectList[ii].original_index;
+    colors->GetTupleValue(orig_idx, cc);
+    delete this->sortedWordObjectList[ii].color;
+    this->sortedWordObjectList[ii].color = new QColor(cc[0],cc[1],cc[2],cc[3]);
+    this->sortedWordObjectList[ii].path_item->setBrush(*this->sortedWordObjectList[ii].color);
     }
 }
 
@@ -1104,6 +1163,29 @@ void vtkQtWordleView::DoLayout()
 }
 
 //----------------------------------------------------------------------------
+void vtkQtWordleView::RedrawWithSameLayout()
+{
+	this->scene->setSceneRect(-300, -400, 900, 800);
+	QRectF tmpRect = this->sortedWordObjectList[0].path_item->boundingRect();
+	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+
+	// MAIN LOOP
+	for (int ii=0; ii < word_count; ++ii)
+	  {
+		this->scene->addItem(this->sortedWordObjectList[ii].path_item);
+		tmpRect = tmpRect.united(this->sortedWordObjectList[ii].path_item->mapRectToScene(this->sortedWordObjectList[ii].path_item->boundingRect()));
+		}
+
+	// Rescale to fit in view
+	double adjX = (tmpRect.width()*0.05)/2.0;
+	double adjY = (tmpRect.height()*0.05)/2.0;
+	QRectF boundingRect = tmpRect.adjusted(-adjX, -adjY, adjX, adjY);
+	
+	this->scene->setSceneRect(boundingRect);
+	this->View->fitInView(boundingRect, Qt::KeepAspectRatio);
+}
+
+//----------------------------------------------------------------------------
 void vtkQtWordleView::Update()
 {
   vtkDataRepresentation* rep = this->GetRepresentation();
@@ -1135,9 +1217,21 @@ void vtkQtWordleView::Update()
 		this->DoLayout();
 
     this->LastInputMTime = d->GetMTime();
+    this->LastColorMTime = this->ApplyColors->GetMTime();
     this->LastMTime = this->GetMTime();
     }
   
+  // If only Colors Modified, don't even reset positions
+  if (this->ApplyColors->GetMTime() > this->LastColorMTime)
+    {
+		this->ClearGraphicsView();
+		this->ResetOnlyWordObjectsColors();
+		this->RedrawWithSameLayout();
+
+    this->LastColorMTime = this->ApplyColors->GetMTime();
+    this->LastMTime = this->GetMTime();
+    }
+    
   // If only this->Modified, only reset positions (not orientation or color)
   if (this->GetMTime() > this->LastMTime)
     {
@@ -1155,23 +1249,6 @@ void vtkQtWordleView::Update()
 	cout << timer.elapsed() << endl;
 
   this->View->update();
-}
-
-//----------------------------------------------------------------------------
-void vtkQtWordleView::ApplyViewTheme(vtkViewTheme* theme)
-{
-  this->Superclass::ApplyViewTheme(theme);
-
-  this->ApplyColors->SetPointLookupTable(theme->GetPointLookupTable());
-
-  this->ApplyColors->SetDefaultPointColor(theme->GetPointColor());
-  this->ApplyColors->SetDefaultPointOpacity(theme->GetPointOpacity());
-  this->ApplyColors->SetDefaultCellColor(theme->GetCellColor());
-  this->ApplyColors->SetDefaultCellOpacity(theme->GetCellOpacity());
-  this->ApplyColors->SetSelectedPointColor(theme->GetSelectedPointColor());
-  this->ApplyColors->SetSelectedPointOpacity(theme->GetSelectedPointOpacity());
-  this->ApplyColors->SetSelectedCellColor(theme->GetSelectedCellColor());
-  this->ApplyColors->SetSelectedCellOpacity(theme->GetSelectedCellOpacity());
 }
 
 //----------------------------------------------------------------------------

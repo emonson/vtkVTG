@@ -352,13 +352,27 @@ class SimpleView(QtGui.QMainWindow):
 		self.table.AddColumn(terms)
 		self.table.AddColumn(coeffs)
 		
-		vt = vtk.vtkViewTheme()
+		self.vt = vtk.vtkViewTheme()
 		lut = vtk.vtkLookupTable()
 		lut.SetHueRange(0,0)
 		lut.SetValueRange(0,1)
 		lut.SetSaturationRange(1,1)
 		lut.Build()
-		vt.SetPointLookupTable(lut)
+		# Set value for no color by array
+		self.vt.SetPointColor(0,0,0)
+		# Set LUT for color by array
+		self.vt.SetPointLookupTable(lut)
+
+		self.vt2 = vtk.vtkViewTheme()
+		lut2 = vtk.vtkLookupTable()
+		lut2.SetHueRange(0, 0.66)
+		lut2.SetValueRange(0.7, 0.7)
+		lut2.SetSaturationRange(1, 1)
+		lut2.Build()
+		# Set value for no color by array
+		self.vt2.SetPointColor(0,0,0)
+		# Set LUT for color by array
+		self.vt2.SetPointLookupTable(lut2)
 
 		self.WordleView.AddRepresentationFromInput(self.table)
 		self.WordleView.SetFieldType(vtkvtg.vtkQtWordleView.ROW_DATA)
@@ -366,7 +380,7 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView.SetColorArrayName('coefficient')
 		self.WordleView.SetTermsArrayName('dictionary')
 		self.WordleView.SetSizeArrayName('coefficient')
-		self.WordleView.ApplyViewTheme(vt)
+		self.WordleView.ApplyViewTheme(self.vt)
 		self.WordleView.SetMaxNumberOfWords(150);
 		self.WordleView.SetFontFamily("Rockwell")
 		self.WordleView.SetFontStyle(vtkvtg.vtkQtWordleView.StyleNormal)
@@ -385,8 +399,9 @@ class SimpleView(QtGui.QMainWindow):
 		# DEBUG
 # 		self.WordleView.SetWatchLayout(True)
 # 		self.WordleView.SetWatchCollision(True)
-		self.WordleView.SetWatchQuadTree(True)
+# 		self.WordleView.SetWatchQuadTree(True)
 # 		self.WordleView.SetWatchDelay(50000)
+		self.color_by_array = True
 
 
 	def keyPressEvent(self, event):
@@ -432,6 +447,19 @@ class SimpleView(QtGui.QMainWindow):
 			scene.render(svgPainter)
 			svgPainter.end()
 	
+		# Switch only colors
+		if event.key() == QtCore.Qt.Key_C:
+			self.color_by_array = not self.color_by_array
+			if event.modifiers() == QtCore.Qt.NoModifier:
+				self.WordleView.SetColorByArray(self.color_by_array)
+				self.WordleView.Update()
+			elif event.modifiers() == QtCore.Qt.ShiftModifier:
+				if self.color_by_array:
+					self.WordleView.ApplyViewTheme(self.vt)
+				else:
+					self.WordleView.ApplyViewTheme(self.vt2)
+				self.WordleView.Update()
+
 	def resizeEvent(self, event):
 		self.WordleView.ZoomToBounds()
 		

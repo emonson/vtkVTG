@@ -258,11 +258,6 @@ public:
   //   are updated!!!
 
   // Description:
-  // The array to use for coloring items in view.  Default is "color".
-  void SetColorArrayName(const char* name);
-  const char* GetColorArrayName();
-  
-  // Description:
   // The array to use for terms that will be place in Wordle
   void SetTermsArrayName(const char* name);
   const char* GetTermsArrayName();
@@ -273,11 +268,21 @@ public:
   const char* GetSizeArrayName();
   
   // Description:
-  // Whether to color vertices.  Default is off.
+  // The array to use for coloring items in view.  Default is "color".
+  void SetColorArrayName(const char* name);
+  const char* GetColorArrayName();
+  
+  // Description:
+  // Whether to color words.  Default is off.
   void SetColorByArray(bool vis);
   bool GetColorByArray();
   vtkBooleanMacro(ColorByArray, bool);
 
+  // TODO: Should also add a routine where the colors are
+  //   changed and same positions redrawn if lookup table
+  //   or color array changes...
+  virtual void ApplyViewTheme(vtkViewTheme* theme);
+  
   // Description:
   // Set/Get the font family name to be used in the Wordle. FontFamilyExists
   // is used to probe whether the Qt font database includes a given font family.
@@ -327,11 +332,6 @@ public:
   // View QuadCIF tree in scene for debugging
   vtkSetMacro(WatchQuadTree, bool);
 
-  // TODO: Should also add a routine where the colors are
-  //   changed and same positions redrawn if lookup table
-  //   or color array changes...
-  virtual void ApplyViewTheme(vtkViewTheme* theme);
-  
   // Description
   // Routines for dealing with searching QuadCIF tree
   int AllIntersectionsMin(QuadCIFmin* Tree, QGraphicsRectItem* rect_item, QRectF current_rect, int last_index);
@@ -340,14 +340,6 @@ public:
 
   // ==============================================
 
-  void ClearGraphicsView();
-  
-  vtkVector2f CartesianToPolar(vtkVector2f posArr);
-	vtkVector2f PolarToCartesian(vtkVector2f posArr);	
-	vtkVector2f MakeInitialPosition();
-	
-	void DoLayout();
-  
   void ZoomToBounds();
   QGraphicsScene* GetScene();
 
@@ -362,13 +354,24 @@ protected:
   virtual void AddRepresentationInternal(vtkDataRepresentation* rep);
   virtual void RemoveRepresentationInternal(vtkDataRepresentation* rep);
 
+  void ClearGraphicsView();
+  
+  vtkVector2f CartesianToPolar(vtkVector2f posArr);
+	vtkVector2f PolarToCartesian(vtkVector2f posArr);	
+	vtkVector2f MakeInitialPosition();
+	
+	void DoLayout();
+	void RedrawWithSameLayout();
+  
 	void BuildWordObjectsList();
 	void ResetOnlyWordObjectsPositions();
+	void ResetOnlyWordObjectsColors();
 	bool HierarchicalRectCollision_B(QGraphicsRectItem* rectA, QGraphicsRectItem* rectB);
 
 private:
   unsigned long LastInputMTime;
   unsigned long LastMTime;
+  unsigned long LastColorMTime;
   
   std::vector<WordObject> sortedWordObjectList;
 	void UpdatePositionSpirals(WordObject* word);
