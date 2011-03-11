@@ -25,6 +25,7 @@
 #include <QFontDatabase>
 // #include <QGraphicsScene>
 #include <QGraphicsView>
+#include <QImage>
 #include <QList>
 #include <QPolygonF>
 #include <QRectF>
@@ -44,8 +45,10 @@
 #include "vtkDataRepresentation.h"
 #include "vtkDataSetAttributes.h"
 #include "vtkDoubleArray.h"
+#include "vtkImageData.h"
 #include "vtkInformation.h"
 #include "vtkObjectFactory.h"
+#include "vtkQImageToImageSource.h"
 #include "vtkSmartPointer.h"
 #include "vtkStringArray.h"
 #include "vtkTable.h"
@@ -240,6 +243,10 @@ vtkQtWordleView::vtkQtWordleView()
   this->DataObjectToTable = vtkSmartPointer<vtkDataObjectToTable>::New();
   this->ApplyColors->SetInputConnection(0, this->DataObjectToTable->GetOutputPort(0));
   this->DataObjectToTable->SetFieldType(vtkDataObjectToTable::VERTEX_DATA);
+  
+  OutputImageDataDimensions[0] = 256;
+  OutputImageDataDimensions[1] = 256;
+  this->QImageToImage = vtkSmartPointer<vtkQImageToImageSource>::New();
 
   this->bigFontSize = 100;
   this->MaxNumberOfWords = 150;
@@ -594,6 +601,52 @@ namespace
 			return false;
 			}
 	}
+}
+
+//----------------------------------------------------------------------------
+vtkImageData* vtkQtWordleView::GetImageData()
+{
+	this->Update();
+	
+	// Create a new QImage and fill it with the background color
+	QImage* qimage = new QImage(OutputImageDataDimensions[0],
+	                            OutputImageDataDimensions[1],
+	                            QImage::Format_ARGB32);
+	qimage->fill(this->scene->backgroundBrush().color().rgba());
+	
+	QPainter* painter = new QPainter(qimage);
+	painter->setRenderHint(QPainter::Antialiasing);
+
+	QRectF r_source(this->scene->sceneRect());
+	QRectF r_target(qimage->rect());
+	double ws = r_source.width();
+	double hs = r_source.height();
+	double wt = r_target.width();
+	double ht = r_target.height();
+	double d;
+	
+	// Make sure the wordle ends up in the center of the image
+	// rather than the top (default if source & target rect aspects don't match)
+	if (wt/ht < ws/hs)
+		{
+		// hs adjust
+		d = (ht*(ws/wt) - hs)/2.0;
+		r_source.adjust(0, -d, 0, d);
+		}
+	else
+		{
+		// ws adjust
+		d = (wt*(hs/ht) - ws)/2.0;
+		r_source.adjust(-d, 0, d, 0);
+		}
+	
+	this->scene->render(painter, r_target, r_source, Qt::KeepAspectRatio);
+	painter->end();
+	
+	this->QImageToImage->SetQImage(qimage);
+	this->QImageToImage->Update();
+	
+	return vtkImageData::SafeDownCast(this->QImageToImage->GetOutputDataObject(0));
 }
 
 //----------------------------------------------------------------------------

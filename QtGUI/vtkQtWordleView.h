@@ -48,8 +48,9 @@
 
 class vtkApplyColors;
 class vtkDataObjectToTable;
+class vtkImageData;
+class vtkQImageToImageSource;
 class QFontDatabase;
-// class QGraphicsScene;
 class QGraphicsView;
 class QRectF;
 class QFont;
@@ -310,6 +311,13 @@ public:
   int GetOrientation();
 
   // Description:
+  // Specify the width,height pixel dimensions of vtkImageData
+  // output from GetImageData(). Default is 256, 256.
+  vtkSetVector2Macro(OutputImageDataDimensions, int);
+  vtkGetVectorMacro(OutputImageDataDimensions, int, 2);
+  vtkImageData* GetImageData();
+
+  // Description:
   // Set the (max) number of words to include in the wordle
   vtkGetMacro(MaxNumberOfWords, int);
   vtkSetMacro(MaxNumberOfWords, int);
@@ -373,6 +381,8 @@ private:
   unsigned long LastMTime;
   unsigned long LastColorMTime;
   
+  int OutputImageDataDimensions[2];
+  
   std::vector<WordObject> sortedWordObjectList;
 	void UpdatePositionSpirals(WordObject* word);
   
@@ -415,6 +425,7 @@ private:
 
   vtkSmartPointer<vtkDataObjectToTable> DataObjectToTable;
   vtkSmartPointer<vtkApplyColors> ApplyColors;
+  vtkSmartPointer<vtkQImageToImageSource> QImageToImage;
 
   vtkQtWordleView(const vtkQtWordleView&);  // Not implemented.
   void operator=(const vtkQtWordleView&);  // Not implemented.

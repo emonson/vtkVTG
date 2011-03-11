@@ -384,6 +384,7 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView.SetColorArrayName('coefficient')
 		self.WordleView.SetTermsArrayName('dictionary')
 		self.WordleView.SetSizeArrayName('coefficient')
+		self.WordleView.SetOutputImageDataDimensions(200, 200)
 		self.WordleView.ApplyViewTheme(self.vt)
 		self.WordleView.SetMaxNumberOfWords(150);
 		self.WordleView.SetFontFamily("Rockwell")
@@ -421,12 +422,31 @@ class SimpleView(QtGui.QMainWindow):
 		# Trying to use a integer-based QImage
 		if event.key() == QtCore.Qt.Key_N:
 			scene = self.WordleView.GetScene()
+			rectf = QtCore.QRectF(scene.sceneRect())
+			width = rectf.width()
+			height = rectf.height()
+			if (width > height):
+				diff = (width-height)/2.0
+				rectf.adjust(0,-diff,0,diff)
+			else:
+				diff = (height-width)/2.0
+				rectf.adjust(-diff,0,diff,0)
 			image = QtGui.QImage(256,256,QtGui.QImage.Format_ARGB32)
+			image.fill(QtGui.QColor(255,255,255,255).rgba())
 			painter = QtGui.QPainter(image)
 			painter.setRenderHint(QtGui.QPainter.Antialiasing)
-			scene.render(painter)
+			scene.render(painter, QtCore.QRectF(image.rect()), rectf)
 			painter.end()
 			image.save("out.png")
+		
+		# Grab ImageData (i)
+		if event.key() == QtCore.Qt.Key_I:
+			image = self.WordleView.GetImageData()
+			# print image
+			iw = vtk.vtkXMLImageDataWriter()
+			iw.SetInput(image)
+			iw.SetFileName("out.vti")
+			iw.Write()
 		
 		# Write PDF (p)
 		if event.key() == QtCore.Qt.Key_P:
