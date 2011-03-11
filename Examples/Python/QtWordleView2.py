@@ -77,11 +77,11 @@ class SimpleView(QtGui.QMainWindow):
 		lut.SetSaturationRange(1, 1)
 		lut.Build()
 		# Set value for no color by array
-		self.vt.SetPointColor(0,0,0)
+		vt.SetPointColor(0,0,0)
 		# Set LUT for color by array
-		self.vt.SetPointLookupTable(lut)
+		vt.SetPointLookupTable(lut)
 		# ViewTheme Background color is black by default
-		self.vt.SetBackgroundColor(1,1,1)
+		vt.SetBackgroundColor(1,1,1)
 
 		self.WordleView.AddRepresentationFromInput(self.table)
 		self.WordleView.SetFieldType(vtkvtg.vtkQtWordleView.ROW_DATA)
@@ -114,7 +114,7 @@ class SimpleView(QtGui.QMainWindow):
 		# DEBUG
 # 		self.WordleView.SetWatchLayout(True)
 # 		self.WordleView.SetWatchCollision(True)
-		self.WordleView.SetWatchQuadTree(True)
+# 		self.WordleView.SetWatchQuadTree(True)
 # 		self.WordleView.SetWatchDelay(50000)
 
 	def keyPressEvent(self, event):
