@@ -342,7 +342,7 @@ public:
 
   void ZoomToBounds();
   QGraphicsScene* GetScene();
-
+  
   // Description:
   // Updates the view.
   virtual void Update();

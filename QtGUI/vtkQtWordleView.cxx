@@ -477,6 +477,12 @@ void vtkQtWordleView::ApplyViewTheme(vtkViewTheme* theme)
   this->ApplyColors->SetSelectedPointOpacity(theme->GetSelectedPointOpacity());
   this->ApplyColors->SetSelectedCellColor(theme->GetSelectedCellColor());
   this->ApplyColors->SetSelectedCellOpacity(theme->GetSelectedCellOpacity());
+  
+  double bg[3];
+  theme->GetBackgroundColor(bg);
+  QColor bgColor;
+  bgColor.setRgbF(bg[0],bg[1],bg[2]);
+  this->scene->setBackgroundBrush(QBrush(bgColor));
 }
 
 //----------------------------------------------------------------------------
@@ -532,9 +538,6 @@ QGraphicsScene* vtkQtWordleView::GetScene()
 //----------------------------------------------------------------------------
 vtkVector2f vtkQtWordleView::CartesianToPolar(vtkVector2f posArr)
 {
-// 	r = N.sqrt((posArr*posArr).sum())
-// 	phi = N.arctan2(posArr[1],posArr[0])
-// 	return N.array([r, phi],dtype='float32')
 	double r = sqrt(posArr.X()*posArr.X() + posArr.Y()*posArr.Y());
 	double phi = atan2(posArr.Y(), posArr.X());
 	vtkVector2f r_phi(r, phi);
@@ -545,9 +548,6 @@ vtkVector2f vtkQtWordleView::CartesianToPolar(vtkVector2f posArr)
 //----------------------------------------------------------------------------
 vtkVector2f vtkQtWordleView::PolarToCartesian(vtkVector2f posArr)
 {
-// 	x = posArr[0]*N.cos(posArr[1])
-// 	y = posArr[0]*N.sin(posArr[1])
-// 	return N.array([x,y],dtype='float32')
 	float x = posArr.X()*cos(posArr.Y());
 	float y = posArr.X()*sin(posArr.Y());
 	vtkVector2f result(x, y);
@@ -568,11 +568,6 @@ vtkVector2f vtkQtWordleView::MakeInitialPosition()
 //----------------------------------------------------------------------------
 void vtkQtWordleView::UpdatePositionSpirals(WordObject* word)
 {
-	// ri = R0[0] + rdelta*theda
-	// theda += (delta*N.pi)/ri
-	// r = R0[0] + rdelta*theda
-	// return self.PolarToCartesian(N.array([r[0],theda[0]]))+initPosArr
-	
 	// Updating in place
 	double const Pi = 4.0 * atan(1);
 	double ri = word->R0 + (word->rdelta * word->theda);
@@ -820,13 +815,11 @@ bool vtkQtWordleView::HierarchicalRectCollision_B(QGraphicsRectItem* rectA, QGra
 //----------------------------------------------------------------------------
 /* A procedure for finding all the items that intersect a given current_rect
 	 Need to supply this code with already translated outer rectangle for the
-	 current word rect_item so don't have to translate every time 
+	 current word rect_item so don't have to translate the position every time 
 	 
 	QRectF current_rect = current_rect_item->rect();
 	current_rect.translate(current_rect_item->pos());
 	*/
-
-//----------------------------------------------------------------------------
 int vtkQtWordleView::AllIntersectionsMin(QuadCIFmin* Tree, 
 																					QGraphicsRectItem *rect_item, 
 																					QRectF current_rect,
@@ -941,11 +934,6 @@ bool vtkQtWordleView::IsBoundsIntersecting(QRectF frame, QRectF current_rect)
 //----------------------------------------------------------------------------
 void vtkQtWordleView::DoLayout()
 {
-	// cout << this->sortedWordObjectList.at(0);
-	// cout << this->sortedWordObjectList.at(0).rect_item->rect().x() << endl;
-	// cout << this->sortedWordObjectList.at(0).path_item->boundingRect().x() << endl;
-	// return;
-	
 	int TEST_ALL = 0;
 	int TEST_QUAD = 1;
 	int mode = TEST_ALL;
@@ -1003,7 +991,6 @@ void vtkQtWordleView::DoLayout()
 	  	quadtree_loaded = true;
 	  	}
 	  
-		// printf("%d\t%s\t%d\n", ii, this->sortedWordObjectList[ii].text.c_str(), this->sortedWordObjectList[ii].font_size);
 		if (this->WatchLayout)
 			{
 			this->scene->addItem(this->sortedWordObjectList[ii].path_item);
@@ -1038,7 +1025,7 @@ void vtkQtWordleView::DoLayout()
 				{
 				if (mode == TEST_QUAD)
 					{
-					// New method using QuadCIF tree for intersection tests
+					// Using QuadCIF tree for intersection tests
 					QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
 					current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
 					idxCollided = this->AllIntersectionsMin(root_node, this->sortedWordObjectList[ii].rect_item, current_rect, lastRectIndex);
@@ -1050,7 +1037,7 @@ void vtkQtWordleView::DoLayout()
 					}
 				if (mode == TEST_ALL)
 					{
-					// Found that "collidingItems" was taking most of the time, so just checking all..
+					// Checking all words that have already been placed
 					for (int jj=0; jj < ii; ++jj)
 						{
 						if (jj == lastRectIndex)
@@ -1097,9 +1084,6 @@ void vtkQtWordleView::DoLayout()
 			{
 			this->scene->addItem(this->sortedWordObjectList[ii].path_item);
 			}
-		// printf("\n\n* * WORD: %s * *\n", this->sortedWordObjectList[ii].text.c_str());
-// 		QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
-// 		current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
 		
 		if (mode == TEST_QUAD)
 			{
@@ -1154,12 +1138,6 @@ void vtkQtWordleView::DoLayout()
 	this->scene->setSceneRect(boundingRect);
 	this->View->fitInView(boundingRect, Qt::KeepAspectRatio);
 	
-	// DEBUG
-// 	QRectF firstRect = this->sortedWordObjectList[0].path_item->boundingRect();
-// 	cout << "first word x: " << firstRect.x() << " w: " << firstRect.width() << " y: " << firstRect.y() << " h: " << firstRect.height() << endl;
-// 	cout << "bounding   x: " << boundingRect.x() << " w: " << boundingRect.width() << " y: " << boundingRect.y() << " h: " << boundingRect.height() << endl;
-	
-	// delete root_node;
 }
 
 //----------------------------------------------------------------------------
@@ -1242,9 +1220,6 @@ void vtkQtWordleView::Update()
     this->LastMTime = this->GetMTime();
     }
     
-// TODO: Need a routine that just redraws the scene with new colors
-// and doesn't redo positions (keep track of ApplyColors Modified time)...
-
 	// DEBUG
 	cout << timer.elapsed() << endl;
 

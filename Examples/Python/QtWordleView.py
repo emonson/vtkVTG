@@ -362,6 +362,8 @@ class SimpleView(QtGui.QMainWindow):
 		self.vt.SetPointColor(0,0,0)
 		# Set LUT for color by array
 		self.vt.SetPointLookupTable(lut)
+		# ViewTheme Background color is black by default
+		self.vt.SetBackgroundColor(1,1,1)
 
 		self.vt2 = vtk.vtkViewTheme()
 		lut2 = vtk.vtkLookupTable()
@@ -373,6 +375,8 @@ class SimpleView(QtGui.QMainWindow):
 		self.vt2.SetPointColor(0,0,0)
 		# Set LUT for color by array
 		self.vt2.SetPointLookupTable(lut2)
+		# ViewTheme Background color is black by default
+		self.vt2.SetBackgroundColor(1,1,1)
 
 		self.WordleView.AddRepresentationFromInput(self.table)
 		self.WordleView.SetFieldType(vtkvtg.vtkQtWordleView.ROW_DATA)
