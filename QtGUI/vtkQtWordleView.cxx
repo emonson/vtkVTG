@@ -251,14 +251,21 @@ vtkQtWordleView::vtkQtWordleView()
   this->bigFontSize = 100;
   this->MaxNumberOfWords = 150;
   this->orientation = vtkQtWordleView::HORIZONTAL;
+  this->LayoutPathShape = vtkQtWordleView::CIRCULAR_PATH;
+  this->WordSizePower = 1.0;
   
-	this->xbuffer = 2.0;
+	this->xbuffer = 1.5;
 	this->ybuffer = 1.5;
-	this->randSpread = 0.2;
-	this->thedaMult = 0.75;
-	this->thedaPow = 0.66667;
+	this->randSpread = 0.1;
+	
+	// Archimedean spiral
+	this->thetaMult = 0.75;
+	this->thetaPow = 0.66667;
 	this->rMult = 2.0;
 	this->rPow = 0.5;
+	// Square spiral
+	this->dMult = 2.5;
+	this->dPow = 0.80;
 	
 	// DEBUG
 	this->WatchLayout = false;
@@ -272,14 +279,6 @@ vtkQtWordleView::vtkQtWordleView()
   this->font->setWeight(QFont::Bold);
   
 	this->FontDatabase = new QFontDatabase();
-// 	foreach (QString family, this->FontDatabase->families()) {
-// 		 cout << family.toStdString() << endl;
-// 	
-// 		 foreach (QString style, this->FontDatabase->styles(family)) {
-// 				 cout << "\t" << style.toStdString() << endl;
-// 		 }
-// 		 cout << endl;
-// 	}
   
   this->FieldType = vtkQtWordleView::ROW_DATA;
   this->LastInputMTime = 0;
@@ -362,6 +361,25 @@ void vtkQtWordleView::SetFontFamily(const char* name)
 const char* vtkQtWordleView::GetFontFamily()
 {
   return this->font->family().toStdString().c_str();
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::GetAllFontFamilies(vtkStringArray* famlies)
+{
+	famlies->SetName("FontFamilies");
+	famlies->SetNumberOfComponents(1);
+	famlies->SetNumberOfValues(this->FontDatabase->families().size());
+	
+	vtkIdType ii = 0;
+	foreach (QString family, this->FontDatabase->families()) {
+		famlies->SetValue(ii, family.toStdString());
+		ii++;
+		
+		// foreach (QString style, this->FontDatabase->styles(family)) {
+		// 	 cout << "\t" << style.toStdString() << endl;
+		// }
+		// cout << endl;
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -597,17 +615,49 @@ vtkVector2f vtkQtWordleView::MakeInitialPosition()
 }
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::UpdatePositionSpirals(WordObject* word)
+void vtkQtWordleView::UpdateArchPositionSpirals(WordObject* word)
 {
 	// Updating in place
 	double const Pi = 4.0 * atan(1);
-	double ri = word->R0 + (word->rdelta * word->theda);
-	word->theda += (word->delta * Pi) / ri;
-	double r = word->R0 + word->rdelta * word->theda;
-	vtkVector2f dPos = this->PolarToCartesian(vtkVector2f(r, word->theda));
+	double ri = word->R0 + (word->rdelta * word->theta);
+	word->theta += (word->delta * Pi) / ri;
+	double r = word->R0 + word->rdelta * word->theta;
+	vtkVector2f dPos = this->PolarToCartesian(vtkVector2f(r, word->theta));
 	
 	word->pos.SetX(dPos.X() + word->initial_pos.X());
 	word->pos.SetY(dPos.Y() + word->initial_pos.Y());
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::UpdateSquarePositionSpirals(WordObject* word)
+{
+	// Updating in place
+	if (word->flag)
+		{
+		float x = word->pos.GetX();
+		x += word->sign * word->dist;
+		word->pos.SetX(x);
+		word->count += 1;
+		if (word->count == word->target_count)
+			{
+			word->flag = false;
+			word->count = 0;
+			}
+		}
+	else
+		{
+		float y = word->pos.GetY();
+		y += word->sign * word->dist;
+		word->pos.SetY(y);
+		word->count += 1;
+		if (word->count == word->target_count)
+			{
+			word->count = 0;
+			word->sign *= -1;
+			word->target_count += 1;
+			word->flag = true;
+			}
+		}
 }
 
 namespace
@@ -725,7 +775,7 @@ void vtkQtWordleView::BuildWordObjectsList()
     word.size = fabs(sizes->GetValue(ii));
     colors->GetTupleValue(ii, cc);
     word.color = new QColor(cc[0],cc[1],cc[2],cc[3]);
-		word.font_size = (int)((float)this->bigFontSize*(float)word.size/(float)maxSize);
+		word.font_size = (int)((float)this->bigFontSize*pow((float)word.size/(float)maxSize,this->WordSizePower));
 		if (word.font_size < 1)
 			{
 			word.font_size = 1;
@@ -743,8 +793,11 @@ void vtkQtWordleView::BuildWordObjectsList()
     {
 		this->sortedWordObjectList[ii].pos = this->MakeInitialPosition();
 		this->sortedWordObjectList[ii].initial_pos = this->sortedWordObjectList[ii].pos;
-		this->sortedWordObjectList[ii].delta = this->thedaMult*pow((float)this->sortedWordObjectList[ii].font_size, this->thedaPow);
+		// Archimedean spiral
+		this->sortedWordObjectList[ii].delta = this->thetaMult*pow((float)this->sortedWordObjectList[ii].font_size, this->thetaPow);
 		this->sortedWordObjectList[ii].rdelta = this->rMult*pow((float)this->sortedWordObjectList[ii].font_size, this->rPow);
+		// Square spiral
+		this->sortedWordObjectList[ii].dist = this->dMult*pow((float)this->sortedWordObjectList[ii].font_size, this->dPow);
 		
 		this->font->setPointSize(this->sortedWordObjectList[ii].font_size);
 		QPainterPath pathOrig;
@@ -794,7 +847,13 @@ void vtkQtWordleView::ResetOnlyWordObjectsPositions()
     {
 		this->sortedWordObjectList[ii].pos = this->MakeInitialPosition();
 		this->sortedWordObjectList[ii].initial_pos = this->sortedWordObjectList[ii].pos;
-		this->sortedWordObjectList[ii].theda = 0.0;
+		// Archimedean spiral
+		this->sortedWordObjectList[ii].theta = 0.0;
+		// Square spiral
+		this->sortedWordObjectList[ii].flag = true;
+		this->sortedWordObjectList[ii].sign = 1;
+		this->sortedWordObjectList[ii].count = 0;
+		this->sortedWordObjectList[ii].target_count = 1;
 		
 		// Resetting only positions
 		this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
@@ -1009,7 +1068,7 @@ bool vtkQtWordleView::IsBoundsIntersecting(QRectF frame, QRectF current_rect)
 
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::DoLayout()
+void vtkQtWordleView::DoHybridLayout()
 {
 	int TEST_ALL = 0;
 	int TEST_QUAD = 1;
@@ -1143,8 +1202,15 @@ void vtkQtWordleView::DoLayout()
 
 			if (overlap)
 				{
-				// Update position in place
-				this->UpdatePositionSpirals(&this->sortedWordObjectList[ii]);
+				// Update word position in place
+				if (this->LayoutPathShape == vtkQtWordleView::CIRCULAR_PATH)
+					{
+					this->UpdateArchPositionSpirals(&this->sortedWordObjectList[ii]);
+					}
+				else
+					{
+					this->UpdateSquarePositionSpirals(&this->sortedWordObjectList[ii]);
+					}
 				this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
 				if (this->WatchLayout)
 					{
@@ -1174,7 +1240,14 @@ void vtkQtWordleView::DoLayout()
 				double xAd = tmpRect.width() * quad_inc_factor;
 				double yAd = tmpRect.height() * quad_inc_factor;
 				QRectF quad_bounds = tmpRect.adjusted(-xAd, -yAd, xAd, yAd);
-				root_node = new QuadCIFmin(quad_bounds, this->scene);
+				if (this->WatchQuadTree)
+					{
+					root_node = new QuadCIFmin(quad_bounds, this->scene);
+					}
+				else
+					{
+					root_node = new QuadCIFmin(quad_bounds);
+					}
 				for (int jj=0; jj < ii; ++jj)
 					{
 					if (this->WatchQuadTree)
@@ -1205,6 +1278,84 @@ void vtkQtWordleView::DoLayout()
 			{
 			QCoreApplication::instance()->processEvents();
 			}
+		}
+
+	// Rescale to fit in view
+	double adjX = (tmpRect.width()*0.05)/2.0;
+	double adjY = (tmpRect.height()*0.05)/2.0;
+	QRectF boundingRect = tmpRect.adjusted(-adjX, -adjY, adjX, adjY);
+	
+	this->scene->setSceneRect(boundingRect);
+	this->View->fitInView(boundingRect, Qt::KeepAspectRatio);
+	
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::DoCheckAllLayout()
+{
+	this->scene->setSceneRect(-300, -400, 900, 800);
+	QRectF tmpRect = this->sortedWordObjectList[0].path_item->boundingRect();
+	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+	bool overlap, itemCollided;
+	int idxCollided;
+	
+	int lastRectIndex = 0;
+	
+	// MAIN LOOP
+	for (int ii=0; ii < word_count; ++ii)
+	  {
+		if (ii == 0)
+			overlap = false;
+		else
+			overlap = true;
+
+		while (overlap)
+			{
+			// Assume no overlap and collision detection turns to true if there is overlap
+			overlap = false;
+			// First test for overlap with last one intersected
+			itemCollided = this->HierarchicalRectCollision_B(this->sortedWordObjectList[ii].rect_item, this->sortedWordObjectList[lastRectIndex].rect_item);
+			if (itemCollided)
+				{
+				overlap = true;
+				}
+			else
+				{
+				// Checking all words that have already been placed
+				for (int jj=0; jj < ii; ++jj)
+					{
+					if (jj == lastRectIndex)
+						continue;
+					itemCollided = this->HierarchicalRectCollision_B(this->sortedWordObjectList[ii].rect_item, this->sortedWordObjectList[jj].rect_item);
+					if (itemCollided)
+						{
+						overlap = true;
+						lastRectIndex = jj;
+						break;
+						}
+					}
+				}
+
+			if (overlap)
+				{
+				// Update word position in place
+				if (this->LayoutPathShape == vtkQtWordleView::CIRCULAR_PATH)
+					{
+					this->UpdateArchPositionSpirals(&this->sortedWordObjectList[ii]);
+					}
+				else
+					{
+					this->UpdateSquarePositionSpirals(&this->sortedWordObjectList[ii]);
+					}
+				this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
+				}
+			}
+			
+		this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
+		this->sortedWordObjectList[ii].path_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());	
+		this->scene->addItem(this->sortedWordObjectList[ii].path_item);
+		
+		tmpRect = tmpRect.united(this->sortedWordObjectList[ii].path_item->mapRectToScene(this->sortedWordObjectList[ii].path_item->boundingRect()));
 		}
 
 	// Rescale to fit in view
@@ -1269,7 +1420,8 @@ void vtkQtWordleView::Update()
 
 		this->ClearGraphicsView();
 		this->BuildWordObjectsList();
-		this->DoLayout();
+		this->DoHybridLayout();
+		// this->DoCheckAllLayout();
 
     this->LastInputMTime = d->GetMTime();
     this->LastColorMTime = this->ApplyColors->GetMTime();
@@ -1292,7 +1444,8 @@ void vtkQtWordleView::Update()
     {
 		this->ClearGraphicsView();
 		this->ResetOnlyWordObjectsPositions();
-		this->DoLayout();
+		this->DoHybridLayout();
+		// this->DoCheckAllLayout();
 
     this->LastMTime = this->GetMTime();
     }

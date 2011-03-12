@@ -14,7 +14,7 @@ import vtkvtg
 import sys
 import numpy as N
 
-from QtSimpleView import Ui_MainWindow
+from QtSimpleView3 import Ui_MainWindow
 
 class SimpleView(QtGui.QMainWindow):
 	
@@ -27,7 +27,7 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView = vtkvtg.vtkQtWordleView()
 		
 		# Set widget for the wordle view
-		self.ui.centralWidget.layout().addWidget(self.WordleView.GetWidget())
+		self.ui.centralWidget.layout().addWidget(self.WordleView.GetWidget(),0,1)
 		
 		term_list = [
 			"straw",
@@ -385,6 +385,18 @@ class SimpleView(QtGui.QMainWindow):
 		# ViewTheme Background color is black by default
 		self.vt2.SetBackgroundColor(1,1,1)
 
+		self.ui.doubleSpinBox_xbuffer.setValue(self.WordleView.Getxbuffer())
+		self.ui.doubleSpinBox_ybuffer.setValue(self.WordleView.Getybuffer())
+		self.ui.doubleSpinBox_randSpread.setValue(self.WordleView.GetrandSpread())
+		self.ui.doubleSpinBox_thetaMult.setValue(self.WordleView.GetthetaMult())
+		self.ui.doubleSpinBox_thetaPow.setValue(self.WordleView.GetthetaPow())
+		self.ui.doubleSpinBox_rMult.setValue(self.WordleView.GetrMult())
+		self.ui.doubleSpinBox_rPow.setValue(self.WordleView.GetrPow())
+		self.ui.doubleSpinBox_dMult.setValue(self.WordleView.GetdMult())
+		self.ui.doubleSpinBox_dPow.setValue(self.WordleView.GetdPow())
+		self.ui.doubleSpinBox_wordSizePower.setValue(self.WordleView.GetWordSizePower())
+		self.ui.comboBox_pathShape.setCurrentIndex(self.WordleView.GetLayoutPathShape())
+
 		self.WordleView.AddRepresentationFromInput(self.table)
 		self.WordleView.SetFieldType(vtkvtg.vtkQtWordleView.ROW_DATA)
 		self.WordleView.SetColorByArray(True)
@@ -407,6 +419,11 @@ class SimpleView(QtGui.QMainWindow):
 
 		self.WordleView.Update()
 		self.WordleView.ZoomToBounds()
+		
+# 		fams = vtk.vtkStringArray()
+# 		self.WordleView.GetAllFontFamilies(fams)
+# 		for ii in range(fams.GetNumberOfValues()):
+# 			print fams.GetValue(ii)
 				
 		# DEBUG
 # 		self.WordleView.SetWatchLayout(True)
@@ -417,12 +434,71 @@ class SimpleView(QtGui.QMainWindow):
 		self.font_flag = True
 
 
-	@QtCore.pyqtSlot()
-	def on_pushButton_clicked(self):
-		self.wordFreqListFromText(str(self.ui.textEdit.toPlainText()))
-		self.buildWordObjectsList()
-		self.clearGraphicsView()
-		self.doLayout()
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_xbuffer_valueChanged(self,val):
+		self.WordleView.Setxbuffer(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_ybuffer_valueChanged(self,val):
+		self.WordleView.Setybuffer(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_randSpread_valueChanged(self,val):
+		self.WordleView.SetrandSpread(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_thetaMult_valueChanged(self,val):
+		self.WordleView.SetthetaMult(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_thetaPow_valueChanged(self,val):
+		self.WordleView.SetthetaPow(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_rMult_valueChanged(self,val):
+		self.WordleView.SetrMult(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_rPow_valueChanged(self,val):
+		self.WordleView.SetrPow(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_dMult_valueChanged(self,val):
+		self.WordleView.SetdMult(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_dPow_valueChanged(self,val):
+		self.WordleView.SetdPow(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(float)
+	def on_doubleSpinBox_wordSizePower_valueChanged(self,val):
+		self.WordleView.SetWordSizePower(val)
+		self.table.Modified()
+		self.WordleView.Update()
+	
+	@QtCore.pyqtSlot(int)
+	def on_comboBox_pathShape_currentIndexChanged(self,val):
+		self.WordleView.SetLayoutPathShape(val)
+		# self.table.Modified()
+		self.WordleView.Update()
 	
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:

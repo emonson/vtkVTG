@@ -50,6 +50,7 @@ class vtkApplyColors;
 class vtkDataObjectToTable;
 class vtkImageData;
 class vtkQImageToImageSource;
+class vtkStringArray;
 class QFontDatabase;
 class QGraphicsView;
 class QRectF;
@@ -67,10 +68,17 @@ public:
     this->text = "";
     this->size = 0.0;
     this->font_size = 0;
-    this->theda = 0.0;
+    
+    this->theta = 0.0;
     this->R0 = 20.0;
     this->delta = 0.0;
     this->rdelta = 0.0;
+    
+    this->flag = true;
+    this->sign = 1;
+    this->count = 0;
+    this->target_count = 1;
+    this->dist = 0.0;
     }
   ~WordObject()
     {
@@ -93,10 +101,19 @@ public:
   
   vtkVector2f initial_pos;
   vtkVector2f pos;
-  double theda;
+  
+  // Archimedean Spiral layout
+  double theta;
   double R0;
   double delta;
   double rdelta;
+  
+  // Square Spiral layout
+  bool flag;
+  int sign;
+  int count;
+  int target_count;
+  double dist;
   
   QColor* color;
   QPainterPath painter_path;
@@ -238,7 +255,7 @@ public:
 		};
 
   // Description:
-  // Enum containing predefined values layout orientations
+  // Enum containing predefined values for layout orientations
   enum 
   	{
     HORIZONTAL = 0,
@@ -246,6 +263,14 @@ public:
     HALF_AND_HALF = 2,
     MOSTLY_VERTICAL = 3,
     VERTICAL = 4
+		};
+
+  // Description:
+  // Enum containing predefined values for layout path shapes
+  enum 
+  	{
+    CIRCULAR_PATH = 0,
+    SQUARE_PATH = 1
 		};
 
   // The field type to copy into the output table.
@@ -291,6 +316,7 @@ public:
   void SetFontFamily(const char* name);
   const char* GetFontFamily();
   bool FontFamilyExists(const char* name);
+  void GetAllFontFamilies(vtkStringArray* famlies);
 
   // Description:
   // Set/Get the font style name to be used in the Wordle.
@@ -323,27 +349,67 @@ public:
   vtkSetMacro(MaxNumberOfWords, int);
 
   // Description:
-  // Set watch layout to true for debugging. Slows it all way
-  // down and lets you watch the path each word is taking.
-  vtkSetMacro(WatchLayout, bool);
+  // Set the power relationship between size array value
+  // and font size. (size/max_size)^power
+  // Traditional wordles use 1.0 (default here). Size value proportional to 
+  // area (for words of the same length) would be use 0.5. 
+  // Some people like something in between.
+  vtkGetMacro(WordSizePower, double);
+  vtkSetMacro(WordSizePower, double);
 
   // Description:
-  // Set watch layout to true for debugging. Slows it all way
-  // down and lets you watch the path each word is taking.
-  vtkSetMacro(WatchCollision, bool);
-
-  // Description:
-  // Extra delay in µs to add to stepping when watching layout
-  vtkSetMacro(WatchDelay, int);
-  
-  // Description:
-  // View QuadCIF tree in scene for debugging
-  vtkSetMacro(WatchQuadTree, bool);
+  // Set the (max) number of words to include in the wordle
+  vtkGetMacro(LayoutPathShape, int);
+  vtkSetMacro(LayoutPathShape, int);
 
   // Description
   // Routines for dealing with searching QuadCIF tree
   int AllIntersectionsMin(QuadCIFmin* Tree, QGraphicsRectItem* rect_item, QRectF current_rect, int last_index);
  	bool IsBoundsIntersecting(QRectF frame, QRectF current_rect);
+
+  // Description:
+  // DEBUG
+  // Set watch layout to true for debugging. Slows it all way
+  // down and lets you watch the path each word is taking.
+  vtkSetMacro(WatchLayout, bool);
+
+  // Description:
+  // DEBUG
+  // Set watch layout to true for debugging. Slows it all way
+  // down and lets you watch the path each word is taking.
+  vtkSetMacro(WatchCollision, bool);
+
+  // Description:
+  // DEBUG
+  // Extra delay in µs to add to stepping when watching layout
+  vtkSetMacro(WatchDelay, int);
+  
+  // Description:
+  // DEBUG
+  // View QuadCIF tree in scene for debugging
+  vtkSetMacro(WatchQuadTree, bool);
+
+  // Description:
+  // DEBUG
+  // Layout parameters
+	vtkSetMacro( xbuffer, float );
+	vtkSetMacro( ybuffer, float );
+	vtkSetMacro( randSpread, float );
+	vtkSetMacro( thetaMult, float );
+	vtkSetMacro( thetaPow, float );
+	vtkSetMacro( rMult, float );
+	vtkSetMacro( rPow, float );
+	vtkSetMacro( dMult, float );
+	vtkSetMacro( dPow, float );
+	vtkGetMacro( xbuffer, float );
+	vtkGetMacro( ybuffer, float );
+	vtkGetMacro( randSpread, float );
+	vtkGetMacro( thetaMult, float );
+	vtkGetMacro( thetaPow, float );
+	vtkGetMacro( rMult, float );
+	vtkGetMacro( rPow, float );
+	vtkGetMacro( dMult, float );
+	vtkGetMacro( dPow, float );
 
 
   // ==============================================
@@ -368,7 +434,8 @@ protected:
 	vtkVector2f PolarToCartesian(vtkVector2f posArr);	
 	vtkVector2f MakeInitialPosition();
 	
-	void DoLayout();
+	void DoHybridLayout();
+	void DoCheckAllLayout();
 	void RedrawWithSameLayout();
   
 	void BuildWordObjectsList();
@@ -384,7 +451,8 @@ private:
   int OutputImageDataDimensions[2];
   
   std::vector<WordObject> sortedWordObjectList;
-	void UpdatePositionSpirals(WordObject* word);
+	void UpdateArchPositionSpirals(WordObject* word);
+	void UpdateSquarePositionSpirals(WordObject* word);
   
   QPointer<QGraphicsView> View;
   QPointer<QGraphicsScene> scene;
@@ -397,6 +465,8 @@ private:
   int MaxNumberOfWords;
   int FieldType;
   int orientation;
+  double WordSizePower;
+  int LayoutPathShape;
   
   bool WatchLayout;
   bool WatchCollision;
@@ -406,10 +476,14 @@ private:
 	float xbuffer;
 	float ybuffer;
 	float randSpread;
-	float thedaMult;
-	float thedaPow;
+	// Archimedean spiral
+	float thetaMult;
+	float thetaPow;
 	float rMult;
 	float rPow;
+	// Square spiral
+	float dMult;
+	float dPow;
 
   char* ColorArrayNameInternal;
   vtkSetStringMacro(ColorArrayNameInternal);

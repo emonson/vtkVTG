@@ -95,11 +95,11 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView.SetFontStyle(vtkvtg.vtkQtWordleView.StyleNormal)
 		self.WordleView.SetFontWeight(99)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.HORIZONTAL)
-		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_HORIZONTAL)
-		self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.HALF_AND_HALF)
+		self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_HORIZONTAL)
+		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.HALF_AND_HALF)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_VERTICAL)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.VERTICAL)
-
+		self.WordleView.SetLayoutPathShape(vtkvtg.vtkQtWordleView.SQUARE_PATH)
 
 		QtCore.QObject.connect(self.ui.actionExit, QtCore.SIGNAL("triggered()"), self.fileExit)
 
