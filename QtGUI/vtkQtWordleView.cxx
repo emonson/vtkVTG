@@ -272,10 +272,10 @@ vtkQtWordleView::vtkQtWordleView()
   this->font->setWeight(QFont::Bold);
   
 	this->FontDatabase = new QFontDatabase();
-// 	foreach (QString family, database.families()) {
+// 	foreach (QString family, this->FontDatabase->families()) {
 // 		 cout << family.toStdString() << endl;
 // 	
-// 		 foreach (QString style, database.styles(family)) {
+// 		 foreach (QString style, this->FontDatabase->styles(family)) {
 // 				 cout << "\t" << style.toStdString() << endl;
 // 		 }
 // 		 cout << endl;
@@ -343,14 +343,18 @@ void vtkQtWordleView::RemoveRepresentationInternal(vtkDataRepresentation* rep)
 //----------------------------------------------------------------------------
 void vtkQtWordleView::SetFontFamily(const char* name)
 {
-  QStringList families = this->FontDatabase->families();
-  if (families.contains(QString(name)))
+	if (strcmp(this->font->family().toStdString().c_str(), name) != 0)
 		{
-		this->font->setFamily(QString(name));
-		}
-	else
-		{
-		vtkDebugMacro(<< "Font family does not match a known entry in Qt database.");
+		QStringList families = this->FontDatabase->families();
+		if (families.contains(QString(name)))
+			{
+			this->font->setFamily(QString(name));
+			this->GetRepresentation()->GetInputConnection()->GetProducer()->GetOutputDataObject(0)->Modified();
+			}
+		else
+			{
+			vtkDebugMacro(<< "Font family does not match a known entry in Qt database.");
+			}
 		}
 }
 
@@ -377,25 +381,29 @@ bool vtkQtWordleView::FontFamilyExists(const char* name)
 //----------------------------------------------------------------------------
 void vtkQtWordleView::SetFontStyle(int style)
 {
-  // Convert from int to QFont::Style
-  QFont::Style val;
-  switch (style)
-    {
-    case 0:
-    	val = QFont::StyleNormal;
-    	break;
-    case 1:
-    	val = QFont::StyleItalic;
-    	break;
-    case 2:
-    	val = QFont::StyleOblique;
-    	break;
-    default:
-    	vtkDebugMacro(<< "Font style not in correct range.");
-    }
-	if (style <= 2 && style >= 0)
+	if (this->font->style() != style)
 		{
-		this->font->setStyle(val);
+		// Convert from int to QFont::Style
+		QFont::Style val;
+		switch (style)
+			{
+			case 0:
+				val = QFont::StyleNormal;
+				break;
+			case 1:
+				val = QFont::StyleItalic;
+				break;
+			case 2:
+				val = QFont::StyleOblique;
+				break;
+			default:
+				vtkDebugMacro(<< "Font style not in correct range.");
+			}
+		if (style <= 2 && style >= 0)
+			{
+			this->font->setStyle(val);
+			this->GetRepresentation()->GetInputConnection()->GetProducer()->GetOutputDataObject(0)->Modified();
+			}
 		}
 }
 
@@ -408,13 +416,17 @@ int vtkQtWordleView::GetFontStyle()
 //----------------------------------------------------------------------------
 void vtkQtWordleView::SetFontWeight(int weight)
 {
-  if (weight <= 99 && weight >= 0)
+	if (this->font->weight() != weight)
 		{
-		this->font->setWeight(weight);
-		}
-	else
-		{
-		vtkDebugMacro(<< "Font weight not in correct range.");
+		if (weight <= 99 && weight >= 0)
+			{
+			this->font->setWeight(weight);
+			this->GetRepresentation()->GetInputConnection()->GetProducer()->GetOutputDataObject(0)->Modified();
+			}
+		else
+			{
+			vtkDebugMacro(<< "Font weight not in correct range.");
+			}
 		}
 }
 
@@ -427,13 +439,17 @@ int vtkQtWordleView::GetFontWeight()
 //----------------------------------------------------------------------------
 void vtkQtWordleView::SetOrientation(int orientation)
 {
-  if (orientation <= 4 && orientation >= 0)
+	if (this->orientation != orientation)
 		{
-		this->orientation = orientation;
-		}
-	else
-		{
-		vtkDebugMacro(<< "Orientation not in correct range.");
+		if (orientation <= 4 && orientation >= 0)
+			{
+			this->orientation = orientation;
+			this->GetRepresentation()->GetInputConnection()->GetProducer()->GetOutputDataObject(0)->Modified();
+			}
+		else
+			{
+			vtkDebugMacro(<< "Orientation not in correct range.");
+			}
 		}
 }
 
@@ -458,9 +474,9 @@ bool vtkQtWordleView::GetColorByArray()
 //----------------------------------------------------------------------------
 void vtkQtWordleView::SetColorArrayName(const char* name)
 {
-  this->SetColorArrayNameInternal(name);
-  this->ApplyColors->SetInputArrayToProcess(0, 0, 0,
-    vtkDataObject::FIELD_ASSOCIATION_ROWS, name);
+	this->SetColorArrayNameInternal(name);
+	this->ApplyColors->SetInputArrayToProcess(0, 0, 0,
+		vtkDataObject::FIELD_ASSOCIATION_ROWS, name);
 }
 
 //----------------------------------------------------------------------------
@@ -495,7 +511,11 @@ void vtkQtWordleView::ApplyViewTheme(vtkViewTheme* theme)
 //----------------------------------------------------------------------------
 void vtkQtWordleView::SetTermsArrayName(const char* name)
 {
-  this->SetTermsArrayNameInternal(name);
+  if (QString(name) != QString(this->TermsArrayNameInternal))
+  	{
+  	this->SetTermsArrayNameInternal(name);
+		this->GetRepresentation()->GetInputConnection()->GetProducer()->GetOutputDataObject(0)->Modified();
+  	}
 }
 
 //----------------------------------------------------------------------------
@@ -507,7 +527,11 @@ const char* vtkQtWordleView::GetTermsArrayName()
 //----------------------------------------------------------------------------
 void vtkQtWordleView::SetSizeArrayName(const char* name)
 {
-  this->SetSizeArrayNameInternal(name);
+  if (QString(name) != QString(this->SizeArrayNameInternal))
+  	{
+  	this->SetSizeArrayNameInternal(name);
+		this->GetRepresentation()->GetInputConnection()->GetProducer()->GetOutputDataObject(0)->Modified();
+  	}
 }
 
 //----------------------------------------------------------------------------
@@ -539,7 +563,7 @@ void vtkQtWordleView::ZoomToBounds()
 //----------------------------------------------------------------------------
 QGraphicsScene* vtkQtWordleView::GetScene()
 {
-		return this->scene;
+	return this->scene;
 }
 
 //----------------------------------------------------------------------------

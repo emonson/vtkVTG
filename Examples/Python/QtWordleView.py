@@ -347,10 +347,17 @@ class SimpleView(QtGui.QMainWindow):
 		for size in size_list:
 			coeffs.InsertNextValue(size)
 		
+		coeffs2 = vtk.vtkDoubleArray()
+		coeffs2.SetName('neg_coeff')
+		coeffs2.SetNumberOfComponents(1)
+		for size in size_list:
+			coeffs2.InsertNextValue(N.sqrt(size))
+		
 		# Create a table with some points in it...
 		self.table = vtk.vtkTable()
 		self.table.AddColumn(terms)
 		self.table.AddColumn(coeffs)
+		self.table.AddColumn(coeffs2)
 		
 		self.vt = vtk.vtkViewTheme()
 		lut = vtk.vtkLookupTable()
@@ -407,6 +414,7 @@ class SimpleView(QtGui.QMainWindow):
 # 		self.WordleView.SetWatchQuadTree(True)
 # 		self.WordleView.SetWatchDelay(50000)
 		self.color_by_array = True
+		self.font_flag = True
 
 
 	def keyPressEvent(self, event):
@@ -417,6 +425,15 @@ class SimpleView(QtGui.QMainWindow):
 			elif event.modifiers() == QtCore.Qt.ShiftModifier:
 				self.table.Modified()
 				self.WordleView.Update()
+		
+		# Change Fonts (f)
+		if event.key() == QtCore.Qt.Key_F:
+			if self.font_flag:
+				self.WordleView.SetFontFamily("Tekton Pro")
+			else:
+				self.WordleView.SetFontFamily("Rockwell")
+			self.font_flag = not self.font_flag
+			self.WordleView.Update()
 		
 		# Write PNG (n)
 		# Trying to use a integer-based QImage
