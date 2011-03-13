@@ -230,6 +230,42 @@
          </property>
         </widget>
        </item>
+       <item row="11" column="1">
+        <widget class="QComboBox" name="comboBox_orientation">
+         <item>
+          <property name="text">
+           <string>Horizontal</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Mostly horizontal</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Half and half</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Mostly vertical</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Vertical</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="11" column="0">
+        <widget class="QLabel" name="label_12">
+         <property name="text">
+          <string>Word Orientation</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
     </item>

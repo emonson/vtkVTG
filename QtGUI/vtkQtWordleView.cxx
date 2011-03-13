@@ -28,6 +28,7 @@
 #include <QImage>
 #include <QList>
 #include <QPolygonF>
+#include <QPrinter>
 #include <QRectF>
 #include <QString>
 #include <QStringList>
@@ -725,32 +726,94 @@ vtkImageData* vtkQtWordleView::GetImageData()
 }
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::SaveSVG(char* filename)
-{
-	this->Update();
-	
-	QSvgGenerator* svggen = new QSvgGenerator();
-	svggen->setFileName(filename);
-	svggen->setSize(QSize(600, 600));
-	svggen->setViewBox(QRect(0, 0, 600, 600));
-	svggen->setTitle("SVG Wordle");
-	svggen->setDescription("An SVG drawing created by the vtkQtWordleView");
-	QPainter* svgPainter = new QPainter(svggen);
-	this->scene->render(svgPainter);
-	svgPainter->end();
-}
+// void vtkQtWordleView::SaveSVG(char* filename)
+// {
+// 	this->Update();
+// 	
+// 	QSvgGenerator* svggen = new QSvgGenerator();
+// 	svggen->setFileName(filename);
+// 	svggen->setSize(QSize(600, 600));
+// 	svggen->setViewBox(QRect(0, 0, 600, 600));
+// 	svggen->setTitle("SVG Wordle");
+// 	svggen->setDescription("An SVG drawing created by the vtkQtWordleView");
+// 	QPainter* svgPainter = new QPainter(svggen);
+// 	this->scene->render(svgPainter);
+// 	svgPainter->end();
+// }
 
 //----------------------------------------------------------------------------
 void vtkQtWordleView::SavePDF(char* filename)
 {
 	this->Update();
 	
+	// Output size with same aspect ratio as scene rect
+	// limited to 7" wide or 9.5" high.
+	QRectF sr = this->scene->sceneRect();
+	double ph, pw;
+	
+	if (sr.width()/sr.height() >= (7.0/9.5))
+		{
+		pw = 7.0;
+		ph = pw * (sr.height()/sr.width());
+		}
+	else
+		{
+		ph = 9.5;
+		pw = ph * (sr.width()/sr.height());
+		}
+	QSizeF paper_size(pw, ph);
+	
+	QPrinter* printer = new QPrinter();
+	printer->setOutputFormat(QPrinter::PdfFormat);
+	printer->setOutputFileName(filename);
+	printer->setPaperSize(paper_size, QPrinter::Inch);
+	
+	QPainter* pdfPainter = new QPainter(printer);
+	this->scene->render(pdfPainter);
+	pdfPainter->end();
 }
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::SavePNG(char* filename)
+void vtkQtWordleView::SavePNG(char* filename, const char* format)
 {
 	this->Update();
+	
+	// Create a new QImage and fill it with the background color
+	QImage* qimage = new QImage(OutputImageDataDimensions[0],
+	                            OutputImageDataDimensions[1],
+	                            QImage::Format_ARGB32);
+	qimage->fill(this->scene->backgroundBrush().color().rgba());
+	
+	QPainter* painter = new QPainter(qimage);
+	painter->setRenderHint(QPainter::Antialiasing);
+
+	QRectF r_source(this->scene->sceneRect());
+	QRectF r_target(qimage->rect());
+	double ws = r_source.width();
+	double hs = r_source.height();
+	double wt = r_target.width();
+	double ht = r_target.height();
+	double d;
+	
+	// Make sure the wordle ends up in the center of the image
+	// rather than the top (default if source & target rect aspects don't match)
+	if (wt/ht < ws/hs)
+		{
+		// hs adjust
+		d = (ht*(ws/wt) - hs)/2.0;
+		r_source.adjust(0, -d, 0, d);
+		}
+	else
+		{
+		// ws adjust
+		d = (wt*(hs/ht) - ws)/2.0;
+		r_source.adjust(-d, 0, d, 0);
+		}
+	
+	this->scene->render(painter, r_target, r_source, Qt::KeepAspectRatio);
+	painter->end();
+	
+	qimage->save(filename, format);
 	
 }
 

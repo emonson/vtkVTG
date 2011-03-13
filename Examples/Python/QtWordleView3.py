@@ -396,6 +396,7 @@ class SimpleView(QtGui.QMainWindow):
 		self.ui.doubleSpinBox_dPow.setValue(self.WordleView.GetdPow())
 		self.ui.doubleSpinBox_wordSizePower.setValue(self.WordleView.GetWordSizePower())
 		self.ui.comboBox_pathShape.setCurrentIndex(self.WordleView.GetLayoutPathShape())
+		self.ui.comboBox_orientation.setCurrentIndex(self.WordleView.GetOrientation())
 
 		self.WordleView.AddRepresentationFromInput(self.table)
 		self.WordleView.SetFieldType(vtkvtg.vtkQtWordleView.ROW_DATA)
@@ -410,7 +411,7 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView.SetFontStyle(vtkvtg.vtkQtWordleView.StyleNormal)
 		self.WordleView.SetFontWeight(99)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.HORIZONTAL)
-		self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_HORIZONTAL)
+		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_HORIZONTAL)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.HALF_AND_HALF)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_VERTICAL)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.VERTICAL)
@@ -500,6 +501,12 @@ class SimpleView(QtGui.QMainWindow):
 		# self.table.Modified()
 		self.WordleView.Update()
 	
+	@QtCore.pyqtSlot(int)
+	def on_comboBox_orientation_currentIndexChanged(self,val):
+		self.WordleView.SetOrientation(val)
+		# self.table.Modified()
+		self.WordleView.Update()
+	
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:
 			if event.modifiers() == QtCore.Qt.NoModifier:
@@ -521,23 +528,7 @@ class SimpleView(QtGui.QMainWindow):
 		# Write PNG (n)
 		# Trying to use a integer-based QImage
 		if event.key() == QtCore.Qt.Key_N:
-			scene = self.WordleView.GetScene()
-			rectf = QtCore.QRectF(scene.sceneRect())
-			width = rectf.width()
-			height = rectf.height()
-			if (width > height):
-				diff = (width-height)/2.0
-				rectf.adjust(0,-diff,0,diff)
-			else:
-				diff = (height-width)/2.0
-				rectf.adjust(-diff,0,diff,0)
-			image = QtGui.QImage(256,256,QtGui.QImage.Format_ARGB32)
-			image.fill(QtGui.QColor(255,255,255,255).rgba())
-			painter = QtGui.QPainter(image)
-			painter.setRenderHint(QtGui.QPainter.Antialiasing)
-			scene.render(painter, QtCore.QRectF(image.rect()), rectf)
-			painter.end()
-			image.save("out.png")
+			self.WordleView.SavePNG("out.png")
 		
 		# Grab ImageData (i)
 		if event.key() == QtCore.Qt.Key_I:
@@ -550,27 +541,11 @@ class SimpleView(QtGui.QMainWindow):
 		
 		# Write PDF (p)
 		if event.key() == QtCore.Qt.Key_P:
-			scene = self.WordleView.GetScene()
-			printer = QtGui.QPrinter()
-			printer.setOutputFormat(QtGui.QPrinter.PdfFormat)
-			printer.setOutputFileName("out.pdf")
-			pdfPainter = QtGui.QPainter(printer)
-			scene.render(pdfPainter)
-			pdfPainter.end()
+			self.WordleView.SavePDF("out.pdf")
 		
 		# Write SVG (s)
 		if event.key() == QtCore.Qt.Key_S:
 			self.WordleView.SaveSVG("out.svg")
-# 			scene = self.WordleView.GetScene()
-# 			svggen = QtSvg.QSvgGenerator()
-# 			svggen.setFileName("out.svg")
-# 			svggen.setSize(QtCore.QSize(600, 600))
-# 			svggen.setViewBox(QtCore.QRect(0, 0, 600, 600))
-# 			svggen.setTitle("SVG Generator Example Drawing")
-# 			svggen.setDescription("An SVG drawing created by the SVG Generator")
-# 			svgPainter = QtGui.QPainter(svggen)
-# 			scene.render(svgPainter)
-# 			svgPainter.end()
 	
 		# Switch only colors
 		if event.key() == QtCore.Qt.Key_C:

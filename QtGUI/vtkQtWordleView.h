@@ -367,9 +367,9 @@ public:
   // The PNG output uses the same OutputImageDimensions
   // as GetImageData().
   // SVG functionality requires extra Qt libraries from the rest...
-  void SaveSVG(char* filename);
+  // void SaveSVG(char* filename);
   void SavePDF(char* filename);
-  void SavePNG(char* filename);
+  void SavePNG(char* filename, const char* format=0);
 
   // Description:
   // DEBUG
