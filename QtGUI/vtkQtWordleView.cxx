@@ -31,6 +31,7 @@
 #include <QRectF>
 #include <QString>
 #include <QStringList>
+#include <QtSvg/QSvgGenerator>
 #include <QTime>
 #include <QTransform>
 
@@ -721,6 +722,36 @@ vtkImageData* vtkQtWordleView::GetImageData()
 	this->QImageToImage->Update();
 	
 	return vtkImageData::SafeDownCast(this->QImageToImage->GetOutputDataObject(0));
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::SaveSVG(char* filename)
+{
+	this->Update();
+	
+	QSvgGenerator* svggen = new QSvgGenerator();
+	svggen->setFileName(filename);
+	svggen->setSize(QSize(600, 600));
+	svggen->setViewBox(QRect(0, 0, 600, 600));
+	svggen->setTitle("SVG Wordle");
+	svggen->setDescription("An SVG drawing created by the vtkQtWordleView");
+	QPainter* svgPainter = new QPainter(svggen);
+	this->scene->render(svgPainter);
+	svgPainter->end();
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::SavePDF(char* filename)
+{
+	this->Update();
+	
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::SavePNG(char* filename)
+{
+	this->Update();
+	
 }
 
 //----------------------------------------------------------------------------

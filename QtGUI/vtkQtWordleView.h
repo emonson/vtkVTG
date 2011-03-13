@@ -361,11 +361,15 @@ public:
   // Set the (max) number of words to include in the wordle
   vtkGetMacro(LayoutPathShape, int);
   vtkSetMacro(LayoutPathShape, int);
-
-  // Description
-  // Routines for dealing with searching QuadCIF tree
-  int AllIntersectionsMin(QuadCIFmin* Tree, QGraphicsRectItem* rect_item, QRectF current_rect, int last_index);
- 	bool IsBoundsIntersecting(QRectF frame, QRectF current_rect);
+  
+  // Description:
+  // Output routines for SVD, PDF, PNG given a file name
+  // The PNG output uses the same OutputImageDimensions
+  // as GetImageData().
+  // SVG functionality requires extra Qt libraries from the rest...
+  void SaveSVG(char* filename);
+  void SavePDF(char* filename);
+  void SavePNG(char* filename);
 
   // Description:
   // DEBUG
@@ -442,6 +446,11 @@ protected:
 	void ResetOnlyWordObjectsPositions();
 	void ResetOnlyWordObjectsColors();
 	bool HierarchicalRectCollision_B(QGraphicsRectItem* rectA, QGraphicsRectItem* rectB);
+
+  // Description
+  // Routines for dealing with searching QuadCIF tree
+  int AllIntersectionsMin(QuadCIFmin* Tree, QGraphicsRectItem* rect_item, QRectF current_rect, int last_index);
+ 	bool IsBoundsIntersecting(QRectF frame, QRectF current_rect);
 
 private:
   unsigned long LastInputMTime;

@@ -560,16 +560,17 @@ class SimpleView(QtGui.QMainWindow):
 		
 		# Write SVG (s)
 		if event.key() == QtCore.Qt.Key_S:
-			scene = self.WordleView.GetScene()
-			svggen = QtSvg.QSvgGenerator()
-			svggen.setFileName("out.svg")
-			svggen.setSize(QtCore.QSize(600, 600))
-			svggen.setViewBox(QtCore.QRect(0, 0, 600, 600))
-			svggen.setTitle("SVG Generator Example Drawing")
-			svggen.setDescription("An SVG drawing created by the SVG Generator")
-			svgPainter = QtGui.QPainter(svggen)
-			scene.render(svgPainter)
-			svgPainter.end()
+			self.WordleView.SaveSVG("out.svg")
+# 			scene = self.WordleView.GetScene()
+# 			svggen = QtSvg.QSvgGenerator()
+# 			svggen.setFileName("out.svg")
+# 			svggen.setSize(QtCore.QSize(600, 600))
+# 			svggen.setViewBox(QtCore.QRect(0, 0, 600, 600))
+# 			svggen.setTitle("SVG Generator Example Drawing")
+# 			svggen.setDescription("An SVG drawing created by the SVG Generator")
+# 			svgPainter = QtGui.QPainter(svggen)
+# 			scene.render(svgPainter)
+# 			svgPainter.end()
 	
 		# Switch only colors
 		if event.key() == QtCore.Qt.Key_C:
