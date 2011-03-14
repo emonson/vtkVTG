@@ -1330,7 +1330,7 @@ void vtkQtWordleView::DoHybridLayout()
 					tmpRect.x() + tmpRect.width() > root_node->frame.x() + root_node->frame.width() ||
 					tmpRect.y() + tmpRect.height() > root_node->frame.y() + root_node->frame.height())
 				{
-				printf("*** Had to increase QuadCIF size!!! ***\n");
+				// printf("*** Had to increase QuadCIF size!!! ***\n");
 				double xAd = tmpRect.width() * quad_inc_factor;
 				double yAd = tmpRect.height() * quad_inc_factor;
 				QRectF quad_bounds = tmpRect.adjusted(-xAd, -yAd, xAd, yAd);

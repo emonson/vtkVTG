@@ -7,8 +7,6 @@ Example using PyQt4 & VTK Infovis
 
 """
 
-from PyQt4 import QtCore, QtGui, QtSvg
-from PyQt4.QtGui import QApplication
 import vtk
 import vtkvtg
 import sys
@@ -16,7 +14,7 @@ import numpy as N
 from vtk.util import numpy_support as VN
 import scipy.io
 
-app = QApplication(sys.argv)
+qinit = vtk.vtkQtInitialization()
 
 WordleView = vtkvtg.vtkQtWordleView()
 
@@ -79,7 +77,7 @@ WordleView.SetColorArrayName('sign')
 WordleView.SetTermsArrayName('dictionary')
 WordleView.SetSizeArrayName('coefficient')
 WordleView.ApplyViewTheme(vt)
-WordleView.SetMaxNumberOfWords(50);
+WordleView.SetMaxNumberOfWords(100);
 WordleView.SetFontFamily("Rockwell")
 WordleView.SetFontStyle(vtkvtg.vtkQtWordleView.StyleNormal)
 WordleView.SetFontWeight(99)
@@ -90,14 +88,8 @@ WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_HORIZONTAL)
 # WordleView.SetOrientation(vtkvtg.vtkQtWordleView.VERTICAL)
 WordleView.SetLayoutPathShape(vtkvtg.vtkQtWordleView.SQUARE_PATH)
 
-# Do first update before changing to debug mode...
-WordleView.Update()
-WordleView.ZoomToBounds()
-
 imgAppend = vtk.vtkImageAppend()
 imgAppend.SetAppendAxis(2)	# Z
-
-imgList = []
 
 for ii in range(20):
 	
@@ -114,12 +106,10 @@ for ii in range(20):
 	WordleView.AddRepresentationFromInput(table)
 	
 	table.Modified()
-	# WordleView.Update()
 	
 	img = vtk.vtkImageData()
 	img.DeepCopy(WordleView.GetImageData())
-	imgList.append(img)
-	imgAppend.AddInput(imgList[ii])
+	imgAppend.AddInput(img)
 
 writer = vtk.vtkXMLImageDataWriter()
 writer.SetFileName("out.vti")
