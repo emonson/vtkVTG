@@ -99,7 +99,9 @@ class SimpleView(QtGui.QMainWindow):
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.HALF_AND_HALF)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_VERTICAL)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.VERTICAL)
-		self.WordleView.SetLayoutPathShape(vtkvtg.vtkQtWordleView.SQUARE_PATH)
+
+		self.WordleView.SetLayoutPathShape(vtkvtg.vtkQtWordleView.CIRCULAR_PATH)
+		# self.WordleView.SetLayoutPathShape(vtkvtg.vtkQtWordleView.SQUARE_PATH)
 
 		QtCore.QObject.connect(self.ui.actionExit, QtCore.SIGNAL("triggered()"), self.fileExit)
 
