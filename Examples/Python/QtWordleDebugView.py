@@ -24,7 +24,7 @@ class SimpleView(QtGui.QMainWindow):
 		self.ui = Ui_MainWindow()
 		self.ui.setupUi(self)
 		
-		self.WordleView = vtkvtg.vtkQtWordleView()
+		self.WordleView = vtkvtg.vtkQtWordleDebugView()
 		
 		# Set widget for the wordle view
 		self.ui.centralWidget.layout().addWidget(self.WordleView.GetWidget())

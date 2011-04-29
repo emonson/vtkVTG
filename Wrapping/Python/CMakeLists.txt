@@ -45,6 +45,7 @@ IF(1)
     vtkvtg/hybrid
     vtkvtg/infovis
     vtkvtg/qvtk
+    vtkvtg/qvtkdebug
     vtkvtg/rendering
     vtkvtg/widgets
     )

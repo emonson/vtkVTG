@@ -58,7 +58,7 @@
 
 //------------------------
 // Need to translate rect_item into proper QRectF before passing to this routine
-void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
+void vtkQtWordleQuadCIF::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 {
 	QRectF rA = rect_item->rect();
 	rA.translate(rect_item->pos());
@@ -70,7 +70,7 @@ void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 	// Intersects xline
 	if ((xmiddle >= ax1 && xmiddle <= ax2) || (ymiddle >= ay1 && ymiddle <= ay2))
 		{
-		ItemsList.append(IndexedRectItem(index, rect_item));
+		ItemsList.append(vtkQtWordleIndexedRectItem(index, rect_item));
 		}
 	else
 		{
@@ -82,7 +82,7 @@ void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 			{
 			if (!UL)
 				{
-				UL = new QuadCIFmin(QRectF(frame.x(), ymiddle, frame.width()/2.0, frame.height()/2.0));
+				UL = new vtkQtWordleQuadCIF(QRectF(frame.x(), ymiddle, frame.width()/2.0, frame.height()/2.0));
 				}
 			UL->AddRectItemMin(rect_item, index);
 			}
@@ -91,7 +91,7 @@ void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 			{
 			if (!LL)
 				{
-				LL = new QuadCIFmin(QRectF(frame.x(), frame.y(), frame.width()/2.0, frame.height()/2.0));
+				LL = new vtkQtWordleQuadCIF(QRectF(frame.x(), frame.y(), frame.width()/2.0, frame.height()/2.0));
 				}
 			LL->AddRectItemMin(rect_item, index);
 			}
@@ -100,7 +100,7 @@ void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 			{
 			if (!UR)
 				{
-				UR = new QuadCIFmin(QRectF(xmiddle, ymiddle, frame.width()/2.0, frame.height()/2.0));
+				UR = new vtkQtWordleQuadCIF(QRectF(xmiddle, ymiddle, frame.width()/2.0, frame.height()/2.0));
 				}
 			UR->AddRectItemMin(rect_item, index);
 			}
@@ -109,7 +109,7 @@ void QuadCIFmin::AddRectItemMin(QGraphicsRectItem *rect_item, int index)
 			{
 			if (!LR)
 				{
-				LR = new QuadCIFmin(QRectF(xmiddle, frame.y(), frame.width()/2.0, frame.height()/2.0));
+				LR = new vtkQtWordleQuadCIF(QRectF(xmiddle, frame.y(), frame.width()/2.0, frame.height()/2.0));
 				}
 			LR->AddRectItemMin(rect_item, index);
 			}
@@ -512,7 +512,7 @@ vtkVector2f vtkQtWordleView::MakeInitialPosition()
 }
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::UpdateArchPositionSpirals(WordObject* word)
+void vtkQtWordleView::UpdateArchPositionSpirals(vtkQtWordleWordObject* word)
 {
 	// Updating in place
 	double const Pi = 4.0 * atan(1);
@@ -526,7 +526,7 @@ void vtkQtWordleView::UpdateArchPositionSpirals(WordObject* word)
 }
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::UpdateSquarePositionSpirals(WordObject* word)
+void vtkQtWordleView::UpdateSquarePositionSpirals(vtkQtWordleWordObject* word)
 {
 	// Updating in place
 	if (word->flag)
@@ -561,7 +561,7 @@ namespace
 {
 	// Compare the two word objects for vector sort
 	// Want to sort in DESCENDING order, so return "greater than" rather than <
-	bool compWordObject(const WordObject& v1, const WordObject& v2)
+	bool compvtkQtWordleWordObject(const vtkQtWordleWordObject& v1, const vtkQtWordleWordObject& v2)
 	{
 		if (v1.getsize() > v2.getsize())
 			{
@@ -713,7 +713,7 @@ void vtkQtWordleView::SaveImage(char* filename, const char* format)
 }
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::BuildWordObjectsList()
+void vtkQtWordleView::BuildvtkQtWordleWordObjectsList()
 {
 	vtkDataRepresentation* rep = this->GetRepresentation();
   if (!rep)
@@ -745,7 +745,7 @@ void vtkQtWordleView::BuildWordObjectsList()
     return;
     }
   
-	this->sortedWordObjectList.clear();
+	this->sortedvtkQtWordleWordObjectList.clear();
 	
 	double sizeRange[2];
 	sizes->GetRange(sizeRange);
@@ -758,7 +758,7 @@ void vtkQtWordleView::BuildWordObjectsList()
   // but for sorting it's necessary to load all of the external data first
   for (vtkIdType ii=0; ii < terms->GetNumberOfValues(); ++ii)
     {
-  	WordObject word;
+  	vtkQtWordleWordObject word;
     word.text = terms->GetValue(ii);
     word.original_index = ii;
     word.size = fabs(sizes->GetValue(ii));
@@ -770,27 +770,27 @@ void vtkQtWordleView::BuildWordObjectsList()
 			word.font_size = 1;
 			}
 			
-    (this->sortedWordObjectList).push_back(word);
+    (this->sortedvtkQtWordleWordObjectList).push_back(word);
     }
   
   // Sort words according to size
-  std::sort((this->sortedWordObjectList).begin(), (this->sortedWordObjectList).end(), compWordObject);
+  std::sort((this->sortedvtkQtWordleWordObjectList).begin(), (this->sortedvtkQtWordleWordObjectList).end(), compvtkQtWordleWordObject);
 
 	// Second stage for more expensive operations
-	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+	int word_count = std::min((int)this->sortedvtkQtWordleWordObjectList.size(), this->MaxNumberOfWords);
   for (int ii=0; ii < word_count; ++ii)
     {
-		this->sortedWordObjectList[ii].pos = this->MakeInitialPosition();
-		this->sortedWordObjectList[ii].initial_pos = this->sortedWordObjectList[ii].pos;
+		this->sortedvtkQtWordleWordObjectList[ii].pos = this->MakeInitialPosition();
+		this->sortedvtkQtWordleWordObjectList[ii].initial_pos = this->sortedvtkQtWordleWordObjectList[ii].pos;
 		// Archimedean spiral
-		this->sortedWordObjectList[ii].delta = this->thetaMult*pow((float)this->sortedWordObjectList[ii].font_size, this->thetaPow);
-		this->sortedWordObjectList[ii].rdelta = this->rMult*pow((float)this->sortedWordObjectList[ii].font_size, this->rPow);
+		this->sortedvtkQtWordleWordObjectList[ii].delta = this->thetaMult*pow((float)this->sortedvtkQtWordleWordObjectList[ii].font_size, this->thetaPow);
+		this->sortedvtkQtWordleWordObjectList[ii].rdelta = this->rMult*pow((float)this->sortedvtkQtWordleWordObjectList[ii].font_size, this->rPow);
 		// Square spiral
-		this->sortedWordObjectList[ii].dist = this->dMult*pow((float)this->sortedWordObjectList[ii].font_size, this->dPow);
+		this->sortedvtkQtWordleWordObjectList[ii].dist = this->dMult*pow((float)this->sortedvtkQtWordleWordObjectList[ii].font_size, this->dPow);
 		
-		this->font->setPointSize(this->sortedWordObjectList[ii].font_size);
+		this->font->setPointSize(this->sortedvtkQtWordleWordObjectList[ii].font_size);
 		QPainterPath pathOrig;
-		pathOrig.addText(0.0f, 0.0f, *this->font, QString(this->sortedWordObjectList[ii].text.c_str()));
+		pathOrig.addText(0.0f, 0.0f, *this->font, QString(this->sortedvtkQtWordleWordObjectList[ii].text.c_str()));
 		QTransform trans;
 		// Orientation values can take on [0,4] inclusive
 		int flip = rand() % 4;
@@ -798,62 +798,62 @@ void vtkQtWordleView::BuildWordObjectsList()
 			{
 			trans.rotate(90);
 			}
-		this->sortedWordObjectList[ii].painter_path = trans.map(pathOrig);
+		this->sortedvtkQtWordleWordObjectList[ii].painter_path = trans.map(pathOrig);
 	
-		QGraphicsPathItem* pathItem = new QGraphicsPathItem(this->sortedWordObjectList[ii].painter_path);
+		QGraphicsPathItem* pathItem = new QGraphicsPathItem(this->sortedvtkQtWordleWordObjectList[ii].painter_path);
 		pathItem->setPen(QPen(Qt::NoPen));
-		pathItem->setBrush(*this->sortedWordObjectList[ii].color);
-		this->sortedWordObjectList[ii].path_item = pathItem;
+		pathItem->setBrush(*this->sortedvtkQtWordleWordObjectList[ii].color);
+		this->sortedvtkQtWordleWordObjectList[ii].path_item = pathItem;
 		
 		// Manually build two-deep tree right here for now...
 		QGraphicsRectItem* rect = new QGraphicsRectItem(pathItem->boundingRect().adjusted(-this->xbuffer, -this->ybuffer, this->xbuffer, this->ybuffer));
 		rect->setPen(QPen(Qt::NoPen));
-		QList<QPolygonF> shapes = this->sortedWordObjectList[ii].painter_path.toSubpathPolygons();
+		QList<QPolygonF> shapes = this->sortedvtkQtWordleWordObjectList[ii].painter_path.toSubpathPolygons();
 		for (int jj=0; jj < shapes.size(); ++jj)
 			{
 			QGraphicsRectItem* subRect = new QGraphicsRectItem(shapes.at(jj).boundingRect().adjusted(-this->xbuffer,-this->ybuffer,this->xbuffer,this->ybuffer));
 			subRect->setParentItem(rect);
 			subRect->setPen(QPen(Qt::NoPen));
 			}
-		this->sortedWordObjectList[ii].rect_item = rect;
+		this->sortedvtkQtWordleWordObjectList[ii].rect_item = rect;
 
-		this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
-		this->sortedWordObjectList[ii].path_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
+		this->sortedvtkQtWordleWordObjectList[ii].rect_item->setPos(this->sortedvtkQtWordleWordObjectList[ii].pos.X(),this->sortedvtkQtWordleWordObjectList[ii].pos.Y());
+		this->sortedvtkQtWordleWordObjectList[ii].path_item->setPos(this->sortedvtkQtWordleWordObjectList[ii].pos.X(),this->sortedvtkQtWordleWordObjectList[ii].pos.Y());
     }
 }
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::ResetOnlyWordObjectsPositions()
+void vtkQtWordleView::ResetOnlyvtkQtWordleWordObjectsPositions()
 {
-  if (this->sortedWordObjectList.size() == 0)
+  if (this->sortedvtkQtWordleWordObjectList.size() == 0)
     {
     vtkDebugMacro(<< "Tried to reset word objects list but EMPTY.");
     return;
     }
 
-	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+	int word_count = std::min((int)this->sortedvtkQtWordleWordObjectList.size(), this->MaxNumberOfWords);
   for (int ii=0; ii < word_count; ++ii)
     {
-		this->sortedWordObjectList[ii].pos = this->MakeInitialPosition();
-		this->sortedWordObjectList[ii].initial_pos = this->sortedWordObjectList[ii].pos;
+		this->sortedvtkQtWordleWordObjectList[ii].pos = this->MakeInitialPosition();
+		this->sortedvtkQtWordleWordObjectList[ii].initial_pos = this->sortedvtkQtWordleWordObjectList[ii].pos;
 		// Archimedean spiral
-		this->sortedWordObjectList[ii].theta = 0.0;
+		this->sortedvtkQtWordleWordObjectList[ii].theta = 0.0;
 		// Square spiral
-		this->sortedWordObjectList[ii].flag = true;
-		this->sortedWordObjectList[ii].sign = 1;
-		this->sortedWordObjectList[ii].count = 0;
-		this->sortedWordObjectList[ii].target_count = 1;
+		this->sortedvtkQtWordleWordObjectList[ii].flag = true;
+		this->sortedvtkQtWordleWordObjectList[ii].sign = 1;
+		this->sortedvtkQtWordleWordObjectList[ii].count = 0;
+		this->sortedvtkQtWordleWordObjectList[ii].target_count = 1;
 		
 		// Resetting only positions
-		this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
-		this->sortedWordObjectList[ii].path_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());	
+		this->sortedvtkQtWordleWordObjectList[ii].rect_item->setPos(this->sortedvtkQtWordleWordObjectList[ii].pos.X(),this->sortedvtkQtWordleWordObjectList[ii].pos.Y());
+		this->sortedvtkQtWordleWordObjectList[ii].path_item->setPos(this->sortedvtkQtWordleWordObjectList[ii].pos.X(),this->sortedvtkQtWordleWordObjectList[ii].pos.Y());	
     }
 }
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::ResetOnlyWordObjectsColors()
+void vtkQtWordleView::ResetOnlyvtkQtWordleWordObjectsColors()
 {
-  if (this->sortedWordObjectList.size() == 0)
+  if (this->sortedvtkQtWordleWordObjectList.size() == 0)
     {
     vtkDebugMacro(<< "Tried to reset word objects list but EMPTY.");
     return;
@@ -879,14 +879,14 @@ void vtkQtWordleView::ResetOnlyWordObjectsColors()
   unsigned char cc[4];
   int orig_idx;
   
-	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+	int word_count = std::min((int)this->sortedvtkQtWordleWordObjectList.size(), this->MaxNumberOfWords);
   for (int ii=0; ii < word_count; ++ii)
     {
-    orig_idx = this->sortedWordObjectList[ii].original_index;
+    orig_idx = this->sortedvtkQtWordleWordObjectList[ii].original_index;
     colors->GetTupleValue(orig_idx, cc);
-    delete this->sortedWordObjectList[ii].color;
-    this->sortedWordObjectList[ii].color = new QColor(cc[0],cc[1],cc[2],cc[3]);
-    this->sortedWordObjectList[ii].path_item->setBrush(*this->sortedWordObjectList[ii].color);
+    delete this->sortedvtkQtWordleWordObjectList[ii].color;
+    this->sortedvtkQtWordleWordObjectList[ii].color = new QColor(cc[0],cc[1],cc[2],cc[3]);
+    this->sortedvtkQtWordleWordObjectList[ii].path_item->setBrush(*this->sortedvtkQtWordleWordObjectList[ii].color);
     }
 }
 
@@ -945,7 +945,7 @@ bool vtkQtWordleView::HierarchicalRectCollision_B(QGraphicsRectItem* rectA, QGra
 	QRectF current_rect = current_rect_item->rect();
 	current_rect.translate(current_rect_item->pos());
 	*/
-int vtkQtWordleView::AllIntersectionsMin(QuadCIFmin* Tree, 
+int vtkQtWordleView::AllIntersectionsMin(vtkQtWordleQuadCIF* Tree, 
 																					QGraphicsRectItem *rect_item, 
 																					QRectF current_rect,
 																					int last_index) 
@@ -1052,10 +1052,10 @@ void vtkQtWordleView::DoHybridLayout()
 	
 	this->scene->setSceneRect(-300, -400, 900, 800);
 	
-	QuadCIFmin *root_node;
+	vtkQtWordleQuadCIF *root_node;
 
-	QRectF tmpRect = this->sortedWordObjectList[0].path_item->boundingRect();
-	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+	QRectF tmpRect = this->sortedvtkQtWordleWordObjectList[0].path_item->boundingRect();
+	int word_count = std::min((int)this->sortedvtkQtWordleWordObjectList.size(), this->MaxNumberOfWords);
 	bool overlap, itemCollided;
 	int idxCollided;
 	
@@ -1069,16 +1069,16 @@ void vtkQtWordleView::DoHybridLayout()
 	  // and if so, initialize and load up QuadCIF based on layout so far
 	  // and switch over to Quad mode collision detection
 	  if (quadtree_loaded == false && 
-	  		((this->sortedWordObjectList[ii].font_size < quad_fsize_cutoff && ii > quad_minnum_cutoff)
+	  		((this->sortedvtkQtWordleWordObjectList[ii].font_size < quad_fsize_cutoff && ii > quad_minnum_cutoff)
 	  		|| ii > quad_maxnum_cutoff))
 	  	{
 	  	double xAd = tmpRect.width() * quad_inc_factor;
 	  	double yAd = tmpRect.height() * quad_inc_factor;
 	  	QRectF quad_bounds = tmpRect.adjusted(-xAd, -yAd, xAd, yAd);
-	  	root_node = new QuadCIFmin(quad_bounds);
+	  	root_node = new vtkQtWordleQuadCIF(quad_bounds);
 	  	for (int jj=0; jj < ii; ++jj)
 	  		{
-	  		root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj);
+	  		root_node->AddRectItemMin(this->sortedvtkQtWordleWordObjectList[jj].rect_item, jj);
 	  		}
 	  	mode = TEST_QUAD;
 	  	quadtree_loaded = true;
@@ -1094,7 +1094,7 @@ void vtkQtWordleView::DoHybridLayout()
 			// Assume no overlap and collision detection turns to true if there is overlap
 			overlap = false;
 			// First test for overlap with last one intersected
-			itemCollided = this->HierarchicalRectCollision_B(this->sortedWordObjectList[ii].rect_item, this->sortedWordObjectList[lastRectIndex].rect_item);
+			itemCollided = this->HierarchicalRectCollision_B(this->sortedvtkQtWordleWordObjectList[ii].rect_item, this->sortedvtkQtWordleWordObjectList[lastRectIndex].rect_item);
 			if (itemCollided)
 				{
 				overlap = true;
@@ -1104,9 +1104,9 @@ void vtkQtWordleView::DoHybridLayout()
 				if (mode == TEST_QUAD)
 					{
 					// Using QuadCIF tree for intersection tests
-					QRectF current_rect = this->sortedWordObjectList[ii].rect_item->rect();
-					current_rect.translate(this->sortedWordObjectList[ii].rect_item->pos());
-					idxCollided = this->AllIntersectionsMin(root_node, this->sortedWordObjectList[ii].rect_item, current_rect, lastRectIndex);
+					QRectF current_rect = this->sortedvtkQtWordleWordObjectList[ii].rect_item->rect();
+					current_rect.translate(this->sortedvtkQtWordleWordObjectList[ii].rect_item->pos());
+					idxCollided = this->AllIntersectionsMin(root_node, this->sortedvtkQtWordleWordObjectList[ii].rect_item, current_rect, lastRectIndex);
 					if (idxCollided >= 0)
 						{
 						overlap = true;
@@ -1120,7 +1120,7 @@ void vtkQtWordleView::DoHybridLayout()
 						{
 						if (jj == lastRectIndex)
 							continue;
-						itemCollided = this->HierarchicalRectCollision_B(this->sortedWordObjectList[ii].rect_item, this->sortedWordObjectList[jj].rect_item);
+						itemCollided = this->HierarchicalRectCollision_B(this->sortedvtkQtWordleWordObjectList[ii].rect_item, this->sortedvtkQtWordleWordObjectList[jj].rect_item);
 						if (itemCollided)
 							{
 							overlap = true;
@@ -1136,23 +1136,23 @@ void vtkQtWordleView::DoHybridLayout()
 				// Update word position in place
 				if (this->LayoutPathShape == vtkQtWordleView::CIRCULAR_PATH)
 					{
-					this->UpdateArchPositionSpirals(&this->sortedWordObjectList[ii]);
+					this->UpdateArchPositionSpirals(&this->sortedvtkQtWordleWordObjectList[ii]);
 					}
 				else
 					{
-					this->UpdateSquarePositionSpirals(&this->sortedWordObjectList[ii]);
+					this->UpdateSquarePositionSpirals(&this->sortedvtkQtWordleWordObjectList[ii]);
 					}
-				this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
+				this->sortedvtkQtWordleWordObjectList[ii].rect_item->setPos(this->sortedvtkQtWordleWordObjectList[ii].pos.X(),this->sortedvtkQtWordleWordObjectList[ii].pos.Y());
 				}
 			}
 			
-		this->sortedWordObjectList[ii].rect_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());
-		this->sortedWordObjectList[ii].path_item->setPos(this->sortedWordObjectList[ii].pos.X(),this->sortedWordObjectList[ii].pos.Y());	
-		this->scene->addItem(this->sortedWordObjectList[ii].path_item);
+		this->sortedvtkQtWordleWordObjectList[ii].rect_item->setPos(this->sortedvtkQtWordleWordObjectList[ii].pos.X(),this->sortedvtkQtWordleWordObjectList[ii].pos.Y());
+		this->sortedvtkQtWordleWordObjectList[ii].path_item->setPos(this->sortedvtkQtWordleWordObjectList[ii].pos.X(),this->sortedvtkQtWordleWordObjectList[ii].pos.Y());	
+		this->scene->addItem(this->sortedvtkQtWordleWordObjectList[ii].path_item);
 		
 		if (mode == TEST_QUAD)
 			{
-			// Increase QuadCIFmin size if placement will take new word out of bounds
+			// Increase vtkQtWordleQuadCIF size if placement will take new word out of bounds
 			if (tmpRect.x() < root_node->frame.x() ||
 					tmpRect.y() < root_node->frame.y() ||
 					tmpRect.x() + tmpRect.width() > root_node->frame.x() + root_node->frame.width() ||
@@ -1161,16 +1161,16 @@ void vtkQtWordleView::DoHybridLayout()
 				double xAd = tmpRect.width() * quad_inc_factor;
 				double yAd = tmpRect.height() * quad_inc_factor;
 				QRectF quad_bounds = tmpRect.adjusted(-xAd, -yAd, xAd, yAd);
-				root_node = new QuadCIFmin(quad_bounds);
+				root_node = new vtkQtWordleQuadCIF(quad_bounds);
 				for (int jj=0; jj < ii; ++jj)
 					{
-					root_node->AddRectItemMin(this->sortedWordObjectList[jj].rect_item, jj);
+					root_node->AddRectItemMin(this->sortedvtkQtWordleWordObjectList[jj].rect_item, jj);
 					}
 				}
-			// Add current item to the QuadCIFmin tree
-			root_node->AddRectItemMin(this->sortedWordObjectList[ii].rect_item, ii);
+			// Add current item to the vtkQtWordleQuadCIF tree
+			root_node->AddRectItemMin(this->sortedvtkQtWordleWordObjectList[ii].rect_item, ii);
 			}
-		tmpRect = tmpRect.united(this->sortedWordObjectList[ii].path_item->mapRectToScene(this->sortedWordObjectList[ii].path_item->boundingRect()));
+		tmpRect = tmpRect.united(this->sortedvtkQtWordleWordObjectList[ii].path_item->mapRectToScene(this->sortedvtkQtWordleWordObjectList[ii].path_item->boundingRect()));
 		}
 
 	// Rescale to fit in view
@@ -1186,14 +1186,14 @@ void vtkQtWordleView::DoHybridLayout()
 void vtkQtWordleView::RedrawWithSameLayout()
 {
 	this->scene->setSceneRect(-300, -400, 900, 800);
-	QRectF tmpRect = this->sortedWordObjectList[0].path_item->boundingRect();
-	int word_count = std::min((int)this->sortedWordObjectList.size(), this->MaxNumberOfWords);
+	QRectF tmpRect = this->sortedvtkQtWordleWordObjectList[0].path_item->boundingRect();
+	int word_count = std::min((int)this->sortedvtkQtWordleWordObjectList.size(), this->MaxNumberOfWords);
 
 	// MAIN LOOP
 	for (int ii=0; ii < word_count; ++ii)
 	  {
-		this->scene->addItem(this->sortedWordObjectList[ii].path_item);
-		tmpRect = tmpRect.united(this->sortedWordObjectList[ii].path_item->mapRectToScene(this->sortedWordObjectList[ii].path_item->boundingRect()));
+		this->scene->addItem(this->sortedvtkQtWordleWordObjectList[ii].path_item);
+		tmpRect = tmpRect.united(this->sortedvtkQtWordleWordObjectList[ii].path_item->mapRectToScene(this->sortedvtkQtWordleWordObjectList[ii].path_item->boundingRect()));
 		}
 
 	// Rescale to fit in view
@@ -1229,7 +1229,7 @@ void vtkQtWordleView::Update()
     this->ApplyColors->Update();
 
 		this->ClearGraphicsView();
-		this->BuildWordObjectsList();
+		this->BuildvtkQtWordleWordObjectsList();
 		this->DoHybridLayout();
 
     this->LastInputMTime = d->GetMTime();
@@ -1241,7 +1241,7 @@ void vtkQtWordleView::Update()
   if (this->ApplyColors->GetMTime() > this->LastColorMTime)
     {
 		this->ClearGraphicsView();
-		this->ResetOnlyWordObjectsColors();
+		this->ResetOnlyvtkQtWordleWordObjectsColors();
 		this->RedrawWithSameLayout();
 
     this->LastColorMTime = this->ApplyColors->GetMTime();
@@ -1252,7 +1252,7 @@ void vtkQtWordleView::Update()
   if (this->GetMTime() > this->LastMTime)
     {
 		this->ClearGraphicsView();
-		this->ResetOnlyWordObjectsPositions();
+		this->ResetOnlyvtkQtWordleWordObjectsPositions();
 		this->DoHybridLayout();
 
     this->LastMTime = this->GetMTime();

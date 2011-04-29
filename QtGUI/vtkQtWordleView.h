@@ -82,10 +82,10 @@ class QFont;
 // Making this a separate public class because had trouble with
 // vector sort routine when it was private...
 //----------------------------------------------
-class WordObject
+class vtkQtWordleWordObject
 {
 public:
-  WordObject()
+  vtkQtWordleWordObject()
     {
     this->text = "";
     this->size = 0.0;
@@ -102,13 +102,13 @@ public:
     this->target_count = 1;
     this->dist = 0.0;
     }
-  ~WordObject()
+  ~vtkQtWordleWordObject()
     {
     }
   
 	const double getsize() const { return size; }
 	
-	friend std::ostream& operator <<(std::ostream &os, const WordObject &obj)
+	friend std::ostream& operator <<(std::ostream &os, const vtkQtWordleWordObject &obj)
 		{
     os.precision(2);
     os << "Text: " << obj.text << "\t";
@@ -146,20 +146,20 @@ public:
 //
 // Utility classes for QuadCIF tree
 //----------------------------------------------
-class IndexedRectItem
+class vtkQtWordleIndexedRectItem
 {
 public:
-  IndexedRectItem()
+  vtkQtWordleIndexedRectItem()
     {
     rect_item = 0;
     index = 0;
     }
-  IndexedRectItem(int idx, QGraphicsRectItem* ri)
+  vtkQtWordleIndexedRectItem(int idx, QGraphicsRectItem* ri)
     {
     index = idx;
     rect_item = ri;
     }
-  ~IndexedRectItem()
+  ~vtkQtWordleIndexedRectItem()
     {
     }
     
@@ -168,11 +168,11 @@ public:
 };
 
 //----------------------------------------------
-// This version tests QuadCIF without Btree
-class QuadCIFmin
+// QuadCIF without Btree
+class vtkQtWordleQuadCIF
 {
 public:
-  QuadCIFmin()
+  vtkQtWordleQuadCIF()
     {
     UL = 0;
     LL = 0;
@@ -180,7 +180,7 @@ public:
     LR = 0;
     }
 
-  QuadCIFmin(QRectF rect)
+  vtkQtWordleQuadCIF(QRectF rect)
     {
     UL = 0;
     LL = 0;
@@ -191,7 +191,7 @@ public:
     ymiddle = rect.y() + (rect.height()/2.0);
     }
 
-  ~QuadCIFmin()
+  ~vtkQtWordleQuadCIF()
     {
     if (UL) delete UL;
     if (LL) delete LL;
@@ -199,7 +199,7 @@ public:
     if (LR) delete LR;
     }
     
-	QList<IndexedRectItem> ItemsList; // Any items which exist at this node
+	QList<vtkQtWordleIndexedRectItem> ItemsList; // Any items which exist at this node
 
 	void AddRectItemMin(QGraphicsRectItem *rect_item, int index);
 	void AddRectItemMin(QGraphicsRectItem *rect_item, int index, QGraphicsScene* scene);
@@ -208,10 +208,10 @@ public:
 	double xmiddle;
 	double ymiddle;
 
-	QuadCIFmin* UL;
-	QuadCIFmin* LL;
-	QuadCIFmin* UR;
-	QuadCIFmin* LR;
+	vtkQtWordleQuadCIF* UL;
+	vtkQtWordleQuadCIF* LL;
+	vtkQtWordleQuadCIF* UR;
+	vtkQtWordleQuadCIF* LR;
 };
 
 // ============================================================
@@ -423,14 +423,14 @@ protected:
 	void DoHybridLayout();
 	void RedrawWithSameLayout();
   
-	void BuildWordObjectsList();
-	void ResetOnlyWordObjectsPositions();
-	void ResetOnlyWordObjectsColors();
+	void BuildvtkQtWordleWordObjectsList();
+	void ResetOnlyvtkQtWordleWordObjectsPositions();
+	void ResetOnlyvtkQtWordleWordObjectsColors();
 	bool HierarchicalRectCollision_B(QGraphicsRectItem* rectA, QGraphicsRectItem* rectB);
 
   // Description:
   // Routines for dealing with searching QuadCIF tree
-  int AllIntersectionsMin(QuadCIFmin* Tree, QGraphicsRectItem* rect_item, QRectF current_rect, int last_index);
+  int AllIntersectionsMin(vtkQtWordleQuadCIF* Tree, QGraphicsRectItem* rect_item, QRectF current_rect, int last_index);
  	bool IsBoundsIntersecting(QRectF frame, QRectF current_rect);
 
 private:
@@ -447,9 +447,9 @@ private:
   
   int OutputImageDataDimensions[2];
   
-  std::vector<WordObject> sortedWordObjectList;
-	void UpdateArchPositionSpirals(WordObject* word);
-	void UpdateSquarePositionSpirals(WordObject* word);
+  std::vector<vtkQtWordleWordObject> sortedvtkQtWordleWordObjectList;
+	void UpdateArchPositionSpirals(vtkQtWordleWordObject* word);
+	void UpdateSquarePositionSpirals(vtkQtWordleWordObject* word);
   
   QPointer<QGraphicsView> View;
   QPointer<QGraphicsScene> scene;

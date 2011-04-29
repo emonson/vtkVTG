@@ -109,15 +109,6 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView.Update()
 		self.WordleView.ZoomToBounds()
 		
-# 		while(True):
-# 			self.table.Modified()
-# 			self.WordleView.Update()
-				
-		# DEBUG
-# 		self.WordleView.SetWatchLayout(True)
-# 		self.WordleView.SetWatchCollision(True)
-# 		self.WordleView.SetWatchQuadTree(True)
-# 		self.WordleView.SetWatchDelay(50000)
 
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_L:
