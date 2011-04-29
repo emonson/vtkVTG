@@ -347,17 +347,10 @@ class SimpleView(QtGui.QMainWindow):
 		for size in size_list:
 			coeffs.InsertNextValue(size)
 		
-		coeffs2 = vtk.vtkDoubleArray()
-		coeffs2.SetName('neg_coeff')
-		coeffs2.SetNumberOfComponents(1)
-		for size in size_list:
-			coeffs2.InsertNextValue(N.sqrt(size))
-		
 		# Create a table with some points in it...
 		self.table = vtk.vtkTable()
 		self.table.AddColumn(terms)
 		self.table.AddColumn(coeffs)
-		self.table.AddColumn(coeffs2)
 		
 		self.vt = vtk.vtkViewTheme()
 		lut = vtk.vtkLookupTable()
@@ -397,33 +390,25 @@ class SimpleView(QtGui.QMainWindow):
 		self.WordleView.SetFontFamily("Rockwell")
 		self.WordleView.SetFontStyle(vtkvtg.vtkQtWordleView.StyleNormal)
 		self.WordleView.SetFontWeight(99)
+		
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.HORIZONTAL)
 		self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_HORIZONTAL)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.HALF_AND_HALF)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.MOSTLY_VERTICAL)
 		# self.WordleView.SetOrientation(vtkvtg.vtkQtWordleView.VERTICAL)
 
-		QtCore.QObject.connect(self.ui.actionExit, QtCore.SIGNAL("triggered()"), self.fileExit)
+		self.WordleView.SetLayoutPathShape(vtkvtg.vtkQtWordleView.CIRCULAR_PATH)
+		# self.WordleView.SetLayoutPathShape(vtkvtg.vtkQtWordleView.SQUARE_PATH)
 
 		self.WordleView.Update()
 		self.WordleView.ZoomToBounds()
 				
-		# DEBUG
-# 		self.WordleView.SetWatchLayout(True)
-# 		self.WordleView.SetWatchCollision(True)
-# 		self.WordleView.SetWatchQuadTree(True)
-# 		self.WordleView.SetWatchDelay(50000)
 		self.color_by_array = True
 		self.font_flag = True
 
+		QtCore.QObject.connect(self.ui.actionExit, QtCore.SIGNAL("triggered()"), self.fileExit)
 
-	@QtCore.pyqtSlot()
-	def on_pushButton_clicked(self):
-		self.wordFreqListFromText(str(self.ui.textEdit.toPlainText()))
-		self.buildWordObjectsList()
-		self.clearGraphicsView()
-		self.doLayout()
-	
+
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_Space:
 			if event.modifiers() == QtCore.Qt.NoModifier:
@@ -445,23 +430,7 @@ class SimpleView(QtGui.QMainWindow):
 		# Write PNG (n)
 		# Trying to use a integer-based QImage
 		if event.key() == QtCore.Qt.Key_N:
-			scene = self.WordleView.GetScene()
-			rectf = QtCore.QRectF(scene.sceneRect())
-			width = rectf.width()
-			height = rectf.height()
-			if (width > height):
-				diff = (width-height)/2.0
-				rectf.adjust(0,-diff,0,diff)
-			else:
-				diff = (height-width)/2.0
-				rectf.adjust(-diff,0,diff,0)
-			image = QtGui.QImage(256,256,QtGui.QImage.Format_ARGB32)
-			image.fill(QtGui.QColor(255,255,255,255).rgba())
-			painter = QtGui.QPainter(image)
-			painter.setRenderHint(QtGui.QPainter.Antialiasing)
-			scene.render(painter, QtCore.QRectF(image.rect()), rectf)
-			painter.end()
-			image.save("out.png")
+			self.WordleView.SaveImage("out.png")
 		
 		# Grab ImageData (i)
 		if event.key() == QtCore.Qt.Key_I:
@@ -474,26 +443,12 @@ class SimpleView(QtGui.QMainWindow):
 		
 		# Write PDF (p)
 		if event.key() == QtCore.Qt.Key_P:
-			scene = self.WordleView.GetScene()
-			printer = QtGui.QPrinter()
-			printer.setOutputFormat(QtGui.QPrinter.PdfFormat)
-			printer.setOutputFileName("out.pdf")
-			pdfPainter = QtGui.QPainter(printer)
-			scene.render(pdfPainter)
-			pdfPainter.end()
+			self.WordleView.SavePDF("out.pdf")
 		
 		# Write SVG (s)
-		if event.key() == QtCore.Qt.Key_S:
-			scene = self.WordleView.GetScene()
-			svggen = QtSvg.QSvgGenerator()
-			svggen.setFileName("out.svg")
-			svggen.setSize(QtCore.QSize(600, 600))
-			svggen.setViewBox(QtCore.QRect(0, 0, 600, 600))
-			svggen.setTitle("SVG Generator Example Drawing")
-			svggen.setDescription("An SVG drawing created by the SVG Generator")
-			svgPainter = QtGui.QPainter(svggen)
-			scene.render(svgPainter)
-			svgPainter.end()
+		# SVG generation not compiled in by default...
+		# if event.key() == QtCore.Qt.Key_S:
+		# 	self.WordleView.SaveSVG("out.svg")
 	
 		# Switch only colors
 		if event.key() == QtCore.Qt.Key_C:
@@ -513,7 +468,6 @@ class SimpleView(QtGui.QMainWindow):
 		
 	def fileExit(self):
 
-		# Usually would use the qApp global variable qApp.quit(), but wasn't working...
 		QtGui.QApplication.instance().quit()
 
 if __name__ == "__main__":
