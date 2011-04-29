@@ -12,18 +12,40 @@
      PURPOSE.  See the above copyright notice for more information.
 
 =========================================================================*/
-/*-------------------------------------------------------------------------
-  Copyright 2008 Sandia Corporation.
-  Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation,
-  the U.S. Government retains certain rights in this software.
--------------------------------------------------------------------------*/
-// .NAME vtkQtWordleView - A VTK view that displays the annotations
-//    on its annotation link.
+/**********************************************************************
+ This source file is part of the Titan Toolkit
+
+ This source code is released under the New BSD License.
+ **********************************************************************/
+// .NAME vtkQtWordleView - A vtkView that displays a tag cloud in the
+// spirit of a Wordle (www.wordle.net)
 //
 // .SECTION Description
-// vtkQtWordleView is a VTK view using an underlying QTableView. 
+// vtkQtWordleView is a vtkView for displaying a tag or word cloud
+// in the spirit of a Wordle (www.wordle.net), but using its own C++
+// implementation of the algorithms spelled out in Viegas, Wattenberg
+// & Feinberg, "Participatory Visualization with Wordle" (2009).
+// 
+// The view takes in a table of terms (strings) and weights (doubles).
+// The terms are then layed out in a compact fashion according to
+// various options, with the size of the terms proportional to the
+// weight values. Terms can also be colored by an array (table column)
+// using a lookup table passed in through the PointLookupTable of
+// a vtkViewTheme.
+// 
+// Qt is used for its font handling. Almost any font installed on your
+// system can be used if you correctly specify the "family" name, style
+// and weight. There is a utility method, GetAllFontFamilies, which you
+// can pass a vtkStringArray and it will fill it with valid family
+// names.
+// 
+// Besides displaying the view in a Qt-based application, you can
+// just use vtkQtInitialization to create a QtApplication instance
+// and then use this class to generate vtkImageData, PNG or PDF
+// output.
 //
 // .SECTION Thanks
+// Thanks to Jonathan Feinberg for developing the original Wordle.
 
 #ifndef __vtkQtWordleView_h
 #define __vtkQtWordleView_h
@@ -278,11 +300,6 @@ public:
   vtkGetMacro(FieldType, int);
   void SetFieldType(int);
   
-  // ==============================================
-  // TODO: Need to change this so it sets a flag so Update knows
-  //   to rebuild word objects vector when any important properties
-  //   are updated!!!
-
   // Description:
   // The array to use for terms that will be place in Wordle
   void SetTermsArrayName(const char* name);
@@ -299,20 +316,26 @@ public:
   const char* GetColorArrayName();
   
   // Description:
-  // Whether to color words.  Default is off.
+  // Whether to color words according to a lookup table.
+  // Default is off.
   void SetColorByArray(bool vis);
   bool GetColorByArray();
   vtkBooleanMacro(ColorByArray, bool);
 
-  // TODO: Should also add a routine where the colors are
-  //   changed and same positions redrawn if lookup table
-  //   or color array changes...
+  // Description:
+  // View theme that will be used for coloring.
+  // PointColor will be used for default term color.
+  // PointLookupTable will be used for term color when
+  // ColorByArray is True. BackgroundColor is used
+  // for view background color.
   virtual void ApplyViewTheme(vtkViewTheme* theme);
   
   // Description:
   // Set/Get the font family name to be used in the Wordle. FontFamilyExists
   // is used to probe whether the Qt font database includes a given font family.
-  // Examples include "Adobe Caslon Pro", "Palatino", "Rockwell"
+  // Or, a vtkStringArray can be passed to GetAllFontFamilies() to get back
+  // a list of all possible valid values.
+  // Examples include "Adobe Caslon Pro", "Palatino", "Rockwell".
   void SetFontFamily(const char* name);
   const char* GetFontFamily();
   bool FontFamilyExists(const char* name);
@@ -351,8 +374,8 @@ public:
   // Description:
   // Set the power relationship between size array value
   // and font size. (size/max_size)^power
-  // Traditional wordles use 1.0 (default here). Size value proportional to 
-  // area (for words of the same length) would be use 0.5. 
+  // Traditional wordles use 1.0 (default here). Size value proportional to
+  // area (for words of the same length) would be use 0.5
   // Some people like something in between.
   vtkGetMacro(WordSizePower, double);
   vtkSetMacro(WordSizePower, double);
@@ -363,13 +386,14 @@ public:
   vtkSetMacro(LayoutPathShape, int);
   
   // Description:
-  // Output routines for SVD, PDF, PNG given a file name
-  // The PNG output uses the same OutputImageDimensions
-  // as GetImageData().
-  // SVG functionality requires extra Qt libraries from the rest...
-  // void SaveSVG(char* filename);
+  // Output routines for PDF or Image given a file name.
+  // The Image output uses the same OutputImageDimensions
+  // as GetImageData(). SaveImage() uses QImage->save()
+  // which will try to guess the format from the file name
+  // extension, or you can pass a valid format string.
+  // E.g. "PNG"
   void SavePDF(char* filename);
-  void SavePNG(char* filename, const char* format=0);
+  void SaveImage(char* filename, const char* format=0);
 
   // Description:
   // DEBUG
@@ -418,7 +442,12 @@ public:
 
   // ==============================================
 
+  // Description:
+  // Zoom view to outer bounds of the Wordle.
   void ZoomToBounds();
+  
+  // Description:
+  // Get the QGraphicsScene for the view.
   QGraphicsScene* GetScene();
   
   // Description:
@@ -447,12 +476,19 @@ protected:
 	void ResetOnlyWordObjectsColors();
 	bool HierarchicalRectCollision_B(QGraphicsRectItem* rectA, QGraphicsRectItem* rectB);
 
-  // Description
+  // Description:
   // Routines for dealing with searching QuadCIF tree
   int AllIntersectionsMin(QuadCIFmin* Tree, QGraphicsRectItem* rect_item, QRectF current_rect, int last_index);
  	bool IsBoundsIntersecting(QRectF frame, QRectF current_rect);
 
 private:
+  // Description:
+  // Calling Update on the view will regenerate all of the internal
+  // data if the input or size array have changed. This takes the longest. 
+  // If only the view itself is Modified, then positions will be reset, but
+  // not orientation. This is faster than regenerating the whole word list.
+  // Changing color settings will keep the same layout and only update the
+  // colors, which is very fast.
   unsigned long LastInputMTime;
   unsigned long LastMTime;
   unsigned long LastColorMTime;

@@ -774,7 +774,7 @@ void vtkQtWordleView::SavePDF(char* filename)
 }
 
 //----------------------------------------------------------------------------
-void vtkQtWordleView::SavePNG(char* filename, const char* format)
+void vtkQtWordleView::SaveImage(char* filename, const char* format)
 {
 	this->Update();
 	
