@@ -191,18 +191,6 @@ public:
     ymiddle = rect.y() + (rect.height()/2.0);
     }
 
-  QuadCIFmin(QRectF rect, QGraphicsScene* scene)
-    {
-    UL = 0;
-    LL = 0;
-    UR = 0;
-    LR = 0;
-    frame = rect;
-    xmiddle = rect.x() + (rect.width()/2.0);
-    ymiddle = rect.y() + (rect.height()/2.0);
-		scene->addRect(frame, QPen(QBrush(QColor(0,0,0)), 1.0));
-    }
-
   ~QuadCIFmin()
     {
     if (UL) delete UL;
@@ -394,53 +382,12 @@ public:
   // E.g. "PNG"
   void SavePDF(char* filename);
   void SaveImage(char* filename, const char* format=0);
-
-  // Description:
-  // DEBUG
-  // Set watch layout to true for debugging. Slows it all way
-  // down and lets you watch the path each word is taking.
-  vtkSetMacro(WatchLayout, bool);
-
-  // Description:
-  // DEBUG
-  // Set watch layout to true for debugging. Slows it all way
-  // down and lets you watch the path each word is taking.
-  vtkSetMacro(WatchCollision, bool);
-
-  // Description:
-  // DEBUG
-  // Extra delay in µs to add to stepping when watching layout
-  vtkSetMacro(WatchDelay, int);
   
   // Description:
-  // DEBUG
-  // View QuadCIF tree in scene for debugging
-  vtkSetMacro(WatchQuadTree, bool);
-
-  // Description:
-  // DEBUG
-  // Layout parameters
-	vtkSetMacro( xbuffer, float );
-	vtkSetMacro( ybuffer, float );
-	vtkSetMacro( randSpread, float );
-	vtkSetMacro( thetaMult, float );
-	vtkSetMacro( thetaPow, float );
-	vtkSetMacro( rMult, float );
-	vtkSetMacro( rPow, float );
-	vtkSetMacro( dMult, float );
-	vtkSetMacro( dPow, float );
-	vtkGetMacro( xbuffer, float );
-	vtkGetMacro( ybuffer, float );
-	vtkGetMacro( randSpread, float );
-	vtkGetMacro( thetaMult, float );
-	vtkGetMacro( thetaPow, float );
-	vtkGetMacro( rMult, float );
-	vtkGetMacro( rPow, float );
-	vtkGetMacro( dMult, float );
-	vtkGetMacro( dPow, float );
-
-
-  // ==============================================
+  // SaveSVG commented out since it requires an extra QtSvg package
+  // to compile, so I didn't want it on by default.
+  // Saving it in the code for reference.
+  // void SaveSVG(char* filename);
 
   // Description:
   // Zoom view to outer bounds of the Wordle.
@@ -463,12 +410,17 @@ protected:
 
   void ClearGraphicsView();
   
+  // Description:
+  // Utility conversion routines
   vtkVector2f CartesianToPolar(vtkVector2f posArr);
-	vtkVector2f PolarToCartesian(vtkVector2f posArr);	
+	vtkVector2f PolarToCartesian(vtkVector2f posArr);
+	
+	// Description:
+	// Small randomization on initial positions produces randomness
+	// on final layout.
 	vtkVector2f MakeInitialPosition();
 	
 	void DoHybridLayout();
-	void DoCheckAllLayout();
 	void RedrawWithSameLayout();
   
 	void BuildWordObjectsList();
@@ -512,11 +464,6 @@ private:
   int orientation;
   double WordSizePower;
   int LayoutPathShape;
-  
-  bool WatchLayout;
-  bool WatchCollision;
-  bool WatchQuadTree;
-  int WatchDelay;
   
 	float xbuffer;
 	float ybuffer;
