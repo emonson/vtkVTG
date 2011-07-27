@@ -650,14 +650,26 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
   // Set input to reslice filter
   this->reslice->SetInput(this->AxisImageStack);
   this->reslice->Modified();
-	// Set range of blue-white-red lut to range of whole stack
-	double i_range[2];
-	this->AxisImageStack->GetPointData()->GetArray("DiffIntensity")->GetRange(i_range);
-	double i_abs[2] = {fabs(i_range[0]),fabs(i_range[1])};
-	double i_ext = (i_abs[0] >= i_abs[1]) ? i_abs[0] : i_abs[1];
-	if (i_ext < 1e-10) i_ext = 1024;
-  this->lut->SetRange(-i_ext, i_ext);
-  this->lut->Modified();
+  
+  // If the images are already RGB, then disable LUT on vtkImageMapToColors
+  // and it will pass the images unchnaged (since they are already uchar type)
+  if (this->AxisImageStack->GetPointData()->GetScalars()->GetNumberOfComponents() > 1)
+  	{
+  	this->color->SetLookupTable(NULL);
+  	}
+  else
+  	{
+  	this->color->SetLookupTable(this->lut);
+		// Set range of blue-white-red lut to range of whole stack
+		double i_range[2];
+		// this->AxisImageStack->GetPointData()->GetArray("DiffIntensity")->GetRange(i_range);
+		this->AxisImageStack->GetPointData()->GetScalars()->GetRange(i_range);
+		double i_abs[2] = {fabs(i_range[0]),fabs(i_range[1])};
+		double i_ext = (i_abs[0] >= i_abs[1]) ? i_abs[0] : i_abs[1];
+		if (i_ext < 1e-10) i_ext = 1024;
+		this->lut->SetRange(-i_ext, i_ext);
+		this->lut->Modified();
+  	}
   // Gather number of images and image dimensions (extent)
   int extent[6];
   this->AxisImageStack->GetWholeExtent(extent);
