@@ -146,9 +146,12 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
     }
   else
     {
-    // painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
-    // painter->DrawImage(bounds[0].X(), bounds[0].Y()+20, this->TipImage);
-    painter->DrawImage(bounds[0].X(), bounds[0].Y(), this->ScalingFactor, this->TipImage);
+    if (this->TipImage)
+    	{
+			// painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
+			// painter->DrawImage(bounds[0].X(), bounds[0].Y()+20, this->TipImage);
+			painter->DrawImage(bounds[0].X(), bounds[0].Y(), this->ScalingFactor, this->TipImage);
+    	}
     }
 
   return true;
@@ -158,14 +161,22 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 void vtkTooltipImageItem::SetImageIndex(int imageId)
 {
 	this->TipImage = this->GetImageAtIndex(imageId);
-	this->TipImage->UpdateInformation();
-	int extent[6];
-
-	this->TipImage->GetWholeExtent(extent);
+	if (this->TipImage)
+		{
+		this->TipImage->UpdateInformation();
+		int extent[6];
 	
-	// Z should be zero...
-	this->ImageWidth = this->ScalingFactor*(float)extent[1];
-	this->ImageHeight = this->ScalingFactor*(float)extent[3];
+		this->TipImage->GetWholeExtent(extent);
+		
+		// Z should be zero...
+		this->ImageWidth = this->ScalingFactor*(float)extent[1];
+		this->ImageHeight = this->ScalingFactor*(float)extent[3];
+		}
+	else
+		{
+		this->ImageWidth = 2;
+		this->ImageHeight = 2;
+		}
 }
 
 //-----------------------------------------------------------------------------
