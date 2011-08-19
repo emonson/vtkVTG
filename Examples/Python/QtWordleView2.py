@@ -59,9 +59,9 @@ class SimpleView(QtGui.QMainWindow):
 		
 		self.basis_idx = 0
 		
-		coeffs = VN.numpy_to_vtk(self.WavBases[self.basis_idx][::-1,0]*100, deep=True)
+		coeffs = VN.numpy_to_vtk(self.WavBases[self.basis_idx][:,0]*100, deep=True)
 		coeffs.SetName('coefficient')
-		c_sign = VN.numpy_to_vtk(N.sign(self.WavBases[self.basis_idx][::-1,0]), deep=True)
+		c_sign = VN.numpy_to_vtk(N.sign(self.WavBases[self.basis_idx][:,0]), deep=True)
 		c_sign.SetName('sign')
 		
 		# Create a table with some points in it...
@@ -113,9 +113,9 @@ class SimpleView(QtGui.QMainWindow):
 	def keyPressEvent(self, event):
 		if event.key() == QtCore.Qt.Key_L:
 			self.basis_idx += 1
-			coeffs = VN.numpy_to_vtk(self.WavBases[self.basis_idx][::-1,0]*100, deep=True)
+			coeffs = VN.numpy_to_vtk(self.WavBases[self.basis_idx][:,0]*100, deep=True)
 			coeffs.SetName('coefficient')
-			c_sign = VN.numpy_to_vtk(N.sign(self.WavBases[self.basis_idx][::-1,0]), deep=True)
+			c_sign = VN.numpy_to_vtk(N.sign(self.WavBases[self.basis_idx][:,0]), deep=True)
 			c_sign.SetName('sign')
 			
 			self.table.RemoveColumn(2)

@@ -36,6 +36,7 @@ class vtkMatrix4x4;
 class vtkImageReslice;
 class vtkLookupTable;
 class vtkImageMapToColors;
+class vtkStringArray;
 
 class VTK_CHARTS_EXPORT vtkTooltipImageItem : public vtkTooltipItem
 {
@@ -57,7 +58,7 @@ public:
   vtkSetMacro(ShowImage, bool);
   virtual void SetScalingFactor(float factor);
   virtual void SetTargetSize(int pixels);
-  
+
   // Description
   // ImageData associated with plot, which the tooltip in the chartXY will get
   // a slice of to display when hovering over points (needs to be just 2d)
@@ -65,11 +66,17 @@ public:
   virtual int GetNumberOfImages();
   virtual void SetImageIndex(int imageId);
   virtual vtkImageData* GetImageAtIndex(int imageId);
-  
+
+  // Description
+  // Equivalent of ImageStack, but text associated with Chart points
+  // (e.g. titles of documents)
+  virtual void SetTextStack(vtkStringArray*);
+  virtual void SetTextIndex(int textId);
+
   // Description
   // Set lookup table for the tooltip images
   virtual void SetLookupTable(vtkLookupTable *lut);
-  
+
 //BTX
 protected:
   vtkTooltipImageItem();
@@ -87,6 +94,7 @@ protected:
   // ImageData associated with plot, which the tooltip in the chartXY will get
   // a slice of to display when hovering over points
   vtkImageData* ImageStack;
+  vtkStringArray* TextStack;
   int NumImages;
 
   // Description

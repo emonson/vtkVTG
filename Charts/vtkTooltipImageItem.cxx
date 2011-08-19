@@ -26,6 +26,7 @@
 #include "vtkLookupTable.h"
 #include "vtkImageMapToColors.h"
 #include "vtkScalarsToColors.h"
+#include "vtkStringArray.h"
 #include "vtkPointData.h"
 
 #include "vtkStdString.h"
@@ -48,6 +49,7 @@ vtkTooltipImageItem::vtkTooltipImageItem()
   this->ImageHeight = 0.0;
 
   this->ImageStack = NULL;
+  this->TextStack = NULL;
   this->NumImages = 0;
 
   // ImageSlicing for TooltipImageItem
@@ -94,7 +96,7 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 {
   // This is where everything should be drawn, or dispatched to other methods.
   vtkDebugMacro(<< "Paint event called in vtkTooltipImageItem.");
-  
+
   if (!this->Visible)
     {
     return false;
@@ -135,7 +137,7 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 			bounds[0].SetY(this->Scene->GetViewHeight()-bounds[1].Y());
 			}
     }
-    
+
   if (!this->ShowImage)
     {
 		// Draw a rectangle as background, and then center our text in there
@@ -164,6 +166,19 @@ void vtkTooltipImageItem::SetImageIndex(int imageId)
 	// Z should be zero...
 	this->ImageWidth = this->ScalingFactor*(float)extent[1];
 	this->ImageHeight = this->ScalingFactor*(float)extent[3];
+}
+
+//-----------------------------------------------------------------------------
+void vtkTooltipImageItem::SetTextIndex(int textId)
+{
+	if (this->TextStack && (textId >= 0) && (textId < this->TextStack->GetNumberOfValues()))
+		{
+		this->Text = this->TextStack->GetValue(textId);
+		}
+	else
+		{
+		this->Text = "";
+		}
 }
 
 
@@ -224,9 +239,18 @@ void vtkTooltipImageItem::SetImageStack(vtkImageData* stack)
   this->ImageStack->UpdateInformation();
   this->ImageStack->GetWholeExtent(extent);
   this->NumImages = (extent[5]-extent[4]+1);
-  
+
   // Default to 0 index image so there's something in TipImage
   this->SetImageIndex(0);
+}
+
+//-----------------------------------------------------------------------------
+void vtkTooltipImageItem::SetTextStack(vtkStringArray* stack)
+{
+  this->TextStack = stack;
+
+  // Default to 0 index image so there's something in TipImage
+  this->SetTextIndex(0);
 }
 
 //-----------------------------------------------------------------------------
@@ -244,9 +268,9 @@ vtkImageData* vtkTooltipImageItem::GetImageAtIndex(int imageId)
     this->ImageStack->GetOrigin(origin);
 
     double center[3];
-    center[0] = origin[0] + spacing[0] * 0.5 * (extent[0] + extent[1]); 
-    center[1] = origin[1] + spacing[1] * 0.5 * (extent[2] + extent[3]); 
-    center[2] = origin[2] + spacing[2] * 0.5 * (extent[4] + extent[5]); 
+    center[0] = origin[0] + spacing[0] * 0.5 * (extent[0] + extent[1]);
+    center[1] = origin[1] + spacing[1] * 0.5 * (extent[2] + extent[3]);
+    center[2] = origin[2] + spacing[2] * 0.5 * (extent[4] + extent[5]);
 
     // Set the point through which to slice
     vtkMatrix4x4 *resliceAxes = reslice->GetResliceAxes();
@@ -255,9 +279,9 @@ vtkImageData* vtkTooltipImageItem::GetImageAtIndex(int imageId)
     resliceAxes->SetElement(1, 3, center[1]);
     resliceAxes->SetElement(2, 3, zpos);
     this->reslice->Modified();
-    
+
     this->color->Update();
-    
+
     return this->color->GetOutput();
     }
   else
