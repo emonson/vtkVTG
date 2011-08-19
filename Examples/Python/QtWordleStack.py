@@ -108,6 +108,7 @@ for ii in range(20):
 	table.Modified()
 	
 	img = vtk.vtkImageData()
+	print WordleView.GetImageData()
 	img.DeepCopy(WordleView.GetImageData())
 	imgAppend.AddInput(img)
 

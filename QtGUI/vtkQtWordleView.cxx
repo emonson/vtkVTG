@@ -44,6 +44,7 @@
 #include "vtkDataSetAttributes.h"
 #include "vtkDoubleArray.h"
 #include "vtkImageData.h"
+#include "vtkImageGaussianSmooth.h"
 #include "vtkInformation.h"
 #include "vtkObjectFactory.h"
 #include "vtkQImageToImageSource.h"
@@ -153,6 +154,10 @@ vtkQtWordleView::vtkQtWordleView()
   OutputImageDataDimensions[0] = 256;
   OutputImageDataDimensions[1] = 256;
   this->QImageToImage = vtkSmartPointer<vtkQImageToImageSource>::New();
+  this->ImageGaussSmooth = vtkSmartPointer<vtkImageGaussianSmooth>::New();
+  this->ImageGaussSmooth->SetInputConnection(this->QImageToImage->GetOutputPort(0));
+  this->ImageGaussSmooth->SetDimensionality(2);
+  this->ImageGaussSmooth->SetStandardDeviations(1.0, 1.0, 1.0);
 
   this->bigFontSize = 100;
   this->MaxNumberOfWords = 150;
@@ -201,6 +206,12 @@ vtkQtWordleView::~vtkQtWordleView()
 QWidget* vtkQtWordleView::GetWidget()
 {
   return this->View;
+}
+
+//----------------------------------------------------------------------------
+void vtkQtWordleView::SetRandomSeed(unsigned int seed)
+{
+  srand(seed);
 }
 
 //----------------------------------------------------------------------------
@@ -575,7 +586,7 @@ namespace
 }
 
 //----------------------------------------------------------------------------
-vtkImageData* vtkQtWordleView::GetImageData()
+vtkImageData* vtkQtWordleView::GetImageData(bool antialias = false)
 {
 	this->Update();
 	
@@ -616,8 +627,16 @@ vtkImageData* vtkQtWordleView::GetImageData()
 	
 	this->QImageToImage->SetQImage(qimage);
 	this->QImageToImage->Update();
+	this->ImageGaussSmooth->Update();
 	
-	return vtkImageData::SafeDownCast(this->QImageToImage->GetOutputDataObject(0));
+	if (antialias)
+	{
+		return vtkImageData::SafeDownCast(this->ImageGaussSmooth->GetOutputDataObject(0));
+	}
+	else
+	{
+		return vtkImageData::SafeDownCast(this->QImageToImage->GetOutputDataObject(0));
+	}
 }
 
 //----------------------------------------------------------------------------

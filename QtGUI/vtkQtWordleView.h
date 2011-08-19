@@ -71,6 +71,7 @@
 class vtkApplyColors;
 class vtkDataObjectToTable;
 class vtkImageData;
+class vtkImageGaussianSmooth;
 class vtkQImageToImageSource;
 class vtkStringArray;
 class QFontDatabase;
@@ -352,7 +353,7 @@ public:
   // output from GetImageData(). Default is 256, 256.
   vtkSetVector2Macro(OutputImageDataDimensions, int);
   vtkGetVectorMacro(OutputImageDataDimensions, int, 2);
-  vtkImageData* GetImageData();
+  vtkImageData* GetImageData(bool);
 
   // Description:
   // Set the (max) number of words to include in the wordle
@@ -396,6 +397,9 @@ public:
   // Description:
   // Get the QGraphicsScene for the view.
   QGraphicsScene* GetScene();
+
+  // Description
+  void SetRandomSeed(unsigned int);
   
   // Description:
   // Updates the view.
@@ -492,6 +496,7 @@ private:
   vtkSmartPointer<vtkDataObjectToTable> DataObjectToTable;
   vtkSmartPointer<vtkApplyColors> ApplyColors;
   vtkSmartPointer<vtkQImageToImageSource> QImageToImage;
+  vtkSmartPointer<vtkImageGaussianSmooth> ImageGaussSmooth;
 
   vtkQtWordleView(const vtkQtWordleView&);  // Not implemented.
   void operator=(const vtkQtWordleView&);  // Not implemented.
