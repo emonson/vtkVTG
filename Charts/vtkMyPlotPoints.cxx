@@ -185,7 +185,7 @@ bool compVector3fX(const vtkVector3f& v1, const vtkVector3f& v2)
 }
 
 //-----------------------------------------------------------------------------
-int vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
+vtkIdType vtkMyPlotPoints::GetNearestPoint(const vtkVector2f& point,
                                     const vtkVector2f& tol,
                                     vtkVector2f* location)
 {

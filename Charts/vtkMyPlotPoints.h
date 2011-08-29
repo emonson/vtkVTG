@@ -60,7 +60,7 @@ public:
   // Description:
   // Function to query a plot for the nearest point to the specified coordinate.
   // This version returns the index of the point as a float in the .Z() vector3f coord.
-  virtual int GetNearestPoint(const vtkVector2f& point,
+  virtual vtkIdType GetNearestPoint(const vtkVector2f& point,
                                const vtkVector2f& tolerance,
                                vtkVector2f* location);
 

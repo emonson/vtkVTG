@@ -41,6 +41,7 @@ class vtkMatrix4x4;
 class vtkImageReslice;
 class vtkLookupTable;
 class vtkImageMapToColors;
+class vtkPassThrough;
 class vtkAxisImagePrivate;
 class vtkAxisImageItemPrivate; // Private class to keep my STL vector in...
 
@@ -210,6 +211,7 @@ private:
   // Pipeline for displaying center image
   vtkSmartPointer<vtkLookupTable> lutBW;
   vtkSmartPointer<vtkImageMapToColors> colorBW;
+  vtkSmartPointer<vtkPassThrough> passBW;
   
   // Description
   // Variables for keeping track of whether X or Y indices are being modified

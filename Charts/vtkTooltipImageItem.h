@@ -64,8 +64,8 @@ public:
   // a slice of to display when hovering over points (needs to be just 2d)
   virtual void SetImageStack(vtkImageData*);
   virtual int GetNumberOfImages();
-  virtual void SetImageIndex(int imageId);
-  virtual vtkImageData* GetImageAtIndex(int imageId);
+  virtual void SetImageIndex(vtkIdType imageId);
+  virtual vtkImageData* GetImageAtIndex(vtkIdType imageId);
 
   // Description
   // Equivalent of ImageStack, but text associated with Chart points

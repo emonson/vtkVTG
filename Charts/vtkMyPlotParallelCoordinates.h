@@ -67,7 +67,7 @@ public:
 //BTX
   // Description:
   // Function to query a plot for the nearest point to the specified coordinate.
-  virtual int GetNearestPoint(const vtkVector2f& point,
+  virtual vtkIdType GetNearestPoint(const vtkVector2f& point,
                                const vtkVector2f& tolerance,
                                vtkVector2f* location);
 //ETX

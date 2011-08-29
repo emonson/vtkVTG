@@ -53,6 +53,7 @@
 #include "vtkLookupTable.h"
 #include "vtkColorTransferFunction.h"
 #include "vtkImageMapToColors.h"
+#include "vtkPassThrough.h"
 #include "vtkPointData.h"
 #include "vtkVector.h"
 
@@ -232,9 +233,11 @@ vtkAxisImageItem::vtkAxisImageItem()
 	this->lutBW->SetRampToLinear();							// set range when colorBW intput set
 	this->lutBW->Build();
   // Map the center image through the lookup table
+  this->passBW = vtkSmartPointer<vtkPassThrough>::New();
+  // Set passBW input when CenterImage is assigned
   this->colorBW = vtkSmartPointer<vtkImageMapToColors>::New();
   this->colorBW->SetLookupTable(this->lutBW);
-	// Set input when CenterImage is assigned
+	this->colorBW->SetInputConnection(this->passBW->GetOutputPort(0));
 }
 
 //-----------------------------------------------------------------------------
@@ -650,6 +653,8 @@ void vtkAxisImageItem::SetAxisImageStack(vtkImageData* stack)
   // Set input to reslice filter
   this->reslice->SetInput(this->AxisImageStack);
   this->reslice->Modified();
+  // Problem with changin extents if don't update here.
+  this->reslice->Update();
   
   // If the images are already RGB, then disable LUT on vtkImageMapToColors
   // and it will pass the images unchnaged (since they are already uchar type)
@@ -795,9 +800,8 @@ void vtkAxisImageItem::SetCenterImage(vtkImageData* image)
 {
   this->CenterImage = image;
   this->CenterImage->UpdateInformation();
-  // Set input to colorBW filter
-  this->colorBW->SetInput(this->CenterImage);
-  this->colorBW->Modified();
+  this->passBW->SetInputConnection(this->CenterImage->GetProducerPort());
+  this->colorBW->Update();
 	// Set range of lutBW
 	double i_range[2];
 	this->CenterImage->GetPointData()->GetArray("Intensity")->GetRange(i_range);
@@ -957,7 +961,7 @@ void vtkAxisImageItem::SetCenterImageLookupTable(vtkLookupTable *lutBW)
     {
     this->lutBW = lutBW;
     this->colorBW->SetLookupTable(this->lutBW);
-    this->colorBW->Update();
+    // this->colorBW->Update();
     }
 }
 
@@ -968,7 +972,7 @@ void vtkAxisImageItem::SetAxisImagesLookupTable(vtkLookupTable *lut)
     {
     this->lut = lut;
     this->color->SetLookupTable(this->lut);
-    this->color->Update();
+    // this->color->Update();
     }
 }
 

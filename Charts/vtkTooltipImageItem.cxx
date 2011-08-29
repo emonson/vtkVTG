@@ -158,7 +158,7 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 }
 
 //-----------------------------------------------------------------------------
-void vtkTooltipImageItem::SetImageIndex(int imageId)
+void vtkTooltipImageItem::SetImageIndex(vtkIdType imageId)
 {
 	this->TipImage = this->GetImageAtIndex(imageId);
 	if (this->TipImage)
@@ -244,6 +244,8 @@ void vtkTooltipImageItem::SetImageStack(vtkImageData* stack)
   this->ImageStack->UpdateInformation();
   this->reslice->SetInput(this->ImageStack);
   this->reslice->Modified();
+  // Problem with changin extents if don't update here.
+  this->reslice->Update();
   this->lut->SetRange(this->ImageStack->GetPointData()->GetScalars()->GetRange());
   this->lut->Modified();
   int extent[6];
@@ -265,7 +267,7 @@ void vtkTooltipImageItem::SetTextStack(vtkStringArray* stack)
 }
 
 //-----------------------------------------------------------------------------
-vtkImageData* vtkTooltipImageItem::GetImageAtIndex(int imageId)
+vtkImageData* vtkTooltipImageItem::GetImageAtIndex(vtkIdType imageId)
 {
   if (this->ImageStack)
     {

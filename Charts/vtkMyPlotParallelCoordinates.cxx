@@ -490,7 +490,7 @@ void vtkMyPlotParallelCoordinates::GetBounds(double *)
 }
 
 //-----------------------------------------------------------------------------
-int vtkMyPlotParallelCoordinates::GetNearestPoint(const vtkVector2f& ,
+vtkIdType vtkMyPlotParallelCoordinates::GetNearestPoint(const vtkVector2f& ,
                                   const vtkVector2f& ,
                                   vtkVector2f* )
 {
