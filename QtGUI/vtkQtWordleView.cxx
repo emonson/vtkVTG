@@ -184,6 +184,10 @@ vtkQtWordleView::vtkQtWordleView()
   this->font->setWeight(QFont::Bold);
   
 	this->FontDatabase = new QFontDatabase();
+// 	if (this->FontDatabase->supportsThreadedFontRendering())
+// 		printf("Threaded font rendering supported!!!\n");
+// 	else
+// 		printf("Font rendering can't be done outside GUI thread! :(\n");
   
   this->FieldType = vtkQtWordleView::ROW_DATA;
   this->LastInputMTime = 0;

@@ -53,7 +53,6 @@
 #include "vtkLookupTable.h"
 #include "vtkColorTransferFunction.h"
 #include "vtkImageMapToColors.h"
-#include "vtkPassThrough.h"
 #include "vtkPointData.h"
 #include "vtkVector.h"
 
@@ -233,11 +232,9 @@ vtkAxisImageItem::vtkAxisImageItem()
 	this->lutBW->SetRampToLinear();							// set range when colorBW intput set
 	this->lutBW->Build();
   // Map the center image through the lookup table
-  this->passBW = vtkSmartPointer<vtkPassThrough>::New();
-  // Set passBW input when CenterImage is assigned
   this->colorBW = vtkSmartPointer<vtkImageMapToColors>::New();
+  // Set passBW input when CenterImage is assigned
   this->colorBW->SetLookupTable(this->lutBW);
-	this->colorBW->SetInputConnection(this->passBW->GetOutputPort(0));
 }
 
 //-----------------------------------------------------------------------------
@@ -447,6 +444,7 @@ bool vtkAxisImageItem::Paint(vtkContext2D *painter)
     
     if (this->CenterImage)
       {
+      this->colorBW->Update();
       painter->DrawImage(this->Point1[0], 
           this->Point2[1] - this->AIPrivate->aiHeight*this->AIPrivate->aiScalingFactor,
       		this->AIPrivate->aiScalingFactor,
@@ -800,15 +798,16 @@ void vtkAxisImageItem::SetCenterImage(vtkImageData* image)
 {
   this->CenterImage = image;
   this->CenterImage->UpdateInformation();
-  this->passBW->SetInputConnection(this->CenterImage->GetProducerPort());
-  this->colorBW->Update();
+  this->colorBW->SetInputConnection(this->CenterImage->GetProducerPort());
+  // this->colorBW->UpdateWholeExtent();
+  // this->colorBW->Update();
 	// Set range of lutBW
 	double i_range[2];
 	this->CenterImage->GetPointData()->GetArray("Intensity")->GetRange(i_range);
   this->lutBW->SetRange(i_range);
   this->lutBW->Modified();
   // Not calling update before draw, so do it here.
-  this->colorBW->UpdateWholeExtent();
+  // this->colorBW->UpdateWholeExtent();
   this->colorBW->Update();
 }
 
