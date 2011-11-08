@@ -239,7 +239,7 @@ void vtkMyChartXY::SetTooltipInfo(const vtkContextMouseEvent& mouse,
                                 vtkIdType segmentIndex)
 {
 	this->Tooltip->SetPosition(mouse.ScreenPos[0]+8, mouse.ScreenPos[1]+6);
-	vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetImageIndex(seriesIndex);
+	vtkTooltipImageItem::SafeDownCast(this->Tooltip)->SetIndex(seriesIndex);
 }
 
 //-----------------------------------------------------------------------------

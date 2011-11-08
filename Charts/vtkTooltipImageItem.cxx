@@ -26,7 +26,7 @@
 #include "vtkLookupTable.h"
 #include "vtkImageMapToColors.h"
 #include "vtkScalarsToColors.h"
-#include "vtkStringArray.h"
+#include "vtkUnicodeStringArray.h"
 #include "vtkPointData.h"
 
 #include "vtkStdString.h"
@@ -49,7 +49,7 @@ vtkTooltipImageItem::vtkTooltipImageItem()
   this->ImageHeight = 0.0;
 
   this->ImageStack = NULL;
-  this->TextStack = NULL;
+  this->UTextStack = NULL;
   this->NumImages = 0;
 
   // ImageSlicing for TooltipImageItem
@@ -111,7 +111,7 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 
   if (!this->ShowImage)
     {
-		painter->ComputeStringBounds(this->Text, bounds[0].GetData());
+		painter->ComputeStringBounds(this->UText, bounds[0].GetData());
 		bounds[0] = vtkVector2f(this->PositionVector.X()-5,
 														this->PositionVector.Y()-3);
 		
@@ -142,13 +142,13 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
     {
 		// Draw a rectangle as background, and then center our text in there
 		painter->DrawRect(bounds[0].X(), bounds[0].Y(), bounds[1].X(), bounds[1].Y());
-    painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
+    painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->UText);
     }
   else
     {
     if (this->TipImage)
     	{
-			// painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->Text);
+			// painter->DrawString(bounds[0].X()+5, bounds[0].Y()+3, this->UText);
 			// painter->DrawImage(bounds[0].X(), bounds[0].Y()+20, this->TipImage);
 			painter->DrawImage(bounds[0].X(), bounds[0].Y(), this->ScalingFactor, this->TipImage);
     	}
@@ -158,40 +158,40 @@ bool vtkTooltipImageItem::Paint(vtkContext2D *painter)
 }
 
 //-----------------------------------------------------------------------------
-void vtkTooltipImageItem::SetImageIndex(vtkIdType imageId)
+void vtkTooltipImageItem::SetIndex(vtkIdType idx)
 {
-	this->TipImage = this->GetImageAtIndex(imageId);
-	if (this->TipImage)
-		{
-		this->TipImage->UpdateInformation();
-		int extent[6];
-	
-		this->TipImage->GetWholeExtent(extent);
-		
-		// Z should be zero...
-		this->ImageWidth = this->ScalingFactor*(float)extent[1];
-		this->ImageHeight = this->ScalingFactor*(float)extent[3];
+	if (this->ShowImage)
+	  {
+		this->TipImage = this->GetImageAtIndex(idx);
+		if (this->TipImage)
+			{
+			this->TipImage->UpdateInformation();
+			int extent[6];
+
+			this->TipImage->GetWholeExtent(extent);
+
+			// Z should be zero...
+			this->ImageWidth = this->ScalingFactor*(float)extent[1];
+			this->ImageHeight = this->ScalingFactor*(float)extent[3];
+			}
+		else
+			{
+			this->ImageWidth = 2;
+			this->ImageHeight = 2;
+			}
 		}
 	else
 		{
-		this->ImageWidth = 2;
-		this->ImageHeight = 2;
+		if (this->UTextStack && (idx >= 0) && (idx < this->UTextStack->GetNumberOfTuples()))
+			{
+			this->UText = this->UTextStack->GetValue(idx);
+			}
+		else
+			{
+			this->UText = vtkUnicodeString::from_utf8("");
+			}
 		}
 }
-
-//-----------------------------------------------------------------------------
-void vtkTooltipImageItem::SetTextIndex(int textId)
-{
-	if (this->TextStack && (textId >= 0) && (textId < this->TextStack->GetNumberOfValues()))
-		{
-		this->Text = this->TextStack->GetValue(textId);
-		}
-	else
-		{
-		this->Text = "";
-		}
-}
-
 
 //-----------------------------------------------------------------------------
 void vtkTooltipImageItem::SetScalingFactor(float factor)
@@ -200,13 +200,13 @@ void vtkTooltipImageItem::SetScalingFactor(float factor)
 	  {
 	  return;
 	  }
-	
+
 	this->TipImage->UpdateInformation();
 	int extent[6];
 	float scaling;
 
 	this->TipImage->GetWholeExtent(extent);
-	
+
 	// Z should be zero...
 	this->ScalingFactor = factor;
 	this->ImageWidth = factor*(float)extent[1];
@@ -226,7 +226,7 @@ void vtkTooltipImageItem::SetTargetSize(int pixels)
 	float scaling;
 
 	this->TipImage->GetWholeExtent(extent);
-	
+
 	// Z should be zero...
 	int maxdim = (extent[1] > extent[3]) ? extent[1] : extent[3];
 	scaling = (float)pixels/(float)maxdim;
@@ -240,6 +240,7 @@ void vtkTooltipImageItem::SetTargetSize(int pixels)
 //-----------------------------------------------------------------------------
 void vtkTooltipImageItem::SetImageStack(vtkImageData* stack)
 {
+  this->SetShowImage(true);
   this->ImageStack = stack;
   this->ImageStack->UpdateInformation();
   this->reslice->SetInput(this->ImageStack);
@@ -254,16 +255,17 @@ void vtkTooltipImageItem::SetImageStack(vtkImageData* stack)
   this->NumImages = (extent[5]-extent[4]+1);
 
   // Default to 0 index image so there's something in TipImage
-  this->SetImageIndex(0);
+  this->SetIndex(0);
 }
 
 //-----------------------------------------------------------------------------
-void vtkTooltipImageItem::SetTextStack(vtkStringArray* stack)
+void vtkTooltipImageItem::SetTextStack(vtkUnicodeStringArray* stack)
 {
-  this->TextStack = stack;
+  this->SetShowImage(false);
+  this->UTextStack = stack;
 
   // Default to 0 index image so there's something in TipImage
-  this->SetTextIndex(0);
+  this->SetIndex(0);
 }
 
 //-----------------------------------------------------------------------------

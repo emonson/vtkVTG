@@ -27,6 +27,7 @@
 #include "vtkTooltipItem.h"
 #include "vtkSmartPointer.h"
 #include "vtkVector.h" // Needed for vtkVector2f
+#include "vtkUnicodeString.h"
 
 class vtkPen;
 class vtkBrush;
@@ -36,7 +37,8 @@ class vtkMatrix4x4;
 class vtkImageReslice;
 class vtkLookupTable;
 class vtkImageMapToColors;
-class vtkStringArray;
+class vtkUnicodeString;
+class vtkUnicodeStringArray;
 
 class VTK_CHARTS_EXPORT vtkTooltipImageItem : public vtkTooltipItem
 {
@@ -64,14 +66,18 @@ public:
   // a slice of to display when hovering over points (needs to be just 2d)
   virtual void SetImageStack(vtkImageData*);
   virtual int GetNumberOfImages();
-  virtual void SetImageIndex(vtkIdType imageId);
   virtual vtkImageData* GetImageAtIndex(vtkIdType imageId);
 
   // Description
   // Equivalent of ImageStack, but text associated with Chart points
   // (e.g. titles of documents)
-  virtual void SetTextStack(vtkStringArray*);
-  virtual void SetTextIndex(int textId);
+  virtual void SetTextStack(vtkUnicodeStringArray*);
+
+  // Description
+  // The same call works for either Image or Text display
+  // so can make a common call from ChartXY::SetTooltipInfo
+  // and actual display will be controlled by external flag set.
+  virtual void SetIndex(vtkIdType idx);
 
   // Description
   // Set lookup table for the tooltip images
@@ -94,7 +100,8 @@ protected:
   // ImageData associated with plot, which the tooltip in the chartXY will get
   // a slice of to display when hovering over points
   vtkImageData* ImageStack;
-  vtkStringArray* TextStack;
+  vtkUnicodeStringArray* UTextStack;
+  vtkUnicodeString UText;
   int NumImages;
 
   // Description
