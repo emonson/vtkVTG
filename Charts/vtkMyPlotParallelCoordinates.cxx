@@ -162,8 +162,9 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
   // If there is a marker style, then draw the marker for each point too
   if (this->MarkerStyle && this->Points)
     {
-    this->GeneraterMarker(static_cast<int>(width));
-    painter->ApplyBrush(this->Brush);
+    this->GeneraterMarker(vtkContext2D::FloatToInt(width));
+    painter->ApplyPen(this->GetPen());
+    painter->ApplyBrush(this->GetBrush());
     painter->GetPen()->SetWidth(width);
     painter->DrawPointSprites(this->Marker, this->Points);
     }
@@ -202,8 +203,9 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
 
   // Draw all of the points
   // TODO: This needs to be updated for colored markers
-  this->GeneraterMarker(static_cast<int>(width));
-  painter->ApplyBrush(this->Brush);
+  this->GeneraterMarker(vtkContext2D::FloatToInt(width));
+  painter->ApplyPen(this->GetPen());
+  painter->ApplyBrush(this->GetBrush());
   painter->GetPen()->SetWidth(width);
   painter->GetPen()->SetOpacity(180);
   for (size_t i = 0; i < rows; ++i)
