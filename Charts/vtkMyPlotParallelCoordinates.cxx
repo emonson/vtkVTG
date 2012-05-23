@@ -43,22 +43,6 @@
 
 #include "vtkObjectFactory.h"
 
-#include "vtkstd/vector"
-#include "vtkstd/algorithm"
-
-class vtkMyPlotParallelCoordinates::Private :
-    public vtkstd::vector< vtkstd::vector<float> >
-{
-public:
-  Private()
-  {
-    this->SelectionInitialized = false;
-  }
-
-  vtkstd::vector<float> AxisPos;
-  bool SelectionInitialized;
-};
-
 
 //-----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkMyPlotParallelCoordinates);
@@ -69,30 +53,15 @@ vtkCxxSetObjectMacro(vtkMyPlotParallelCoordinates, HighlightSelection, vtkIdType
 //-----------------------------------------------------------------------------
 vtkMyPlotParallelCoordinates::vtkMyPlotParallelCoordinates()
 {
-  this->Points = NULL;
-  this->Storage = new vtkMyPlotParallelCoordinates::Private;
   this->MarkerStyle = vtkMyPlotParallelCoordinates::CIRCLE;
-  this->Parent = NULL;
-  this->Pen->SetColor(0, 0, 0, 25);
   this->Marker = NULL;
   this->HighlightMarker = NULL;
   this->HighlightSelection = NULL;
-
-  this->LookupTable = 0;
-  this->Colors = 0;
-  this->ScalarVisibility = 0;
-  strcpy(this->ColorArrayName, "");
 }
 
 //-----------------------------------------------------------------------------
 vtkMyPlotParallelCoordinates::~vtkMyPlotParallelCoordinates()
 {
-  if (this->Points)
-    {
-    this->Points->Delete();
-    this->Points = NULL;
-    }
-  delete this->Storage;
   if (this->Marker)
     {
     this->Marker->Delete();
@@ -106,72 +75,180 @@ vtkMyPlotParallelCoordinates::~vtkMyPlotParallelCoordinates()
     this->HighlightSelection->Delete();
     this->HighlightSelection = NULL;
     }
-  if (this->LookupTable)
-    {
-    this->LookupTable->UnRegister(this);
-    }
-  if ( this->Colors != 0 )
-    {
-    this->Colors->UnRegister(this);
-    }
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyPlotParallelCoordinates::Update()
-{
-  if (!this->Visible)
-    {
-    return;
-    }
-  // Check if we have an input
-  vtkTable *table = this->Data->GetInput();
-  if (!table)
-    {
-    vtkDebugMacro(<< "Update event called with no input table set.");
-    return;
-    }
-
-  this->UpdateTableCache(table);
-}
+// bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
+// {
+//   // This is where everything should be drawn, or dispatched to other methods.
+//   vtkDebugMacro(<< "Paint event called in vtkMyPlotParallelCoordinates.");
+// 
+//   if (!this->Visible)
+//     {
+//     return false;
+//     }
+// 
+//   float width = this->Pen->GetWidth() * 2.0;
+//   if (width < 1.5)
+//     {
+//     width = 1.5;
+//     }
+// 
+//   // Now to plot the points
+//   if (this->Points)
+//     {
+//     painter->ApplyPen(this->Pen);
+//     painter->DrawPoly(this->Points);
+//     painter->GetPen()->SetLineType(vtkPen::SOLID_LINE);
+//     }
+// 
+//   // If there is a marker style, then draw the marker for each point too
+//   if (this->MarkerStyle && this->Points)
+//     {
+//     this->GeneraterMarker(vtkContext2D::FloatToInt(width));
+//     painter->ApplyPen(this->GetPen());
+//     painter->ApplyBrush(this->GetBrush());
+//     painter->GetPen()->SetWidth(width);
+//     painter->DrawPointSprites(this->Marker, this->Points);
+//     }
+// 
+//   painter->ApplyPen(this->Pen);
+// 
+//   if (this->Storage->size() == 0)
+//     {
+//     return false;
+//     }
+// 
+//   size_t cols = this->Storage->size();
+//   size_t rows = this->Storage->at(0).size();
+//   vtkVector2f* line = new vtkVector2f[cols];
+//   vtkColor4ub* colors = new vtkColor4ub[cols];
+// 
+//   // Update the axis positions
+//   for (size_t i = 0; i < cols; ++i)
+//     {
+//     this->Storage->AxisPos[i] = this->Parent->GetAxis(int(i)) ?
+//                                 this->Parent->GetAxis(int(i))->GetPoint1()[0] :
+//                                 0;
+//     }
+// 
+//   vtkIdType selection = 0;
+//   vtkIdType id = 0;
+//   vtkIdType selectionSize = 0;
+//   if (this->Selection)
+//     {
+//     selectionSize = this->Selection->GetNumberOfTuples();
+//     if (selectionSize)
+//       {
+//       this->Selection->GetTupleValue(selection, &id);
+//       }
+//     }
+// 
+//   // Draw all of the points
+//   // TODO: This needs to be updated for colored markers
+//   this->GeneraterMarker(vtkContext2D::FloatToInt(width));
+//   painter->ApplyPen(this->GetPen());
+//   painter->ApplyBrush(this->GetBrush());
+//   painter->GetPen()->SetWidth(width);
+//   painter->GetPen()->SetOpacity(180);
+//   for (size_t i = 0; i < rows; ++i)
+//     {
+//     for (size_t j = 0; j < cols; ++j)
+//       {
+//       line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][i]);
+//       }
+//     painter->DrawPointSprites(this->Marker, line[0].GetData(), static_cast<int>(cols));
+//     }
+// 
+//   // Draw all of the lines
+//   painter->ApplyPen(this->Pen);
+//   int nc_comps;
+//   if (this->ScalarVisibility && this->Colors)
+//     {
+//     nc_comps = static_cast<int>(this->Colors->GetNumberOfComponents());
+//     }
+//   if (this->ScalarVisibility && this->Colors && (nc_comps == 4))
+//     {
+//     for (size_t i = 0, nc = 0; i < rows; ++i, nc += nc_comps)
+//       {
+//       for (size_t j = 0; j < cols; ++j)
+//         {
+//         line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][i]);
+//         colors[j].Set(*this->Colors->GetPointer(nc), *this->Colors->GetPointer(nc+1),
+//                       *this->Colors->GetPointer(nc+2), *this->Colors->GetPointer(nc+3));
+//         }
+//       painter->DrawPoly(line[0].GetData(), static_cast<int>(cols),
+//                         colors[0].GetData(), nc_comps);
+//       }
+//     }
+//   else
+//     {
+//     for (size_t i = 0; i < rows; ++i)
+//       {
+//       for (size_t j = 0; j < cols; ++j)
+//         {
+//         line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][i]);
+//         }
+//       painter->DrawPoly(line[0].GetData(), static_cast<int>(cols));
+//       }
+//     }
+// 
+//   // Now draw the selected lines
+//   if (this->Selection)
+//     {
+//     painter->GetPen()->SetColor(255, 0, 0, 154);
+//     for (vtkIdType i = 0; i < this->Selection->GetNumberOfTuples(); ++i)
+//       {
+//       for (size_t j = 0; j < cols; ++j)
+//         {
+//         this->Selection->GetTupleValue(i, &id);
+//         line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][id]);
+//         }
+//       painter->DrawPoly(line[0].GetData(), static_cast<int>(cols));
+//       }
+//     }
+// 
+//   // Now draw any highlight selected lines (coming from outside the corresponding chart)
+//   if (this->HighlightSelection)
+//     {
+//     painter->GetPen()->SetColor(0, 128, 255, 154);
+//     painter->GetPen()->SetWidth(width*1.15);
+//     for (vtkIdType i = 0; i < this->HighlightSelection->GetNumberOfTuples(); ++i)
+//       {
+//       for (size_t j = 0; j < cols; ++j)
+//         {
+//         this->HighlightSelection->GetTupleValue(i, &id);
+//         line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][id]);
+//         }
+//       painter->DrawPoly(line[0].GetData(), static_cast<int>(cols));
+//       }
+//     }
+//   // ### END CUSTOM ###
+// 
+//   delete[] line;
+//   delete[] colors;
+// 
+//   return true;
+// }
 
 //-----------------------------------------------------------------------------
 bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
 {
   // This is where everything should be drawn, or dispatched to other methods.
-  vtkDebugMacro(<< "Paint event called in vtkMyPlotParallelCoordinates.");
+  vtkDebugMacro(<< "Paint event called in vtkPlotParallelCoordinates.");
 
   if (!this->Visible)
     {
     return false;
     }
 
-  float width = this->Pen->GetWidth() * 2.0;
-  if (width < 1.5)
-    {
-    width = 1.5;
-    }
-
-  // Now to plot the points
-  if (this->Points)
-    {
-    painter->ApplyPen(this->Pen);
-    painter->DrawPoly(this->Points);
-    painter->GetPen()->SetLineType(vtkPen::SOLID_LINE);
-    }
-
-  // If there is a marker style, then draw the marker for each point too
-  if (this->MarkerStyle && this->Points)
-    {
-    this->GeneraterMarker(vtkContext2D::FloatToInt(width));
-    painter->ApplyPen(this->GetPen());
-    painter->ApplyBrush(this->GetBrush());
-    painter->GetPen()->SetWidth(width);
-    painter->DrawPointSprites(this->Marker, this->Points);
-    }
-
   painter->ApplyPen(this->Pen);
 
-  if (this->Storage->size() == 0)
+  // Update the axis positions
+  vtkMyChartParallelCoordinates *parent =
+      vtkMyChartParallelCoordinates::SafeDownCast(this->Parent);
+
+  if (parent->GetVisibleColumns()->GetNumberOfValues() == 0)
     {
     return false;
     }
@@ -179,13 +256,11 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
   size_t cols = this->Storage->size();
   size_t rows = this->Storage->at(0).size();
   vtkVector2f* line = new vtkVector2f[cols];
-  vtkColor4ub* colors = new vtkColor4ub[cols];
 
-  // Update the axis positions
   for (size_t i = 0; i < cols; ++i)
     {
-    this->Storage->AxisPos[i] = this->Parent->GetAxis(int(i)) ?
-                                this->Parent->GetAxis(int(i))->GetPoint1()[0] :
+    this->Storage->AxisPos[i] = parent->GetAxis(int(i)) ?
+                                parent->GetAxis(int(i))->GetPoint1()[0] :
                                 0;
     }
 
@@ -199,6 +274,13 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
       {
       this->Selection->GetTupleValue(selection, &id);
       }
+    }
+
+  // ### CUSTOM ###
+  float width = this->Pen->GetWidth() * 2.0;
+  if (width < 1.5)
+    {
+    width = 1.5;
     }
 
   // Draw all of the points
@@ -216,26 +298,25 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
       }
     painter->DrawPointSprites(this->Marker, line[0].GetData(), static_cast<int>(cols));
     }
+  // ### END CUSTOM ###
 
   // Draw all of the lines
   painter->ApplyPen(this->Pen);
-  int nc_comps;
+  int nc_comps(0);
   if (this->ScalarVisibility && this->Colors)
     {
     nc_comps = static_cast<int>(this->Colors->GetNumberOfComponents());
     }
-  if (this->ScalarVisibility && this->Colors && (nc_comps == 4))
+  if (this->ScalarVisibility && this->Colors && nc_comps == 4)
     {
     for (size_t i = 0, nc = 0; i < rows; ++i, nc += nc_comps)
       {
       for (size_t j = 0; j < cols; ++j)
         {
         line[j].Set(this->Storage->AxisPos[j], (*this->Storage)[j][i]);
-        colors[j].Set(*this->Colors->GetPointer(nc), *this->Colors->GetPointer(nc+1),
-                      *this->Colors->GetPointer(nc+2), *this->Colors->GetPointer(nc+3));
         }
-      painter->DrawPoly(line[0].GetData(), static_cast<int>(cols),
-                        colors[0].GetData(), nc_comps);
+      painter->GetPen()->SetColor(this->Colors->GetPointer(nc));
+      painter->DrawPoly(line[0].GetData(), static_cast<int>(cols));
       }
     }
   else
@@ -253,7 +334,7 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
   // Now draw the selected lines
   if (this->Selection)
     {
-    painter->GetPen()->SetColor(255, 0, 0, 154);
+    painter->GetPen()->SetColor(255, 0, 0, 100);
     for (vtkIdType i = 0; i < this->Selection->GetNumberOfTuples(); ++i)
       {
       for (size_t j = 0; j < cols; ++j)
@@ -265,6 +346,7 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
       }
     }
 
+  // ### CUSTOM ###
   // Now draw any highlight selected lines (coming from outside the corresponding chart)
   if (this->HighlightSelection)
     {
@@ -280,12 +362,13 @@ bool vtkMyPlotParallelCoordinates::Paint(vtkContext2D *painter)
       painter->DrawPoly(line[0].GetData(), static_cast<int>(cols));
       }
     }
+  // ### END CUSTOM ###
 
   delete[] line;
-  delete[] colors;
 
   return true;
 }
+
 
 //-----------------------------------------------------------------------------
 void vtkMyPlotParallelCoordinates::GeneraterMarker(int width, bool highlight)
@@ -475,325 +558,6 @@ void vtkMyPlotParallelCoordinates::GeneraterMarker(int width, bool highlight)
     }
 }
 
-
-//-----------------------------------------------------------------------------
-bool vtkMyPlotParallelCoordinates::PaintLegend(vtkContext2D *painter, float rect[4])
-{
-  painter->ApplyPen(this->Pen);
-  painter->DrawLine(rect[0], rect[1]+0.5*rect[3],
-                    rect[0]+rect[2], rect[1]+0.5*rect[3]);
-  return true;
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyPlotParallelCoordinates::GetBounds(double *)
-{
-
-}
-
-//-----------------------------------------------------------------------------
-vtkIdType vtkMyPlotParallelCoordinates::GetNearestPoint(const vtkVector2f& ,
-                                  const vtkVector2f& ,
-                                  vtkVector2f* )
-{
-  return -1;
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyPlotParallelCoordinates::SetParent(vtkMyChartParallelCoordinates* parent)
-{
-  this->Parent = parent;
-}
-
-//-----------------------------------------------------------------------------
-bool vtkMyPlotParallelCoordinates::SetSelectionRange(int axis, float low,
-                                                   float high)
-{
-  if (!this->Selection)
-    {
-    return false;
-    }
-  if (this->Storage->SelectionInitialized)
-    {
-    // Further refine the selection that has already been made
-    vtkIdTypeArray *array = vtkIdTypeArray::New();
-    vtkstd::vector<float>& col = this->Storage->at(axis);
-    for (vtkIdType i = 0; i < this->Selection->GetNumberOfTuples(); ++i)
-      {
-      vtkIdType id = 0;
-      this->Selection->GetTupleValue(i, &id);
-      if (col[id] >= low && col[id] <= high)
-        {
-        // Remove this point - no longer selected
-        array->InsertNextValue(id);
-        }
-      }
-    this->Selection->DeepCopy(array);
-    array->Delete();
-    }
-  else
-    {
-    // First run - ensure the selection list is empty and build it up
-    vtkstd::vector<float>& col = this->Storage->at(axis);
-    for (size_t i = 0; i < col.size(); ++i)
-      {
-      if (col[i] >= low && col[i] <= high)
-        {
-        // Remove this point - no longer selected
-        this->Selection->InsertNextValue(i);
-        }
-      }
-    this->Storage->SelectionInitialized = true;
-    }
-  return true;
-}
-
-//-----------------------------------------------------------------------------
-bool vtkMyPlotParallelCoordinates::ResetSelectionRange()
-{
-  this->Storage->SelectionInitialized = false;
-  if (this->Selection)
-    {
-    this->Selection->SetNumberOfTuples(0);
-    }
-  return true;
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyPlotParallelCoordinates::SetInput(vtkTable* table)
-{
-  if (table == this->Data->GetInput())
-    {
-    return;
-    }
-
-  this->vtkPlot::SetInput(table);
-  if (this->Parent && table)
-    {
-    // this->Parent->SetAllColumnsInvisible();
-    // By default make the first 10 columns visible in a plot.
-//     for (vtkIdType i = 0; i < table->GetNumberOfColumns() && i < 10; ++i)
-//       {
-//       this->Parent->SetColumnVisibility(table->GetColumnName(i), true);
-//       }
-    }
-  if (this->Parent && !table)
-    {
-    // No table, therefore no visible columns
-    this->Parent->GetVisibleColumns()->SetNumberOfTuples(0);
-    }
-}
-
-//-----------------------------------------------------------------------------
-bool vtkMyPlotParallelCoordinates::UpdateTableCache(vtkTable *table)
-{
-  // Each axis is a column in our storage array, they are scaled from 0.0 to 1.0
-  if (!this->Parent || !table || table->GetNumberOfColumns() == 0)
-    {
-    return false;
-    }
-
-  vtkStringArray* cols = this->Parent->GetVisibleColumns();
-  this->Storage->resize(cols->GetNumberOfTuples());
-  this->Storage->AxisPos.resize(cols->GetNumberOfTuples());
-  vtkIdType rows = table->GetNumberOfRows();
-
-  for (vtkIdType i = 0; i < cols->GetNumberOfTuples(); ++i)
-    {
-    vtkstd::vector<float>& col = this->Storage->at(i);
-    vtkAxis* axis = this->Parent->GetAxis(i);
-    col.resize(rows);
-    vtkSmartPointer<vtkDataArray> data =
-        vtkDataArray::SafeDownCast(table->GetColumnByName(cols->GetValue(i)));
-    if (!data)
-      {
-      if (table->GetColumnByName(cols->GetValue(i))->IsA("vtkStringArray"))
-        {
-        // We have a different kind of column - attempt to make it into an enum
-        vtkStringToCategory* stoc = vtkStringToCategory::New();
-        stoc->SetInput(table);
-        stoc->SetInputArrayToProcess(0, 0, 0,
-                                     vtkDataObject::FIELD_ASSOCIATION_ROWS,
-                                     cols->GetValue(i));
-        stoc->SetCategoryArrayName("enumPC");
-        stoc->Update();
-        vtkTable* table2 = vtkTable::SafeDownCast(stoc->GetOutput());
-        vtkTable* stringTable = vtkTable::SafeDownCast(stoc->GetOutput(1));
-        if (table2)
-          {
-          data = vtkDataArray::SafeDownCast(table2->GetColumnByName("enumPC"));
-          }
-        if (stringTable && stringTable->GetColumnByName("Strings"))
-          {
-          vtkStringArray* strings =
-              vtkStringArray::SafeDownCast(stringTable->GetColumnByName("Strings"));
-          vtkSmartPointer<vtkDoubleArray> arr =
-              vtkSmartPointer<vtkDoubleArray>::New();
-          for (vtkIdType j = 0; j < strings->GetNumberOfTuples(); ++j)
-            {
-            arr->InsertNextValue(j);
-            }
-          // Now we need to set the range on the string axis
-          axis->SetTickLabels(strings);
-          axis->SetTickPositions(arr);
-          if (strings->GetNumberOfTuples() > 1)
-            {
-            axis->SetRange(0.0, strings->GetNumberOfTuples()-1);
-            }
-          else
-            {
-            axis->SetRange(-0.1, 0.1);
-            }
-          axis->Update();
-          }
-        stoc->Delete();
-        }
-      // If we still don't have a valid data array then skip this column.
-      if (!data)
-        {
-        continue;
-        }
-      }
-
-    // Also need the range from the appropriate axis, to normalize points
-    float min = axis->GetMinimum();
-    float max = axis->GetMaximum();
-    float scale = 1.0f / (max - min);
-
-    for (vtkIdType j = 0; j < rows; ++j)
-      {
-      col[j] = (data->GetTuple1(j)-min) * scale;
-      }
-    }
-
-  // Additions for color mapping
-  if (this->ScalarVisibility && (this->ColorArrayName[0] != 0))
-    {
-    vtkDataArray* c =
-      vtkDataArray::SafeDownCast(table->GetColumnByName(this->ColorArrayName));
-    // TODO: Should add support for categorical coloring & try enum lookup
-    if (c)
-      {
-      if (!this->LookupTable)
-        {
-        this->CreateDefaultLookupTable();
-        }
-      this->Colors = this->LookupTable->MapScalars(c, VTK_COLOR_MODE_MAP_SCALARS, -1);
-      // Consistent register and unregisters
-      this->Colors->Register(this);
-      this->Colors->Delete();
-      }
-    else
-      {
-      this->Colors->UnRegister(this);
-      this->Colors = 0;
-      }
-    }
-
-  this->BuildTime.Modified();
-  return true;
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyPlotParallelCoordinates::SetLookupTable(vtkScalarsToColors *lut)
-{
-  if ( this->LookupTable != lut )
-    {
-    if ( this->LookupTable)
-      {
-      this->LookupTable->UnRegister(this);
-      }
-    this->LookupTable = lut;
-    if (lut)
-      {
-      lut->Register(this);
-      }
-    this->Modified();
-    }
-}
-
-//-----------------------------------------------------------------------------
-vtkScalarsToColors *vtkMyPlotParallelCoordinates::GetLookupTable()
-{
-  if ( this->LookupTable == 0 )
-    {
-    this->CreateDefaultLookupTable();
-    }
-  return this->LookupTable;
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyPlotParallelCoordinates::CreateDefaultLookupTable()
-{
-  if ( this->LookupTable)
-    {
-    this->LookupTable->UnRegister(this);
-    }
-  this->LookupTable = vtkLookupTable::New();
-  // Consistent Register/UnRegisters.
-  this->LookupTable->Register(this);
-  this->LookupTable->Delete();
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyPlotParallelCoordinates::SelectColorArray(const char *arrayName)
-{
-  vtkTable *table = this->Data->GetInput();
-  if (!table)
-    {
-    vtkDebugMacro(<< "SelectColorArray called with no input table set.");
-    return;
-    }
-  if (strcmp(this->ColorArrayName, arrayName) == 0)
-    {
-    return;
-    }
-  for (vtkIdType c = 0; c < table->GetNumberOfColumns(); ++c)
-    {
-    const char *name = table->GetColumnName(c);
-    if (strcmp(name, arrayName) == 0)
-      {
-      strcpy(this->ColorArrayName, arrayName);
-      this->Modified();
-      return;
-      }
-    }
-  vtkDebugMacro(<< "SelectColorArray called with invalid column name.");
-  strcpy(this->ColorArrayName, "");
-  this->Modified();
-  return;
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyPlotParallelCoordinates::SelectColorArray(vtkIdType arrayNum)
-{
-  vtkTable *table = this->Data->GetInput();
-  if (!table)
-    {
-    vtkDebugMacro(<< "SelectColorArray called with no input table set.");
-    return;
-    }
-  vtkDataArray *col = vtkDataArray::SafeDownCast(table->GetColumn(arrayNum));
-  // TODO: Should add support for categorical coloring & try enum lookup
-  if (!col)
-    {
-    vtkDebugMacro(<< "SelectColorArray called with invalid column index");
-    return;
-    }
-  else
-    {
-    const char *arrayName = table->GetColumnName(arrayNum);
-    if (strcmp(this->ColorArrayName, arrayName) == 0)
-      {
-      return;
-      }
-    else
-      {
-      strcpy(this->ColorArrayName, arrayName);
-      this->Modified();
-      }
-    }
-}
 
 //-----------------------------------------------------------------------------
 void vtkMyPlotParallelCoordinates::PrintSelf(ostream &os, vtkIndent indent)
