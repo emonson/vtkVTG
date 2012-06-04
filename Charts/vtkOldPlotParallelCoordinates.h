@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkMyPlotParallelCoordinates.h
+  Module:    vtkOldPlotParallelCoordinates.h
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -13,42 +13,35 @@
 
 =========================================================================*/
 
-// .NAME vtkMyPlotParallelCoordinates - Class for drawing a parallel coordinate
-// plot given columns from a vtkTable.
+// .NAME vtkOldPlotParallelCoordinates - Class for drawing an XY plot given two columns from a
+// vtkTable.
 //
 // .SECTION Description
 //
 
-#ifndef __vtkMyPlotParallelCoordinates_h
-#define __vtkMyPlotParallelCoordinates_h
+#ifndef __vtkOldPlotParallelCoordinates_h
+#define __vtkOldPlotParallelCoordinates_h
 
 #include "vtkPlot.h"
 #include "vtkScalarsToColors.h" // For VTK_COLOR_MODE_DEFAULT and _MAP_SCALARS
-#include "vtkStdString.h"       // For vtkStdString ivars
 
-// **
-// ** CUSTOM ** //
-
-class vtkMyChartParallelCoordinates;
-class vtkImageData;
-
-// ** END CUSTOM ** //
-// **
-
+class vtkOldChartParallelCoordinates;
 class vtkTable;
+class vtkPoints2D;
 class vtkStdString;
+class vtkImageData;
 class vtkScalarsToColors;
 class vtkUnsignedCharArray;
 
-class VTK_CHARTS_EXPORT vtkMyPlotParallelCoordinates : public vtkPlot
+class VTK_CHARTS_EXPORT vtkOldPlotParallelCoordinates : public vtkPlot
 {
 public:
-  vtkTypeMacro(vtkMyPlotParallelCoordinates, vtkPlot);
+  vtkTypeMacro(vtkOldPlotParallelCoordinates, vtkPlot);
   virtual void PrintSelf(ostream &os, vtkIndent indent);
 
   // Description:
   // Creates a parallel coordinates chart
-  static vtkMyPlotParallelCoordinates* New();
+  static vtkOldPlotParallelCoordinates* New();
 
   // Description:
   // Perform any updates to the item that may be necessary before rendering.
@@ -65,12 +58,23 @@ public:
   // plot items symbol/mark/line drawn. A rect is supplied with the lower left
   // corner of the rect (elements 0 and 1) and with width x height (elements 2
   // and 3). The plot can choose how to fill the space supplied.
-  virtual bool PaintLegend(vtkContext2D *painter, const vtkRectf& rect,
-                           int legendIndex);
+  virtual bool PaintLegend(vtkContext2D *painter, float rect[4]);
 
   // Description:
   // Get the bounds for this mapper as (Xmin,Xmax,Ymin,Ymax,Zmin,Zmax).
   virtual void GetBounds(double bounds[4]);
+
+//BTX
+  // Description:
+  // Function to query a plot for the nearest point to the specified coordinate.
+  virtual vtkIdType GetNearestPoint(const vtkVector2f& point,
+                               const vtkVector2f& tolerance,
+                               vtkVector2f* location);
+//ETX
+
+  // Description;
+  // Set the parent, required to query the axes etc.
+  virtual void SetParent(vtkOldChartParallelCoordinates* parent);
 
   // Description:
   // Set the selection criteria on the given axis in normalized space (0.0 - 1.0).
@@ -94,8 +98,7 @@ public:
   // Description:
   // This is a convenience function to set the input table.
   virtual void SetInput(vtkTable *table);
-  virtual void SetInput(vtkTable *table, const vtkStdString&,
-                        const vtkStdString&)
+  virtual void SetInput(vtkTable *table, const char*, const char*)
   {
     this->SetInput(table);
   }
@@ -121,11 +124,7 @@ public:
   // you can specify which array to use for coloring using these methods.
   // The lookup table will decide how to convert vectors to colors.
   void SelectColorArray(vtkIdType arrayNum);
-  void SelectColorArray(const vtkStdString &arrayName);
-
-  // Description:
-  // Get the array name to color by.
-  vtkStdString GetColorArrayName();
+  void SelectColorArray(const char* arrayName);
 
   // **
   // ** CUSTOM ** //
@@ -154,8 +153,8 @@ public:
 
 //BTX
 protected:
-  vtkMyPlotParallelCoordinates();
-  ~vtkMyPlotParallelCoordinates();
+  vtkOldPlotParallelCoordinates();
+  ~vtkOldPlotParallelCoordinates();
 
   // **
   // ** CUSTOM ** //
@@ -174,6 +173,8 @@ protected:
   // Selected indices coming back from outside the chart this plot is associated with.
   vtkIdTypeArray *HighlightSelection;
 
+  vtkOldChartParallelCoordinates* Parent;
+
   // ** END CUSTOM ** //
   // **
 
@@ -185,6 +186,7 @@ protected:
   // Store a well packed set of XY coordinates for this data series.
   class Private;
   Private* Storage;
+  vtkPoints2D* Points;
 
   // Description:
   // The point cache is marked dirty until it has been initialized.
@@ -195,13 +197,13 @@ protected:
   vtkScalarsToColors *LookupTable;
   vtkUnsignedCharArray *Colors;
   int ScalarVisibility;
-  vtkStdString ColorArrayName;
+  char ColorArrayName[256];
 
 private:
-  vtkMyPlotParallelCoordinates(const vtkMyPlotParallelCoordinates &); // Not implemented.
-  void operator=(const vtkMyPlotParallelCoordinates &); // Not implemented.
+  vtkOldPlotParallelCoordinates(const vtkOldPlotParallelCoordinates &); // Not implemented.
+  void operator=(const vtkOldPlotParallelCoordinates &); // Not implemented.
 
 //ETX
 };
 
-#endif //__vtkMyPlotParallelCoordinates_h
+#endif //__vtkOldPlotParallelCoordinates_h

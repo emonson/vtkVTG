@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkMyChartParallelCoordinates.cxx
+  Module:    vtkOldChartParallelCoordinates.cxx
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -13,8 +13,8 @@
 
 =========================================================================*/
 
-#include "vtkMyChartParallelCoordinates.h"
-#include "vtkMyPlotParallelCoordinates.h"
+#include "vtkOldChartParallelCoordinates.h"
+#include "vtkOldPlotParallelCoordinates.h"
 
 #include "vtkContext2D.h"
 #include "vtkBrush.h"
@@ -36,57 +36,61 @@
 #include "vtkSelectionNode.h"
 #include "vtkStringArray.h"
 
-#include <vector>
-#include <algorithm>
+#include "vtkstd/vector"
+#include "vtkstd/algorithm"
 
 // Minimal storage class for STL containers etc.
-class vtkMyChartParallelCoordinates::Private
+class vtkOldChartParallelCoordinates::Private
 {
 public:
   Private()
     {
-    this->Plot = vtkSmartPointer<vtkMyPlotParallelCoordinates>::New();
+		// **
+		// ** CUSTOM ** //  
+    this->Plot = vtkSmartPointer<vtkOldPlotParallelCoordinates>::New();
+		// ** END CUSTOM ** //  
+		// **
     this->Transform = vtkSmartPointer<vtkTransform2D>::New();
     this->CurrentAxis = -1;
     this->AxisResize = -1;
     }
   ~Private()
     {
-    for (std::vector<vtkAxis *>::iterator it = this->Axes.begin();
+    for (vtkstd::vector<vtkAxis *>::iterator it = this->Axes.begin();
          it != this->Axes.end(); ++it)
       {
       (*it)->Delete();
       }
     }
-  vtkSmartPointer<vtkMyPlotParallelCoordinates> Plot;
+  vtkSmartPointer<vtkOldPlotParallelCoordinates> Plot;
   vtkSmartPointer<vtkTransform2D> Transform;
-  std::vector<vtkAxis *> Axes;
-  std::vector<vtkVector<float, 2> > AxesSelections;
-  int CurrentAxis;
-  int AxisResize;
+  vtkstd::vector<vtkAxis *> Axes;
+  vtkstd::vector<vtkVector<float, 2> > AxesSelections;
 	// **
 	// ** CUSTOM ** //  
   vtkstd::vector<int> ScaleDims;
 	// ** END CUSTOM ** //  
 	// **
+  int CurrentAxis;
+  int AxisResize;
 };
 
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-vtkStandardNewMacro(vtkMyChartParallelCoordinates);
+vtkStandardNewMacro(vtkOldChartParallelCoordinates);
 
 // **
 // ** CUSTOM ** //  
 //-----------------------------------------------------------------------------
-vtkCxxSetObjectMacro(vtkMyChartParallelCoordinates, HighlightLink, vtkAnnotationLink);
+vtkCxxSetObjectMacro(vtkOldChartParallelCoordinates, HighlightLink, vtkAnnotationLink);
 // ** END CUSTOM ** //  
 // **
 
 //-----------------------------------------------------------------------------
-vtkMyChartParallelCoordinates::vtkMyChartParallelCoordinates()
+vtkOldChartParallelCoordinates::vtkOldChartParallelCoordinates()
 {
-  this->Storage = new vtkMyChartParallelCoordinates::Private;
+  this->Storage = new vtkOldChartParallelCoordinates::Private;
   this->Storage->Plot->SetParent(this);
   this->GeometryValid = false;
   this->Selection = vtkIdTypeArray::New();
@@ -109,14 +113,10 @@ vtkMyChartParallelCoordinates::vtkMyChartParallelCoordinates()
 
 	// ** END CUSTOM ** //  
 	// **
-
-  // Set up default mouse button assignments for parallel coordinates.
-  this->SetActionToButton(vtkChart::PAN, vtkContextMouseEvent::RIGHT_BUTTON);
-  this->SetActionToButton(vtkChart::SELECT, vtkContextMouseEvent::LEFT_BUTTON);
 }
 
 //-----------------------------------------------------------------------------
-vtkMyChartParallelCoordinates::~vtkMyChartParallelCoordinates()
+vtkOldChartParallelCoordinates::~vtkOldChartParallelCoordinates()
 {
   this->Storage->Plot->SetSelection(NULL);
 
@@ -146,7 +146,7 @@ vtkMyChartParallelCoordinates::~vtkMyChartParallelCoordinates()
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::Update()
+void vtkOldChartParallelCoordinates::Update()
 {
   vtkTable* table = this->Storage->Plot->GetData()->GetInput();
   if (!table)
@@ -163,7 +163,7 @@ void vtkMyChartParallelCoordinates::Update()
   if (static_cast<int>(this->Storage->Axes.size()) !=
       this->VisibleColumns->GetNumberOfTuples())
     {
-    for (std::vector<vtkAxis *>::iterator it = this->Storage->Axes.begin();
+    for (vtkstd::vector<vtkAxis *>::iterator it = this->Storage->Axes.begin();
          it != this->Storage->Axes.end(); ++it)
       {
       (*it)->Delete();
@@ -177,8 +177,7 @@ void vtkMyChartParallelCoordinates::Update()
       axis->SetPosition(vtkAxis::PARALLEL);
       this->Storage->Axes.push_back(axis);
       }
-    this->Storage->AxesSelections.resize(this->Storage->Axes.size(),
-                                         vtkVector2f(0, 0));
+      this->Storage->AxesSelections.resize(this->Storage->Axes.size());
     }
 
   // Now set up their ranges and locations
@@ -196,10 +195,8 @@ void vtkMyChartParallelCoordinates::Update()
       {
       axis->SetMinimum(range[0]);
       axis->SetMaximum(range[1]);
+      axis->SetTitle(this->VisibleColumns->GetValue(i));
       }
-    // ** CUSTOM ** //
-    // axis->SetTitle(this->VisibleColumns->GetValue(i));
-    // ** END CUSTOM ** //
     }
 
   this->GeometryValid = false;
@@ -207,7 +204,7 @@ void vtkMyChartParallelCoordinates::Update()
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
+bool vtkOldChartParallelCoordinates::Paint(vtkContext2D *painter)
 {
   if (this->GetScene()->GetViewWidth() == 0 ||
       this->GetScene()->GetViewHeight() == 0 ||
@@ -223,11 +220,12 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
 
   // Handle selections
   vtkIdTypeArray *idArray = 0;
+  unsigned long plotMTime = this->Storage->Plot->GetMTime();
   if (this->AnnotationLink)
     {
     vtkSelection *selection = this->AnnotationLink->GetCurrentSelection();
     if (selection->GetNumberOfNodes() &&
-        this->AnnotationLink->GetMTime() > this->Storage->Plot->GetMTime())
+        this->AnnotationLink->GetMTime() > plotMTime)
       {
       vtkSelectionNode *node = selection->GetNode(0);
       idArray = vtkIdTypeArray::SafeDownCast(node->GetSelectionList());
@@ -248,7 +246,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     {
     vtkSelection *selection = this->HighlightLink->GetCurrentSelection();
     if (selection->GetNumberOfNodes() &&
-        this->HighlightLink->GetMTime() > this->Storage->Plot->GetMTime())
+        this->HighlightLink->GetMTime() > plotMTime)
       {
       vtkSelectionNode *node = selection->GetNode(0);
       idArray = vtkIdTypeArray::SafeDownCast(node->GetSelectionList());
@@ -277,83 +275,78 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     }
 
   // Draw set rectangles if desired
-//   if (this->DrawSets)
-//     {
-//   cout << "DEBUG -- chart paint beginning draw sets1" << endl;
-//     int oldLineType = painter->GetPen()->GetLineType();
-//     
-//     // Main sets boxes
-//     painter->GetPen()->SetLineType(1);
-//     painter->GetPen()->SetColor(0,0,0);
-//     painter->GetPen()->SetWidth(1.0);
-//   cout << "DEBUG -- chart paint beginning draw sets2" << endl;
-//     for (int i = 0; i < this->Storage->ScaleDims.size(); ++i)
-//       {
-//       int idx0 = group_starts.at(i);
-//       int idx1 = group_ends.at(i);
-//       vtkAxis* axis0 = this->Storage->Axes.at(idx0);
-//       vtkAxis* axis1 = this->Storage->Axes.at(idx1);
-//       if (this->Storage->Plot->GetScalarVisibility())
-//         {
-//         // Use gray box background for colored lines
-//         painter->GetBrush()->SetColor(150, 150, 150, 20);
-//         }
-//       else
-//         {
-//         // yellow-gold otherwise
-//         painter->GetBrush()->SetColor(254, 209, 0, 20);
-//         }
-//   cout << "DEBUG -- chart paint beginning draw sets3" << endl;
-//       painter->DrawRect(axis0->GetPoint1()[0],
-//                         this->Point1[1],
-//                         axis1->GetPoint1()[0]-axis0->GetPoint1()[0],
-//                         this->Point2[1]-this->Point1[1]);
-//       // Extra set box for current scale
-//       if (i == this->CurrentScale)
-//         {
-//         if (this->Storage->Plot->GetScalarVisibility())
-//           {
-//           // Use gray box background for colored lines
-//           painter->GetBrush()->SetColor(150, 150, 150, 60);
-//           }
-//         else
-//           {
-//           // yellow-gold otherwise
-//           painter->GetBrush()->SetColor(254, 209, 0, 60);
-//           }
-//         painter->DrawRect(axis0->GetPoint1()[0], 
-//                           this->Point1[1],
-//                           axis1->GetPoint1()[0]-axis0->GetPoint1()[0], 
-//                           this->Point2[1]-this->Point1[1]);
-//         // And annotation for externally plotted X and Y axes
-//   cout << "DEBUG -- chart paint beginning draw sets4" << endl;
-//         if ((this->XYcurrentX >= 0) && (this->XYcurrentY >= 0))
-// 					{
-// 					vtkAxis* axisX = this->Storage->Axes.at(idx0+this->XYcurrentX);
-// 					vtkAxis* axisY = this->Storage->Axes.at(idx0+this->XYcurrentY);
-// 					painter->GetBrush()->SetColor(200, 200, 200, 100);
-// 					
-// 					painter->DrawLine(axisX->GetPoint1()[0]-3, 
-// 														this->Point2[1]+6,
-// 														axisX->GetPoint1()[0]+3,
-// 														this->Point2[1]+6);
-// 					painter->DrawEllipse(axisX->GetPoint1()[0], 
-// 														this->Point2[1]+6,
-// 														3,3);
-// 					
-// 					painter->DrawLine(axisY->GetPoint1()[0], 
-// 														this->Point2[1]+3,
-// 														axisY->GetPoint1()[0],
-// 														this->Point2[1]+9);
-// 					painter->DrawEllipse(axisY->GetPoint1()[0], 
-// 														this->Point2[1]+6,
-// 														3,3);
-//           }
-//         }
-//       }
-//   cout << "DEBUG -- chart paint beginning draw sets5" << endl;
-//     painter->GetPen()->SetLineType(oldLineType);
-//     }
+  if (this->DrawSets)
+    {
+    int oldLineType = painter->GetPen()->GetLineType();
+    
+    // Main sets boxes
+    painter->GetPen()->SetLineType(1);
+    painter->GetPen()->SetColor(0,0,0);
+    painter->GetPen()->SetWidth(1.0);
+    for (int i = 0; i < this->Storage->ScaleDims.size(); ++i)
+      {
+      int idx0 = group_starts.at(i);
+      int idx1 = group_ends.at(i);
+      vtkAxis* axis0 = this->Storage->Axes.at(idx0);
+      vtkAxis* axis1 = this->Storage->Axes.at(idx1);
+      if (this->Storage->Plot->GetScalarVisibility())
+        {
+        // Use gray box background for colored lines
+        painter->GetBrush()->SetColor(150, 150, 150, 20);
+        }
+      else
+        {
+        // yellow-gold otherwise
+        painter->GetBrush()->SetColor(254, 209, 0, 20);
+        }
+      painter->DrawRect(axis0->GetPoint1()[0],
+                        this->Point1[1],
+                        axis1->GetPoint1()[0]-axis0->GetPoint1()[0],
+                        this->Point2[1]-this->Point1[1]);
+      // Extra set box for current scale
+      if (i == this->CurrentScale)
+        {
+        if (this->Storage->Plot->GetScalarVisibility())
+          {
+          // Use gray box background for colored lines
+          painter->GetBrush()->SetColor(150, 150, 150, 60);
+          }
+        else
+          {
+          // yellow-gold otherwise
+          painter->GetBrush()->SetColor(254, 209, 0, 60);
+          }
+        painter->DrawRect(axis0->GetPoint1()[0], 
+                          this->Point1[1],
+                          axis1->GetPoint1()[0]-axis0->GetPoint1()[0], 
+                          this->Point2[1]-this->Point1[1]);
+        // And annotation for externally plotted X and Y axes
+        if ((this->XYcurrentX >= 0) && (this->XYcurrentY >= 0))
+					{
+					vtkAxis* axisX = this->Storage->Axes.at(idx0+this->XYcurrentX);
+					vtkAxis* axisY = this->Storage->Axes.at(idx0+this->XYcurrentY);
+					painter->GetBrush()->SetColor(200, 200, 200, 100);
+					
+					painter->DrawLine(axisX->GetPoint1()[0]-3, 
+														this->Point2[1]+6,
+														axisX->GetPoint1()[0]+3,
+														this->Point2[1]+6);
+					painter->DrawEllipse(axisX->GetPoint1()[0], 
+														this->Point2[1]+6,
+														3,3);
+					
+					painter->DrawLine(axisY->GetPoint1()[0], 
+														this->Point2[1]+3,
+														axisY->GetPoint1()[0],
+														this->Point2[1]+9);
+					painter->DrawEllipse(axisY->GetPoint1()[0], 
+														this->Point2[1]+6,
+														3,3);
+          }
+        }
+      }
+    painter->GetPen()->SetLineType(oldLineType);
+    }
     
 	// Paint axes, but only if there are not too many of them
 	if (this->Storage->Axes.size() < 60)
@@ -380,6 +373,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
 	// ** END CUSTOM ** //  
 	// **
 
+  // Paint the actual lines of the plot
   painter->PushMatrix();
   painter->SetTransform(this->Storage->Transform);
   this->Storage->Plot->Paint(painter);
@@ -444,34 +438,15 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
   return true;
 }
 
-// **
-// ** CUSTOM ** //  
-
 //-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::SetNumberOfScales(int num_scales)
-{
-  this->Storage->ScaleDims.clear();
-  this->Storage->ScaleDims.resize(num_scales);
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::SetScaleDim(vtkIdType index, int dim_size)
-{
-  this->Storage->ScaleDims.at(index) = dim_size;
-}
-
-// ** END CUSTOM ** //  
-// **
-
-//-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::SetColumnVisibility(const vtkStdString& name,
+void vtkOldChartParallelCoordinates::SetColumnVisibility(const char* name,
                                                       bool visible)
 {
   if (visible)
     {
     for (vtkIdType i = 0; i < this->VisibleColumns->GetNumberOfTuples(); ++i)
       {
-      if (this->VisibleColumns->GetValue(i) == name)
+      if (strcmp(this->VisibleColumns->GetValue(i).c_str(), name) == 0)
         {
         // Already there, nothing more needs to be done
         return;
@@ -487,7 +462,7 @@ void vtkMyChartParallelCoordinates::SetColumnVisibility(const vtkStdString& name
     // Remove the value if present
     for (vtkIdType i = 0; i < this->VisibleColumns->GetNumberOfTuples(); ++i)
       {
-      if (this->VisibleColumns->GetValue(i) == name)
+      if (strcmp(this->VisibleColumns->GetValue(i).c_str(), name) == 0)
         {
         // Move all the later elements down by one, and reduce the size
         while (i < this->VisibleColumns->GetNumberOfTuples()-1)
@@ -497,10 +472,6 @@ void vtkMyChartParallelCoordinates::SetColumnVisibility(const vtkStdString& name
           }
         this->VisibleColumns->SetNumberOfTuples(
             this->VisibleColumns->GetNumberOfTuples()-1);
-        if (this->Storage->CurrentAxis >= this->VisibleColumns->GetNumberOfTuples())
-          {
-          this->Storage->CurrentAxis = -1;
-          }
         this->Modified();
         this->Update();
         return;
@@ -509,28 +480,45 @@ void vtkMyChartParallelCoordinates::SetColumnVisibility(const vtkStdString& name
     }
 }
 
+// **
+// ** CUSTOM ** //  
+
 //-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::SetColumnVisibilityAll(bool visible)
+void vtkOldChartParallelCoordinates::SetNumberOfScales(int num_scales)
 {
-  // We always need to clear the current visible columns.
-  this->VisibleColumns->SetNumberOfTuples(0);
-  this->Storage->CurrentAxis = -1;
-  if (visible)
-    {
-    vtkTable *table = this->GetPlot(0)->GetInput();
-    for (vtkIdType i = 0; i < table->GetNumberOfColumns(); ++i)
-      {
-      this->SetColumnVisibility(table->GetColumnName(i), visible);
-      }
-    }
+  this->Storage->ScaleDims.clear();
+  this->Storage->ScaleDims.resize(num_scales);
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyChartParallelCoordinates::GetColumnVisibility(const vtkStdString& name)
+void vtkOldChartParallelCoordinates::SetScaleDim(vtkIdType index, int dim_size)
+{
+  this->Storage->ScaleDims.at(index) = dim_size;
+}
+
+//-----------------------------------------------------------------------------
+void vtkOldChartParallelCoordinates::SetAllColumnsInvisible()
+{
+  // Setting all columns invisible so paint won't spit up if it gets new
+  // data that has less columns than chart visible columns
+  this->VisibleColumns->SetNumberOfTuples(0);
+  // Also need to reset CurrentAxis so it won't be greater than
+  // number of axes
+  this->Storage->CurrentAxis = -1;
+  this->Modified();
+  this->Update();
+  return;
+}
+
+// ** END CUSTOM ** //  
+// **
+
+//-----------------------------------------------------------------------------
+bool vtkOldChartParallelCoordinates::GetColumnVisibility(const char* name)
 {
   for (vtkIdType i = 0; i < this->VisibleColumns->GetNumberOfTuples(); ++i)
     {
-    if (this->VisibleColumns->GetValue(i) == name)
+    if (strcmp(this->VisibleColumns->GetValue(i).c_str(), name) == 0)
       {
       return true;
       }
@@ -539,30 +527,49 @@ bool vtkMyChartParallelCoordinates::GetColumnVisibility(const vtkStdString& name
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::SetPlot(vtkMyPlotParallelCoordinates *plot)
+void vtkOldChartParallelCoordinates::ClearAxesSelections()
 {
-  this->Storage->Plot = plot;
-  this->Storage->Plot->SetParent(this);
+  this->Storage->AxesSelections.clear();
+  this->Storage->AxesSelections.resize(this->Storage->Axes.size());
+  this->Storage->CurrentAxis = -1;
+  this->Scene->SetDirty(true);
 }
 
 //-----------------------------------------------------------------------------
-vtkPlot* vtkMyChartParallelCoordinates::GetPlot(vtkIdType)
+vtkPlot * vtkOldChartParallelCoordinates::AddPlot(int)
+{
+  return NULL;
+}
+
+//-----------------------------------------------------------------------------
+bool vtkOldChartParallelCoordinates::RemovePlot(vtkIdType)
+{
+  return false;
+}
+
+//-----------------------------------------------------------------------------
+void vtkOldChartParallelCoordinates::ClearPlots()
+{
+}
+
+//-----------------------------------------------------------------------------
+vtkPlot* vtkOldChartParallelCoordinates::GetPlot(vtkIdType)
 {
   return this->Storage->Plot;
 }
 
 //-----------------------------------------------------------------------------
-vtkIdType vtkMyChartParallelCoordinates::GetNumberOfPlots()
+vtkIdType vtkOldChartParallelCoordinates::GetNumberOfPlots()
 {
   return 1;
 }
 
 //-----------------------------------------------------------------------------
-vtkAxis* vtkMyChartParallelCoordinates::GetAxis(int index)
+vtkAxis* vtkOldChartParallelCoordinates::GetAxis(int index)
 {
   if (index < this->GetNumberOfAxes())
     {
-    return this->Storage->Axes[index];
+    return vtkAxis::SafeDownCast(this->Storage->Axes[index]);
     }
   else
     {
@@ -571,13 +578,13 @@ vtkAxis* vtkMyChartParallelCoordinates::GetAxis(int index)
 }
 
 //-----------------------------------------------------------------------------
-vtkIdType vtkMyChartParallelCoordinates::GetNumberOfAxes()
+vtkIdType vtkOldChartParallelCoordinates::GetNumberOfAxes()
 {
   return this->Storage->Axes.size();
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::UpdateGeometry()
+void vtkOldChartParallelCoordinates::UpdateGeometry()
 {
   vtkVector2i geometry(this->GetScene()->GetViewWidth(),
                        this->GetScene()->GetViewHeight());
@@ -587,7 +594,16 @@ void vtkMyChartParallelCoordinates::UpdateGeometry()
     {
     // Take up the entire window right now, this could be made configurable
     this->SetGeometry(geometry.GetData());
-    this->SetBorders(60, 50, 60, 20);
+    // this->SetBorders(60, 20, 20, 50);
+    
+    // **
+    // ** CUSTOM ** //
+    
+    // New API uses (left, bottom, right, top)
+    this->SetBorders(60, 50, 20, 20);
+    
+    // ** END CUSTOM ** //
+    // **
 
     // Iterate through the axes and set them up to span the chart area.
     int xStep = (this->Point2[0] - this->Point1[0]) /
@@ -615,7 +631,7 @@ void vtkMyChartParallelCoordinates::UpdateGeometry()
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::CalculatePlotTransform()
+void vtkOldChartParallelCoordinates::CalculatePlotTransform()
 {
   // In the case of parallel coordinates everything is plotted in a normalized
   // system, where the range is from 0.0 to 1.0 in the y axis, and in screen
@@ -637,19 +653,18 @@ void vtkMyChartParallelCoordinates::CalculatePlotTransform()
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::RecalculateBounds()
+void vtkOldChartParallelCoordinates::RecalculateBounds()
 {
   return;
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyChartParallelCoordinates::Hit(const vtkContextMouseEvent &mouse)
+bool vtkOldChartParallelCoordinates::Hit(const vtkContextMouseEvent &mouse)
 {
-  vtkVector2i pos(mouse.GetScreenPos());
-  if (pos[0] > this->Point1[0] - 10 &&
-      pos[0] < this->Point2[0] + 10 &&
-      pos[1] > this->Point1[1] &&
-      pos[1] < this->Point2[1])
+  if (mouse.ScreenPos[0] > this->Point1[0]-10 &&
+      mouse.ScreenPos[0] < this->Point2[0]+10 &&
+      mouse.ScreenPos[1] > this->Point1[1] &&
+      mouse.ScreenPos[1] < this->Point2[1])
     {
     return true;
     }
@@ -660,15 +675,15 @@ bool vtkMyChartParallelCoordinates::Hit(const vtkContextMouseEvent &mouse)
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyChartParallelCoordinates::MouseEnterEvent(const vtkContextMouseEvent &)
+bool vtkOldChartParallelCoordinates::MouseEnterEvent(const vtkContextMouseEvent &)
 {
   return true;
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyChartParallelCoordinates::MouseMoveEvent(const vtkContextMouseEvent &mouse)
+bool vtkOldChartParallelCoordinates::MouseMoveEvent(const vtkContextMouseEvent &mouse)
 {
-  if (mouse.GetButton() == this->Actions.Select())
+  if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
     {
     // If an axis is selected, then lets try to narrow down a selection...
     if (this->Storage->CurrentAxis >= 0)
@@ -677,7 +692,7 @@ bool vtkMyChartParallelCoordinates::MouseMoveEvent(const vtkContextMouseEvent &m
           this->Storage->AxesSelections[this->Storage->CurrentAxis];
 
       // Normalize the coordinates
-      float current = mouse.GetScenePos().Y();
+      float current = mouse.ScenePos.Y();
       current -= this->Storage->Transform->GetMatrix()->GetElement(1, 2);
       current /= this->Storage->Transform->GetMatrix()->GetElement(1, 1);
 
@@ -696,40 +711,20 @@ bool vtkMyChartParallelCoordinates::MouseMoveEvent(const vtkContextMouseEvent &m
       }
     this->Scene->SetDirty(true);
     }
-  else if (mouse.GetButton() == this->Actions.Pan())
+  else if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
     {
     vtkAxis* axis = this->Storage->Axes[this->Storage->CurrentAxis];
     if (this->Storage->AxisResize == 0)
       {
       // Move the axis in x
-      float deltaX = mouse.GetScenePos().X() - mouse.GetLastScenePos().X();
-
+      float deltaX = mouse.ScenePos.X() - mouse.LastScenePos.X();
       axis->SetPoint1(axis->GetPoint1()[0]+deltaX, axis->GetPoint1()[1]);
       axis->SetPoint2(axis->GetPoint2()[0]+deltaX, axis->GetPoint2()[1]);
-
-      vtkAxis* leftAxis = this->Storage->CurrentAxis > 0 ?
-        this->Storage->Axes[this->Storage->CurrentAxis-1] :
-        NULL;
-
-      vtkAxis* rightAxis =
-          this->Storage->CurrentAxis < static_cast<int>(this->Storage->Axes.size())-1 ?
-          this->Storage->Axes[this->Storage->CurrentAxis+1] : NULL;
-
-      if (leftAxis && axis->GetPoint1()[0] < leftAxis->GetPoint1()[0])
-        {
-        this->SwapAxes(this->Storage->CurrentAxis,this->Storage->CurrentAxis-1);
-        this->Storage->CurrentAxis--;
-        }
-      else if (rightAxis && axis->GetPoint1()[0] > rightAxis->GetPoint1()[0])
-        {
-        this->SwapAxes(this->Storage->CurrentAxis,this->Storage->CurrentAxis+1);
-        this->Storage->CurrentAxis++;
-        }
       }
     else if (this->Storage->AxisResize == 1)
       {
       // Modify the bottom axis range...
-      float deltaY = mouse.GetScenePos().Y() - mouse.GetLastScenePos().Y();
+      float deltaY = mouse.ScenePos.Y() - mouse.LastScenePos.Y();
       float scale = (axis->GetPoint2()[1]-axis->GetPoint1()[1]) /
                     (axis->GetMaximum() - axis->GetMinimum());
       axis->SetMinimum(axis->GetMinimum() - deltaY/scale);
@@ -750,7 +745,7 @@ bool vtkMyChartParallelCoordinates::MouseMoveEvent(const vtkContextMouseEvent &m
     else if (this->Storage->AxisResize == 2)
       {
       // Modify the bottom axis range...
-      float deltaY = mouse.GetScenePos().Y() - mouse.GetLastScenePos().Y();
+      float deltaY = mouse.ScenePos.Y() - mouse.LastScenePos.Y();
       float scale = (axis->GetPoint2()[1]-axis->GetPoint1()[1]) /
                     (axis->GetMaximum() - axis->GetMinimum());
       axis->SetMaximum(axis->GetMaximum() - deltaY/scale);
@@ -774,27 +769,27 @@ bool vtkMyChartParallelCoordinates::MouseMoveEvent(const vtkContextMouseEvent &m
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyChartParallelCoordinates::MouseLeaveEvent(const vtkContextMouseEvent &)
+bool vtkOldChartParallelCoordinates::MouseLeaveEvent(const vtkContextMouseEvent &)
 {
   return true;
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyChartParallelCoordinates::MouseButtonPressEvent(
+bool vtkOldChartParallelCoordinates::MouseButtonPressEvent(
     const vtkContextMouseEvent& mouse)
 {
-  if (mouse.GetButton() == this->Actions.Select())
+  if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
     {
     // Select an axis if we are within range
-    if (mouse.GetScenePos()[1] > this->Point1[1] &&
-        mouse.GetScenePos()[1] < this->Point2[1])
+    if (mouse.ScenePos[1] > this->Point1[1] &&
+        mouse.ScenePos[1] < this->Point2[1])
       {
       // Iterate over the axes, see if we are within 10 pixels of an axis
       for (size_t i = 0; i < this->Storage->Axes.size(); ++i)
         {
         vtkAxis* axis = this->Storage->Axes[i];
-        if (axis->GetPoint1()[0]-10 < mouse.GetScenePos()[0] &&
-            axis->GetPoint1()[0]+10 > mouse.GetScenePos()[0])
+        if (axis->GetPoint1()[0]-5 < mouse.ScenePos[0] &&
+            axis->GetPoint1()[0]+5 > mouse.ScenePos[0])
           {
           this->Storage->CurrentAxis = static_cast<int>(i);
           vtkVector<float, 2>& range = this->Storage->AxesSelections[i];
@@ -805,7 +800,7 @@ bool vtkMyChartParallelCoordinates::MouseButtonPressEvent(
             }
 
           // Transform into normalized coordinates
-          float low = mouse.GetScenePos()[1];
+          float low = mouse.ScenePos[1];
           low -= this->Storage->Transform->GetMatrix()->GetElement(1, 2);
           low /= this->Storage->Transform->GetMatrix()->GetElement(1, 1);
           range[0] = range[1] = low;
@@ -819,25 +814,25 @@ bool vtkMyChartParallelCoordinates::MouseButtonPressEvent(
     this->Scene->SetDirty(true);
     return true;
     }
-  else if (mouse.GetButton() == this->Actions.Pan())
+  else if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
     {
     // Middle mouse button - move and zoom the axes
     // Iterate over the axes, see if we are within 10 pixels of an axis
     for (size_t i = 0; i < this->Storage->Axes.size(); ++i)
       {
       vtkAxis* axis = this->Storage->Axes[i];
-      if (axis->GetPoint1()[0]-10 < mouse.GetScenePos()[0] &&
-          axis->GetPoint1()[0]+10 > mouse.GetScenePos()[0])
+      if (axis->GetPoint1()[0]-10 < mouse.ScenePos[0] &&
+          axis->GetPoint1()[0]+10 > mouse.ScenePos[0])
         {
         this->Storage->CurrentAxis = static_cast<int>(i);
-        if (mouse.GetScenePos().Y() > axis->GetPoint1()[1] &&
-            mouse.GetScenePos().Y() < axis->GetPoint1()[1] + 20)
+        if (mouse.ScenePos.Y() > axis->GetPoint1()[1] &&
+            mouse.ScenePos.Y() < axis->GetPoint1()[1] + 20)
           {
           // Resize the bottom of the axis
           this->Storage->AxisResize = 1;
           }
-        else if (mouse.GetScenePos().Y() < axis->GetPoint2()[1] &&
-                 mouse.GetScenePos().Y() > axis->GetPoint2()[1] - 20)
+        else if (mouse.ScenePos.Y() < axis->GetPoint2()[1] &&
+                 mouse.ScenePos.Y() > axis->GetPoint2()[1] - 20)
           {
           // Resize the top of the axis
           this->Storage->AxisResize = 2;
@@ -858,17 +853,17 @@ bool vtkMyChartParallelCoordinates::MouseButtonPressEvent(
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyChartParallelCoordinates::MouseButtonReleaseEvent(
+bool vtkOldChartParallelCoordinates::MouseButtonReleaseEvent(
     const vtkContextMouseEvent& mouse)
 {
-  if (mouse.GetButton() == this->Actions.Select())
+  if (mouse.Button == vtkContextMouseEvent::LEFT_BUTTON)
     {
     if (this->Storage->CurrentAxis >= 0)
       {
       vtkVector<float, 2> &range =
           this->Storage->AxesSelections[this->Storage->CurrentAxis];
 
-      float final = mouse.GetScenePos()[1];
+      float final = mouse.ScenePos[1];
       final -= this->Storage->Transform->GetMatrix()->GetElement(1, 2);
       final /= this->Storage->Transform->GetMatrix()->GetElement(1, 1);
 
@@ -923,7 +918,7 @@ bool vtkMyChartParallelCoordinates::MouseButtonReleaseEvent(
       }
     return true;
     }
-  else if (mouse.GetButton() == this->Actions.Pan())
+  else if (mouse.Button == vtkContextMouseEvent::MIDDLE_BUTTON)
     {
     this->Storage->CurrentAxis = -1;
     this->Storage->AxisResize = -1;
@@ -933,14 +928,14 @@ bool vtkMyChartParallelCoordinates::MouseButtonReleaseEvent(
 }
 
 //-----------------------------------------------------------------------------
-bool vtkMyChartParallelCoordinates::MouseWheelEvent(const vtkContextMouseEvent &,
+bool vtkOldChartParallelCoordinates::MouseWheelEvent(const vtkContextMouseEvent &,
                                                   int)
 {
   return true;
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::ResetSelection()
+void vtkOldChartParallelCoordinates::ResetSelection()
 {
   // This function takes care of resetting the selection of the chart
   // Reset the axes.
@@ -968,29 +963,7 @@ void vtkMyChartParallelCoordinates::ResetSelection()
 }
 
 //-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::PrintSelf(ostream &os, vtkIndent indent)
+void vtkOldChartParallelCoordinates::PrintSelf(ostream &os, vtkIndent indent)
 {
   this->Superclass::PrintSelf(os, indent);
-}
-
-//-----------------------------------------------------------------------------
-void vtkMyChartParallelCoordinates::SwapAxes(int a1, int a2)
-{
-  // only neighboring axes
-  if (abs(a1-a2) != 1)
-    return;
-
-  vtkAxis* axisTmp = this->Storage->Axes[a1];
-  this->Storage->Axes[a1] = this->Storage->Axes[a2];
-  this->Storage->Axes[a2] = axisTmp;
-
-  vtkVector<float, 2> selTmp = this->Storage->AxesSelections[a1];
-  this->Storage->AxesSelections[a1] = this->Storage->AxesSelections[a2];
-  this->Storage->AxesSelections[a2] = selTmp;
-
-  vtkStdString colTmp = this->VisibleColumns->GetValue(a1);
-  this->VisibleColumns->SetValue(a1,this->VisibleColumns->GetValue(a2));
-  this->VisibleColumns->SetValue(a2,colTmp);
-
-  this->Storage->Plot->Update();
 }

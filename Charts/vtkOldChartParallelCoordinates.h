@@ -1,7 +1,7 @@
 /*=========================================================================
 
   Program:   Visualization Toolkit
-  Module:    vtkMyChartParallelCoordinates.h
+  Module:    vtkOldChartParallelCoordinates.h
 
   Copyright (c) Ken Martin, Will Schroeder, Bill Lorensen
   All rights reserved.
@@ -13,30 +13,28 @@
 
 =========================================================================*/
 
-// .NAME vtkMyChartParallelCoordinates - Factory class for drawing 2D charts
+// .NAME vtkOldChartParallelCoordinates - Factory class for drawing 2D charts
 //
 // .SECTION Description
 // This defines the interface for a parallel coordinates chart.
 
-#ifndef __vtkMyChartParallelCoordinates_h
-#define __vtkMyChartParallelCoordinates_h
+#ifndef __vtkOldChartParallelCoordinates_h
+#define __vtkOldChartParallelCoordinates_h
 
 #include "vtkChart.h"
 
 class vtkIdTypeArray;
-class vtkStdString;
 class vtkStringArray;
-class vtkMyPlotParallelCoordinates;
 
-class VTK_CHARTS_EXPORT vtkMyChartParallelCoordinates : public vtkChart
+class VTK_CHARTS_EXPORT vtkOldChartParallelCoordinates : public vtkChart
 {
 public:
-  vtkTypeMacro(vtkMyChartParallelCoordinates, vtkChart);
+  vtkTypeMacro(vtkOldChartParallelCoordinates, vtkChart);
   virtual void PrintSelf(ostream &os, vtkIndent indent);
 
   // Description:
   // Creates a parallel coordinates chart
-  static vtkMyChartParallelCoordinates* New();
+  static vtkOldChartParallelCoordinates* New();
 
   // Description:
   // Perform any updates to the item that may be necessary before rendering.
@@ -50,20 +48,32 @@ public:
 
   // Description:
   // Set the visibility of the specified column.
-  void SetColumnVisibility(const vtkStdString& name, bool visible);
-
-  // Description:
-  // Set the visibility of all columns (true will make them all visible, false
-  // will remove all visible columns).
-  void SetColumnVisibilityAll(bool visible);
+  void SetColumnVisibility(const char* name, bool visible);
 
   // Description:
   // Get the visibility of the specified column.
-  bool GetColumnVisibility(const vtkStdString& name);
+  bool GetColumnVisibility(const char* name);
 
   // Description:
   // Get a list of the columns, and the order in which they are displayed.
   vtkGetObjectMacro(VisibleColumns, vtkStringArray);
+
+  // Description:
+  // Add a plot to the chart, defaults to using the name of the y column
+  virtual vtkPlot* AddPlot(int type);
+
+  // Description:
+  // Remove the plot at the specified index, returns true if successful,
+  // false if the index was invalid.
+  virtual bool RemovePlot(vtkIdType index);
+
+  // Description:
+  // Clear selection bars
+  virtual void ClearAxesSelections();
+
+  // Description:
+  // Remove all plots from the chart.
+  virtual void ClearPlots();
 
   // Description:
   // Get the plot at the specified index, returns null if the index is invalid.
@@ -85,7 +95,7 @@ public:
   // Request that the chart recalculates the range of its axes. Especially
   // useful in applications after the parameters of plots have been modified.
   virtual void RecalculateBounds();
-
+  
   // **
   // ** CUSTOM ** //
   
@@ -126,13 +136,14 @@ public:
   // can be drawn properly. Call SetNumberOfScales(int num) before this.
   virtual void SetScaleDim(vtkIdType index, int dim_size);
 
+  // Description:
+  // Set all columns to invisible in one shot so don't have to run through
+  // all of them when totally switching data
+  virtual void SetAllColumnsInvisible();
+  
   // ** END CUSTOM ** //
   // **
 
-  // Description
-  // Set plot to use for the chart. Since this type of chart can
-  // only contain one plot, this will replace the previous plot.
-  virtual void SetPlot(vtkMyPlotParallelCoordinates *plot);
 
 //BTX
   // Description:
@@ -166,8 +177,8 @@ public:
 
 //BTX
 protected:
-  vtkMyChartParallelCoordinates();
-  ~vtkMyChartParallelCoordinates();
+  vtkOldChartParallelCoordinates();
+  ~vtkOldChartParallelCoordinates();
 
   // Description:
   // Private storage object - where we hide all of our STL objects...
@@ -191,8 +202,7 @@ protected:
   void ResetSelection();
   void UpdateGeometry();
   void CalculatePlotTransform();
-  void SwapAxes(int a1, int a2);
-
+  
   // **
   // ** CUSTOM ** //
   
@@ -217,9 +227,9 @@ protected:
   // **
 
 private:
-  vtkMyChartParallelCoordinates(const vtkMyChartParallelCoordinates &); // Not implemented.
-  void operator=(const vtkMyChartParallelCoordinates &);   // Not implemented.
+  vtkOldChartParallelCoordinates(const vtkOldChartParallelCoordinates &); // Not implemented.
+  void operator=(const vtkOldChartParallelCoordinates &);   // Not implemented.
 //ETX
 };
 
-#endif //__vtkMyChartParallelCoordinates_h
+#endif //__vtkOldChartParallelCoordinates_h
