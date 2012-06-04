@@ -63,7 +63,7 @@ vtkMyChartParallelCoordinates::vtkMyChartParallelCoordinates()
   // Link back into chart to highlight selections made in other plots
   this->HighlightLink = NULL;
   this->HighlightSelection = vtkIdTypeArray::New();
-  vtkMyPlotParallelCoordinates::SafeDownCast(this->Storage->Plot)->SetHighlightSelection(this->HighlightSelection);
+  vtkMyPlotParallelCoordinates::SafeDownCast(this->GetPlot(0))->SetHighlightSelection(this->HighlightSelection);
   this->ScaleDims.clear();
 }
 
@@ -82,7 +82,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
 {
   if (this->GetScene()->GetViewWidth() == 0 ||
       this->GetScene()->GetViewHeight() == 0 ||
-      !this->Visible || !this->GetPlot()->GetVisible() ||
+      !this->Visible || !this->GetPlot(0)->GetVisible() ||
       this->VisibleColumns->GetNumberOfTuples() < 2)
     {
     // The geometry of the chart must be valid before anything can be drawn
@@ -94,7 +94,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
 
   // Handle selections
   vtkIdTypeArray *idArray = 0;
-  unsigned long plotMTime = this->GetPlot()->GetMTime();
+  unsigned long plotMTime = this->GetPlot(0)->GetMTime();
   if (this->AnnotationLink)
     {
     vtkSelection *selection = this->AnnotationLink->GetCurrentSelection();
@@ -103,7 +103,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
       {
       vtkSelectionNode *node = selection->GetNode(0);
       idArray = vtkIdTypeArray::SafeDownCast(node->GetSelectionList());
-      this->GetPlot()->SetSelection(idArray);
+      this->GetPlot(0)->SetSelection(idArray);
       }
     }
   else
@@ -121,7 +121,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
       {
       vtkSelectionNode *node = selection->GetNode(0);
       idArray = vtkIdTypeArray::SafeDownCast(node->GetSelectionList());
-      this->GetPlot()->SetHighlightSelection(idArray);
+      vtkMyPlotParallelCoordinates::SafeDownCast(this->GetPlot(0))->SetHighlightSelection(idArray);
       }
     }
   else
@@ -160,7 +160,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
       int idx1 = group_ends.at(i);
       vtkAxis* axis0 = this->GetAxis(idx0);
       vtkAxis* axis1 = this->GetAxis(idx1);
-      if (this->GetPlot()->GetScalarVisibility())
+      if (vtkPlotParallelCoordinates::SafeDownCast(this->GetPlot(0))->GetScalarVisibility())
         {
         // Use gray box background for colored lines
         painter->GetBrush()->SetColor(150, 150, 150, 20);
@@ -177,7 +177,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
       // Extra set box for current scale
       if (i == this->CurrentScale)
         {
-        if (this->GetPlot()->GetScalarVisibility())
+        if (vtkPlotParallelCoordinates::SafeDownCast(this->GetPlot(0))->GetScalarVisibility())
           {
           // Use gray box background for colored lines
           painter->GetBrush()->SetColor(150, 150, 150, 60);
@@ -244,34 +244,34 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
 
   // Paint the actual lines of the plot
   painter->PushMatrix();
-  painter->SetTransform(this->Storage->Transform);
-  this->GetPlot()->Paint(painter);
+  painter->SetTransform(this->GetStoredTransform());
+  this->GetPlot(0)->Paint(painter);
   painter->PopMatrix();
 
   // If there is a selected axis, draw the highlight
-  if (this->Storage->CurrentAxis >= 0)
+  if (this->GetCurrentAxis() >= 0)
     {
     painter->GetBrush()->SetColor(200, 200, 200, 150);
     painter->GetPen()->SetLineType(0);
-    vtkAxis* axis = this->Storage->Axes[this->Storage->CurrentAxis];
+    vtkAxis* axis = this->GetAxis(this->GetCurrentAxis());
     painter->DrawRect(axis->GetPoint1()[0]-3, this->Point1[1],
                       6, this->Point2[1]-this->Point1[1]);
     }
 
   // Now draw our active selections
-  for (size_t i = 0; i < this->Storage->AxesSelections.size(); ++i)
+  for (size_t i = 0; i < this->GetAxesSelections().size(); ++i)
     {
-    vtkVector<float, 2> &range = this->Storage->AxesSelections[i];
+    vtkVector<float, 2> &range = this->GetAxesSelections()[i];
     if (range[0] != range[1])
       {
       painter->GetBrush()->SetColor(200, 20, 20, 220);
       painter->GetPen()->SetLineType(0);
-      float x = this->Storage->Axes[i]->GetPoint1()[0] - 3;
+      float x = this->GetAxis(i)->GetPoint1()[0] - 3;
       float y = range[0];
-      y *= this->Storage->Transform->GetMatrix()->GetElement(1, 1);
-      y += this->Storage->Transform->GetMatrix()->GetElement(1, 2);
+      y *= this->GetStoredTransform()->GetMatrix()->GetElement(1, 1);
+      y += this->GetStoredTransform()->GetMatrix()->GetElement(1, 2);
       float height = range[1] - range[0];
-      height *= this->Storage->Transform->GetMatrix()->GetElement(1, 1);
+      height *= this->GetStoredTransform()->GetMatrix()->GetElement(1, 1);
 
       painter->DrawRect(x, y, 6, height);
       }
@@ -288,8 +288,8 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     int opaquePadding = 4;  // extra padding so axes and points themselves are covered
     int idx0 = group_starts.at(this->CurrentScale+1);
     int idx1 = group_ends.back();
-    vtkAxis* axis0 = this->Storage->Axes.at(idx0);
-    vtkAxis* axis1 = this->Storage->Axes.at(idx1);
+    vtkAxis* axis0 = this->GetAxis(idx0);
+    vtkAxis* axis1 = this->GetAxis(idx1);
     painter->DrawRect(axis0->GetPoint1()[0]-opaquePadding,
                       this->Point1[1]-opaquePadding,
                       axis1->GetPoint1()[0]-axis0->GetPoint1()[0]+(2*opaquePadding),
@@ -322,7 +322,7 @@ void vtkMyChartParallelCoordinates::SetAllColumnsInvisible()
   this->VisibleColumns->SetNumberOfTuples(0);
   // Also need to reset CurrentAxis so it won't be greater than
   // number of axes
-  this->Storage->CurrentAxis = -1;
+  this->SetCurrentAxis(-1);
   this->Modified();
   this->Update();
   return;

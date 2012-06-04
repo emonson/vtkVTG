@@ -24,8 +24,6 @@
 
 #include "vtkPlotParallelCoordinates.h"
 
-class vtkImageData;
-
 class VTK_CHARTS_EXPORT vtkMyPlotParallelCoordinates : public vtkPlotParallelCoordinates
 {
 public:
@@ -47,39 +45,11 @@ public:
   vtkGetObjectMacro(HighlightSelection, vtkIdTypeArray);
 
 
-//BTX
-  // Description:
-  // Enum containing various marker styles that can be used in a plot.
-  enum {
-    NONE = 0,
-    CROSS,
-    PLUS,
-    SQUARE,
-    CIRCLE,
-    DIAMOND
-  };
-//ETX
-
-  // Description:
-  // Get/set the marker style that should be used. The default is none, the enum
-  // in this class is used as a parameter.
-  vtkGetMacro(MarkerStyle, int);
-  vtkSetMacro(MarkerStyle, int);
 
 //BTX
 protected:
   vtkMyPlotParallelCoordinates();
   ~vtkMyPlotParallelCoordinates();
-
-  // Description:
-  // Generate the requested symbol for the plot
-  void GeneraterMarker(int width, bool highlight = false);
-
-  // Description:
-  // The marker style that should be used
-  int MarkerStyle;
-  vtkImageData* Marker;
-  vtkImageData* HighlightMarker;
 
   // Description:
   // Selected indices coming back from outside the chart this plot is associated with.
