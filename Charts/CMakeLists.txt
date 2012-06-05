@@ -5,7 +5,6 @@
 #
 
 SET (Charts_SRCS
-  vtkPCAxis.cxx
   vtkAxisImageItem.cxx
   vtkMyPlotParallelCoordinates.cxx
   vtkMyChartParallelCoordinates.cxx
