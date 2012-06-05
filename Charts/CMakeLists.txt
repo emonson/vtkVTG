@@ -8,9 +8,7 @@ SET (Charts_SRCS
   vtkPCAxis.cxx
   vtkAxisImageItem.cxx
   vtkMyPlotParallelCoordinates.cxx
-  vtkOldPlotParallelCoordinates.cxx
   vtkMyChartParallelCoordinates.cxx
-  vtkOldChartParallelCoordinates.cxx
   vtkMyPlotPoints.cxx
   vtkMyChartXY.cxx
   vtkTooltipImageItem.cxx
