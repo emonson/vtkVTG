@@ -223,11 +223,13 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
 
   // Handle selections
   vtkIdTypeArray *idArray = 0;
+  // Need consistent MTime value for both AnnotationLink and HighlightLink tests
+  unsigned long plotMTime = this->Storage->Plot->GetMTime(); // ** CUSTOM
   if (this->AnnotationLink)
     {
     vtkSelection *selection = this->AnnotationLink->GetCurrentSelection();
     if (selection->GetNumberOfNodes() &&
-        this->AnnotationLink->GetMTime() > this->Storage->Plot->GetMTime())
+        this->AnnotationLink->GetMTime() > plotMTime)	// ** CUSTOM
       {
       vtkSelectionNode *node = selection->GetNode(0);
       idArray = vtkIdTypeArray::SafeDownCast(node->GetSelectionList());
@@ -248,7 +250,7 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     {
     vtkSelection *selection = this->HighlightLink->GetCurrentSelection();
     if (selection->GetNumberOfNodes() &&
-        this->HighlightLink->GetMTime() > this->Storage->Plot->GetMTime())
+        this->HighlightLink->GetMTime() > plotMTime)
       {
       vtkSelectionNode *node = selection->GetNode(0);
       idArray = vtkIdTypeArray::SafeDownCast(node->GetSelectionList());
@@ -277,83 +279,78 @@ bool vtkMyChartParallelCoordinates::Paint(vtkContext2D *painter)
     }
 
   // Draw set rectangles if desired
-//   if (this->DrawSets)
-//     {
-//   cout << "DEBUG -- chart paint beginning draw sets1" << endl;
-//     int oldLineType = painter->GetPen()->GetLineType();
-//     
-//     // Main sets boxes
-//     painter->GetPen()->SetLineType(1);
-//     painter->GetPen()->SetColor(0,0,0);
-//     painter->GetPen()->SetWidth(1.0);
-//   cout << "DEBUG -- chart paint beginning draw sets2" << endl;
-//     for (int i = 0; i < this->Storage->ScaleDims.size(); ++i)
-//       {
-//       int idx0 = group_starts.at(i);
-//       int idx1 = group_ends.at(i);
-//       vtkAxis* axis0 = this->Storage->Axes.at(idx0);
-//       vtkAxis* axis1 = this->Storage->Axes.at(idx1);
-//       if (this->Storage->Plot->GetScalarVisibility())
-//         {
-//         // Use gray box background for colored lines
-//         painter->GetBrush()->SetColor(150, 150, 150, 20);
-//         }
-//       else
-//         {
-//         // yellow-gold otherwise
-//         painter->GetBrush()->SetColor(254, 209, 0, 20);
-//         }
-//   cout << "DEBUG -- chart paint beginning draw sets3" << endl;
-//       painter->DrawRect(axis0->GetPoint1()[0],
-//                         this->Point1[1],
-//                         axis1->GetPoint1()[0]-axis0->GetPoint1()[0],
-//                         this->Point2[1]-this->Point1[1]);
-//       // Extra set box for current scale
-//       if (i == this->CurrentScale)
-//         {
-//         if (this->Storage->Plot->GetScalarVisibility())
-//           {
-//           // Use gray box background for colored lines
-//           painter->GetBrush()->SetColor(150, 150, 150, 60);
-//           }
-//         else
-//           {
-//           // yellow-gold otherwise
-//           painter->GetBrush()->SetColor(254, 209, 0, 60);
-//           }
-//         painter->DrawRect(axis0->GetPoint1()[0], 
-//                           this->Point1[1],
-//                           axis1->GetPoint1()[0]-axis0->GetPoint1()[0], 
-//                           this->Point2[1]-this->Point1[1]);
-//         // And annotation for externally plotted X and Y axes
-//   cout << "DEBUG -- chart paint beginning draw sets4" << endl;
-//         if ((this->XYcurrentX >= 0) && (this->XYcurrentY >= 0))
-// 					{
-// 					vtkAxis* axisX = this->Storage->Axes.at(idx0+this->XYcurrentX);
-// 					vtkAxis* axisY = this->Storage->Axes.at(idx0+this->XYcurrentY);
-// 					painter->GetBrush()->SetColor(200, 200, 200, 100);
-// 					
-// 					painter->DrawLine(axisX->GetPoint1()[0]-3, 
-// 														this->Point2[1]+6,
-// 														axisX->GetPoint1()[0]+3,
-// 														this->Point2[1]+6);
-// 					painter->DrawEllipse(axisX->GetPoint1()[0], 
-// 														this->Point2[1]+6,
-// 														3,3);
-// 					
-// 					painter->DrawLine(axisY->GetPoint1()[0], 
-// 														this->Point2[1]+3,
-// 														axisY->GetPoint1()[0],
-// 														this->Point2[1]+9);
-// 					painter->DrawEllipse(axisY->GetPoint1()[0], 
-// 														this->Point2[1]+6,
-// 														3,3);
-//           }
-//         }
-//       }
-//   cout << "DEBUG -- chart paint beginning draw sets5" << endl;
-//     painter->GetPen()->SetLineType(oldLineType);
-//     }
+  if (this->DrawSets)
+    {
+    int oldLineType = painter->GetPen()->GetLineType();
+    
+    // Main sets boxes
+    painter->GetPen()->SetLineType(1);
+    painter->GetPen()->SetColor(0,0,0);
+    painter->GetPen()->SetWidth(1.0);
+    for (int groupIndex = 0; groupIndex < this->Storage->ScaleDims.size(); ++groupIndex)
+      {
+      int idx0 = group_starts.at(groupIndex);
+      int idx1 = group_ends.at(groupIndex);
+      vtkAxis* axis0 = this->Storage->Axes.at(idx0);
+      vtkAxis* axis1 = this->Storage->Axes.at(idx1);
+      if (this->Storage->Plot->GetScalarVisibility())
+        {
+        // Use gray box background for colored lines
+        painter->GetBrush()->SetColor(150, 150, 150, 20);
+        }
+      else
+        {
+        // yellow-gold otherwise
+        painter->GetBrush()->SetColor(254, 209, 0, 20);
+        }
+      painter->DrawRect(axis0->GetPoint1()[0],
+                        this->Point1[1],
+                        axis1->GetPoint1()[0] - axis0->GetPoint1()[0],
+                        this->Point2[1] - this->Point1[1]);
+      // Extra set box for current scale
+      if (groupIndex == this->CurrentScale)
+        {
+        if (this->Storage->Plot->GetScalarVisibility())
+          {
+          // Use gray box background for colored lines
+          painter->GetBrush()->SetColor(150, 150, 150, 60);
+          }
+        else
+          {
+          // yellow-gold otherwise
+          painter->GetBrush()->SetColor(254, 209, 0, 60);
+          }
+        painter->DrawRect(axis0->GetPoint1()[0], 
+                          this->Point1[1],
+                          axis1->GetPoint1()[0] - axis0->GetPoint1()[0], 
+                          this->Point2[1] - this->Point1[1]);
+        // And annotation for externally plotted X and Y axes
+        if ((this->XYcurrentX >= 0) && (this->XYcurrentY >= 0))
+					{
+					vtkAxis* axisX = this->Storage->Axes.at(idx0+this->XYcurrentX);
+					vtkAxis* axisY = this->Storage->Axes.at(idx0+this->XYcurrentY);
+					painter->GetBrush()->SetColor(200, 200, 200, 100);
+					
+					painter->DrawLine(axisX->GetPoint1()[0]-3, 
+														this->Point2[1]+6,
+														axisX->GetPoint1()[0]+3,
+														this->Point2[1]+6);
+					painter->DrawEllipse(axisX->GetPoint1()[0], 
+														this->Point2[1]+6,
+														3,3);
+					
+					painter->DrawLine(axisY->GetPoint1()[0], 
+														this->Point2[1]+3,
+														axisY->GetPoint1()[0],
+														this->Point2[1]+9);
+					painter->DrawEllipse(axisY->GetPoint1()[0], 
+														this->Point2[1]+6,
+														3,3);
+          }
+        }
+      }
+    painter->GetPen()->SetLineType(oldLineType);
+    }
     
 	// Paint axes, but only if there are not too many of them
 	if (this->Storage->Axes.size() < 60)
