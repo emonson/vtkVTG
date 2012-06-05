@@ -72,7 +72,6 @@ vtkStandardNewMacro(vtkMyChartXY);
 
 //-----------------------------------------------------------------------------
 vtkCxxSetObjectMacro(vtkMyChartXY, HighlightLink, vtkAnnotationLink);
-vtkCxxSetObjectMacro(vtkMyChartXY, DataColumnsLink, vtkAnnotationLink);
 
 //-----------------------------------------------------------------------------
 vtkMyChartXY::vtkMyChartXY()
@@ -87,9 +86,6 @@ vtkMyChartXY::vtkMyChartXY()
   // Link back into chart to highlight selections made in other plots
   this->HighlightLink = NULL;
   
-  // Link into chart to externally control which columns are plotted
-  this->DataColumnsLink = NULL;
-
   this->LayoutChanged = true;
 }
 
@@ -100,10 +96,6 @@ vtkMyChartXY::~vtkMyChartXY()
     {
     this->HighlightLink->Delete();
     }
-  if (this->DataColumnsLink)
-    {
-    this->DataColumnsLink->Delete();
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -112,54 +104,6 @@ void vtkMyChartXY::Update()
   // Do update on superclass
   this->Superclass::Update();
   
-  // Update which columns should be plotted against each other
-  // Do this without reference to this->ChartPrivate since that is private
-  // data in the parent class. Using public API instead to get plots...
-  if (this->DataColumnsLink)
-    {
-    this->DataColumnsLink->Update();
-    vtkSelection *selection =
-        vtkSelection::SafeDownCast(this->DataColumnsLink->GetOutputDataObject(2));
-    if (selection->GetNumberOfNodes())
-      {
-      vtkSelectionNode *node = selection->GetNode(0);
-      vtkIdTypeArray *cidArray =
-          vtkIdTypeArray::SafeDownCast(node->GetSelectionList());
-      // If valid, should contain two indices for the two axes
-      if (cidArray->GetNumberOfTuples() >= 2)
-        {
-        vtkIdType xI = cidArray->GetValue(0);
-        vtkIdType yI = cidArray->GetValue(1);
-				// Now iterate through the plots to update columns plotted
-				for (int ii=0; ii < this->GetNumberOfPlots(); ++ii)
-					{
-					vtkPlotPoints* plot = vtkPlotPoints::SafeDownCast(this->GetPlot(ii));
-					if (plot && plot->GetVisible())
-						{
-						vtkTable* table = plot->GetData()->GetInput();
-						// See if data to be plotted has really changed
-						if ((table->GetColumn(xI) != plot->GetData()->GetInputArrayToProcess(0,table) ||
-						     table->GetColumn(yI) != plot->GetData()->GetInputArrayToProcess(1,table))
-						     && (xI < table->GetNumberOfColumns() && yI < table->GetNumberOfColumns()))
-						  {
-							plot->SetInputArray(0,table->GetColumnName(xI));
-							plot->SetInputArray(1,table->GetColumnName(yI));
-							this->GetAxis(0)->SetTitle(table->GetColumnName(yI));
-							this->GetAxis(1)->SetTitle(table->GetColumnName(xI));
-							plot->Update();
-							this->Scene->SetDirty(true);
-							this->RecalculatePlotBounds();			
-							}
-						}
-					}
-				}
-      }
-    }
-  else
-    {
-    vtkDebugMacro("No annotation link set.");
-    }
-
   // Update the selections if necessary.
   // Do this without reference to this->ChartPrivate since that is private
   // data in the parent class. Using public API instead to get plots...
@@ -190,47 +134,47 @@ void vtkMyChartXY::Update()
     vtkDebugMacro("No annotation link set.");
     }
 	
-	// Make sure the axis labels have been set to the correct column names (for vtkMyPlotPoints)
-	for (int ii=0; ii < this->GetNumberOfPlots(); ++ii)
-		{
-		vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(this->GetPlot(ii));
-		if (myPlot) // && strcmp(this->GetAxis(0)->GetTitle(),"Y Axis") == 0)
-			{
-			vtkTable* table = myPlot->GetData()->GetInput();
-			const char* xName = myPlot->GetData()->GetInputArrayToProcess(0, table)->GetName();
-			const char* yName = myPlot->GetData()->GetInputArrayToProcess(1, table)->GetName();
-			this->GetAxis(0)->SetTitle(yName);
-			this->GetAxis(1)->SetTitle(xName);
-			}
-		}
-
-	// Set the mapping for (axis image) index to data columns to avoid plotting _ids columns
-	// Look through data table column names to gather valid data column indices
-	// NOTE: Looking for first visible vtkMyPlotPoints and using that table
-	// Find first MyPlotPoints to know where to grab the input table
-	for (vtkIdType i = 0; i < this->GetNumberOfPlots(); ++i)
-		{
-		vtkMyPlotPoints* plot = vtkMyPlotPoints::SafeDownCast(this->GetPlot(i));
-		if (plot && plot->GetVisible())
-			{
-			vtkTable* table = plot->GetData()->GetInput();
-			this->col_idxs.clear();
-			// Build up a vector of table column indices which do not contain _ids in their name
-			for (vtkIdType ii = 0; ii < table->GetNumberOfColumns(); ii++)
-				{
-				const char *col_name = table->GetColumnName(ii);
-				if (strstr(col_name, "_ids"))
-					{
-					continue;
-					}
-				else
-					{
-					this->col_idxs.push_back(ii);
-					}
-				}
-			break;
-			}
-		}
+  // Make sure the axis labels have been set to the correct column names (for vtkMyPlotPoints)
+  for (int ii=0; ii < this->GetNumberOfPlots(); ++ii)
+    {
+    vtkMyPlotPoints* myPlot = vtkMyPlotPoints::SafeDownCast(this->GetPlot(ii));
+    if (myPlot) // && strcmp(this->GetAxis(0)->GetTitle(),"Y Axis") == 0)
+      {
+      vtkTable* table = myPlot->GetData()->GetInput();
+      const char* xName = myPlot->GetData()->GetInputArrayToProcess(0, table)->GetName();
+      const char* yName = myPlot->GetData()->GetInputArrayToProcess(1, table)->GetName();
+      this->GetAxis(0)->SetTitle(yName);
+      this->GetAxis(1)->SetTitle(xName);
+      }
+    }
+  
+  // Set the mapping for (axis image) index to data columns to avoid plotting _ids columns
+  // Look through data table column names to gather valid data column indices
+  // NOTE: Looking for first visible vtkMyPlotPoints and using that table
+  // Find first MyPlotPoints to know where to grab the input table
+  for (vtkIdType i = 0; i < this->GetNumberOfPlots(); ++i)
+    {
+    vtkMyPlotPoints* plot = vtkMyPlotPoints::SafeDownCast(this->GetPlot(i));
+    if (plot && plot->GetVisible())
+      {
+      vtkTable* table = plot->GetData()->GetInput();
+      this->col_idxs.clear();
+      // Build up a vector of table column indices which do not contain _ids in their name
+      for (vtkIdType ii = 0; ii < table->GetNumberOfColumns(); ii++)
+        {
+        const char *col_name = table->GetColumnName(ii);
+        if (strstr(col_name, "_ids"))
+          {
+          continue;
+          }
+        else
+          {
+          this->col_idxs.push_back(ii);
+          }
+        }
+      break;
+      }
+    }
 }
 
 void vtkMyChartXY::SetTooltipInfo(const vtkContextMouseEvent& mouse,

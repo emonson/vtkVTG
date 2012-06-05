@@ -48,21 +48,8 @@ public:
   static vtkMyPlotPoints *New();
 
   // Description:
-  // Perform any updates to the item that may be necessary before rendering.
-  // The scene should take care of calling this on all items before their
-  // Paint function is invoked.
-  virtual void Update();
-
-  // Description:
   // Paint event for the XY plot, called whenever the chart needs to be drawn
   virtual bool Paint(vtkContext2D *painter);
-
-  // Description:
-  // Function to query a plot for the nearest point to the specified coordinate.
-  // This version returns the index of the point as a float in the .Z() vector3f coord.
-  virtual vtkIdType GetNearestPoint(const vtkVector2f& point,
-                               const vtkVector2f& tolerance,
-                               vtkVector2f* location);
 
   // Description:
   // Set the list of ids for highlighting (back from outside plot).
@@ -72,15 +59,6 @@ public:
 protected:
   vtkMyPlotPoints();
   ~vtkMyPlotPoints();
-
-  // Description:
-  // Update the table cache.
-  bool UpdateTableCache(vtkTable *table);
-
-  // Description:
-  // Sorted points, used when searching for the nearest point.
-  class VectorPIMPL3;
-  VectorPIMPL3* Sorted3;
 
   // Description:
   // Selected indices coming back from outside the chart this plot is associated with.

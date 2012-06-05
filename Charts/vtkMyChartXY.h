@@ -69,14 +69,6 @@ public:
   virtual void SetHighlightLink(vtkAnnotationLink *link);
   vtkGetObjectMacro(HighlightLink, vtkAnnotationLink);
 
-  // Description:
-  // Get/Set the DataColumnsLink for the chart.
-  // Link used to externally control which columns are plotted against
-  // each other. If being used, should contain a selection node with
-  // a selection list of two indices which will be the X and Y axis columns.
-  virtual void SetDataColumnsLink(vtkAnnotationLink *link);
-  vtkGetObjectMacro(DataColumnsLink, vtkAnnotationLink);
-
   // Description
   // Set whether tooltip will show image or text
   // Please set the image stack on the plot before this call so here
@@ -121,12 +113,6 @@ private:
   // Description:
   // Link back into chart to highlight selections made in other plots
   vtkAnnotationLink *HighlightLink;
-  
-  // Description
-  // Link used to externally control which columns are plotted against
-  // each other. If being used, should contain a selection node with
-  // a selection list of two indices which will be the X and Y axis columns.
-  vtkAnnotationLink *DataColumnsLink;
   
   // Description:
   // Contains the map between indices (axis images) and "valid", non_ids data
